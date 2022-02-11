@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
-namespace BatteryNotifier
+﻿namespace BatteryNotifier
 {
     public partial class Dashboard : Form
     {
@@ -64,6 +54,21 @@ namespace BatteryNotifier
         private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
         {
             mouseDown = false;
+        }
+
+        private void CloseIcon_Click(object sender, EventArgs e)
+        {
+           this.Hide();
+        }
+
+        private void CloseIcon_MouseEnter(object sender, EventArgs e)
+        {
+            this.CloseIcon.Image = Properties.Resources.Close_Square_Hover;
+        }
+
+        private void CloseIcon_MouseLeave(object sender, EventArgs e)
+        {
+            this.CloseIcon.Image = Properties.Resources.Close_Square;
         }
     }
 }

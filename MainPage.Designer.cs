@@ -129,6 +129,7 @@
             this.BatteryNotifierIcon.BalloonTipIcon = System.Windows.Forms.ToolTipIcon.Info;
             this.BatteryNotifierIcon.BalloonTipText = " Hi there";
             this.BatteryNotifierIcon.BalloonTipTitle = " and this is the title";
+            this.BatteryNotifierIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("BatteryNotifierIcon.Icon")));
             this.BatteryNotifierIcon.Text = "Battery Notifier";
             this.BatteryNotifierIcon.Visible = true;
             // 
@@ -608,6 +609,9 @@
             this.CloseIcon.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.CloseIcon.TabIndex = 0;
             this.CloseIcon.TabStop = false;
+            this.CloseIcon.Click += new System.EventHandler(this.CloseIcon_Click);
+            this.CloseIcon.MouseEnter += new System.EventHandler(this.CloseIcon_MouseEnter);
+            this.CloseIcon.MouseLeave += new System.EventHandler(this.CloseIcon_MouseLeave);
             // 
             // tableLayoutPanel1
             // 
@@ -904,6 +908,7 @@
             this.MinimizeBox = false;
             this.Name = "Dashboard";
             this.Padding = new System.Windows.Forms.Padding(1);
+            this.ShowInTaskbar = false;
             this.Text = "Battery Notifier";
             this.tableLayoutPanel5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
