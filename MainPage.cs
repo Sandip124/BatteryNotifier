@@ -16,30 +16,5 @@ namespace BatteryNotifier
         {
             InitializeComponent();
         }
-
-        private void BatteryPercentageLabel_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void BatteryIcon_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void tableLayoutPanel2_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
-        private void label1_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void Notification_Enter(object sender, EventArgs e)
-        {
-
-        }
     }
 }

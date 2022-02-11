@@ -545,6 +545,7 @@
             // 
             // tableLayoutPanel14
             // 
+            this.tableLayoutPanel14.BackColor = System.Drawing.SystemColors.Menu;
             this.tableLayoutPanel14.ColumnCount = 2;
             this.tableLayoutPanel14.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel14.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 36F));
@@ -568,6 +569,7 @@
             this.label18.Size = new System.Drawing.Size(359, 37);
             this.label18.TabIndex = 16;
             this.label18.Text = "Windows Battery Notifier";
+            this.label18.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // pictureBox11
             // 
