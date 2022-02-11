@@ -5,68 +5,12 @@ namespace BatteryNotifier
     public partial class Dashboard : Form
     {
         const string DeveloperUrl = "https://github.com/Sandip124/BatteryNotifier/";
-        private Point LastLocation;
-        private bool MouseDown;
 
         public Dashboard()
         {
             InitializeComponent();
             InitializeContextMenu();
             SetDefaultLocation();
-        }
-
-        static void SystemEvents_PowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
-        {
-            if (e.Mode == Microsoft.Win32.PowerModes.StatusChange)
-            {
-                // Check what the status is and act accordingly
-
-            }
-        }
-
-        private void AppHeader_MouseDown(object sender, MouseEventArgs e)
-        {
-            MouseDown = true;
-            LastLocation = e.Location;
-        }
-
-        private void AppHeader_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (MouseDown)
-            {
-                Location = new Point(
-                    Location.X - LastLocation.X + e.X, Location.Y - LastLocation.Y + e.Y);
-
-                Update();
-            }
-
-        }
-
-        private void AppHeader_MouseUp(object sender, MouseEventArgs e)
-        {
-            MouseDown = false;
-        }
-
-        private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
-        {
-            MouseDown = true;
-            LastLocation = e.Location;
-        }
-
-        private void AppHeaderTitle_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (MouseDown)
-            {
-                Location = new Point(
-                    Location.X - LastLocation.X + e.X, Location.Y - LastLocation.Y + e.Y);
-
-                Update();
-            }
-        }
-
-        private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
-        {
-            MouseDown = false;
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -88,7 +32,6 @@ namespace BatteryNotifier
         {
 
             RefreshBatteryStatus();
-
             BatteryStatusTimer.Enabled = true;
 
         }

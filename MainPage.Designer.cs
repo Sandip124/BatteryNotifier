@@ -320,7 +320,7 @@
             this.BatteryStatus.Name = "BatteryStatus";
             this.BatteryStatus.Size = new System.Drawing.Size(269, 38);
             this.BatteryStatus.TabIndex = 2;
-            this.BatteryStatus.Text = "Not Charging";
+            this.BatteryStatus.Text = "😕 I Dont know";
             // 
             // groupBox1
             // 
@@ -563,9 +563,6 @@
             this.AppHeader.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.AppHeader.Size = new System.Drawing.Size(401, 37);
             this.AppHeader.TabIndex = 7;
-            this.AppHeader.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AppHeader_MouseDown);
-            this.AppHeader.MouseMove += new System.Windows.Forms.MouseEventHandler(this.AppHeader_MouseMove);
-            this.AppHeader.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AppHeader_MouseUp);
             // 
             // AppHeaderTitle
             // 
@@ -578,9 +575,6 @@
             this.AppHeaderTitle.TabIndex = 16;
             this.AppHeaderTitle.Text = "Windows Battery Notifier";
             this.AppHeaderTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.AppHeaderTitle.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseDown);
-            this.AppHeaderTitle.MouseMove += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseMove);
-            this.AppHeaderTitle.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseUp);
             // 
             // CloseIcon
             // 
