@@ -31,5 +31,15 @@ namespace BatteryNotifier
         {
 
         }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void Notification_Enter(object sender, EventArgs e)
+        {
+
+        }
     }
 }
