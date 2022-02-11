@@ -40,21 +40,31 @@ namespace BatteryNotifier
         {
             PowerStatus status = SystemInformation.PowerStatus;
 
-            if (status.BatteryChargeStatus == BatteryChargeStatus.Charging)
+            if (status.PowerLineStatus == PowerLineStatus.Online)
             {
                 BatteryStatus.Text = "Charging";
+                BatteryStatus.ForeColor = Color.ForestGreen;
             }
-            else if (status.BatteryChargeStatus == BatteryChargeStatus.High)
+            else if(status.PowerLineStatus is PowerLineStatus.Offline or PowerLineStatus.Unknown)
+            {
+                BatteryStatus.Text = "Not Charging";
+                BatteryStatus.ForeColor = Color.Gray;
+            }
+
+            if (status.BatteryChargeStatus == BatteryChargeStatus.High && status.BatteryLifePercent >= .96)
             {
                 BatteryStatus.Text = "Full Battery";
+                this.BatteryImage.Image = Properties.Resources.Full;
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.Low)
             {
                 BatteryStatus.Text = "Battery Low";
+                this.BatteryImage.Image = Properties.Resources.Low;
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.Critical)
             {
                 BatteryStatus.Text = "Battery Critical";
+                this.BatteryImage.Image = Properties.Resources.Critical;
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
