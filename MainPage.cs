@@ -15,6 +15,15 @@ namespace BatteryNotifier
             SetDefaultLocation();
         }
 
+        static void SystemEvents_PowerModeChanged(object sender, Microsoft.Win32.PowerModeChangedEventArgs e)
+        {
+            if (e.Mode == Microsoft.Win32.PowerModes.StatusChange)
+            {
+                // Check what the status is and act accordingly
+
+            }
+        }
+
         private void AppHeader_MouseDown(object sender, MouseEventArgs e)
         {
             MouseDown = true;
@@ -77,6 +86,59 @@ namespace BatteryNotifier
 
         private void Dashboard_Load(object sender, EventArgs e)
         {
+
+            RefreshBatteryStatus();
+
+            BatteryStatusTimer.Enabled = true;
+
+        }
+
+        private void RefreshBatteryStatus()
+        {
+            PowerStatus status = SystemInformation.PowerStatus;
+
+            if (status.BatteryChargeStatus == BatteryChargeStatus.Charging)
+            {
+                BatteryStatus.Text = "Charging";
+            }
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.High)
+            {
+                BatteryStatus.Text = "Full Battery";
+            }
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.Low)
+            {
+                BatteryStatus.Text = "Battery Low";
+            }
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.Critical)
+            {
+                BatteryStatus.Text = "Battery Critical";
+            }
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+            {
+                BatteryStatus.Text = "Looks like you are running on main power !!";
+            }
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
+            {
+                BatteryStatus.Text = "Only God knows about this battery !!";
+            }
+
+            int powerPercent = (int)(status.BatteryLifePercent * 100);
+            if (powerPercent <= 100)
+                BatteryPercentage.Text = powerPercent + " %";
+            else
+                BatteryPercentage.Text = "0 %";
+
+
+            int secondsRemaining = status.BatteryLifeRemaining;
+            if (secondsRemaining >= 0)
+            {
+                var timeSpan = TimeSpan.FromSeconds(secondsRemaining);
+                RemainingTime.Text = string.Format("{0} hr {1} min remaining", timeSpan.Hours, timeSpan.Minutes);
+            }
+            else
+            {
+                RemainingTime.Text = "0 min remaining";
+            }
         }
 
         private void SetDefaultLocation()
@@ -132,6 +194,11 @@ namespace BatteryNotifier
         {
             this.Show();
             this.Activate();
+        }
+
+        private void BatteryStatusTimer_Tick(object sender, EventArgs e)
+        {
+            this.RefreshBatteryStatus();
         }
     }
 }

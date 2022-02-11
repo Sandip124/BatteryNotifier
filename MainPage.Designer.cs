@@ -46,9 +46,9 @@
             this.BatteryPercentage = new System.Windows.Forms.Label();
             this.BatteryStatus = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.label10 = new System.Windows.Forms.Label();
-            this.RemainingTimeLabel = new System.Windows.Forms.Label();
             this.RemainingTime = new System.Windows.Forms.Label();
+            this.RemainingTimeLabel = new System.Windows.Forms.Label();
+            this.RemainingCapacity = new System.Windows.Forms.Label();
             this.RemainingCapacityLabel = new System.Windows.Forms.Label();
             this.BatteryCapacity = new System.Windows.Forms.Label();
             this.BatteryCapacityLabel = new System.Windows.Forms.Label();
@@ -89,6 +89,7 @@
             this.tableLayoutPanel4 = new System.Windows.Forms.TableLayoutPanel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.BatteryStatusTimer = new System.Windows.Forms.Timer(this.components);
             this.tableLayoutPanel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.tableLayoutPanel6.SuspendLayout();
@@ -323,9 +324,9 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label10);
-            this.groupBox1.Controls.Add(this.RemainingTimeLabel);
             this.groupBox1.Controls.Add(this.RemainingTime);
+            this.groupBox1.Controls.Add(this.RemainingTimeLabel);
+            this.groupBox1.Controls.Add(this.RemainingCapacity);
             this.groupBox1.Controls.Add(this.RemainingCapacityLabel);
             this.groupBox1.Controls.Add(this.BatteryCapacity);
             this.groupBox1.Controls.Add(this.BatteryCapacityLabel);
@@ -339,15 +340,15 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Battery Details";
             // 
-            // label10
+            // RemainingTime
             // 
-            this.label10.AutoSize = true;
-            this.label10.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.label10.Location = new System.Drawing.Point(148, 93);
-            this.label10.Name = "label10";
-            this.label10.Size = new System.Drawing.Size(134, 27);
-            this.label10.TabIndex = 19;
-            this.label10.Text = "2 Hour 15  minutes";
+            this.RemainingTime.AutoSize = true;
+            this.RemainingTime.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.RemainingTime.Location = new System.Drawing.Point(148, 93);
+            this.RemainingTime.Name = "RemainingTime";
+            this.RemainingTime.Size = new System.Drawing.Size(134, 27);
+            this.RemainingTime.TabIndex = 19;
+            this.RemainingTime.Text = "2 Hour 15  minutes";
             // 
             // RemainingTimeLabel
             // 
@@ -359,15 +360,15 @@
             this.RemainingTimeLabel.TabIndex = 18;
             this.RemainingTimeLabel.Text = "Remaining Time :";
             // 
-            // RemainingTime
+            // RemainingCapacity
             // 
-            this.RemainingTime.AutoSize = true;
-            this.RemainingTime.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.RemainingTime.Location = new System.Drawing.Point(148, 60);
-            this.RemainingTime.Name = "RemainingTime";
-            this.RemainingTime.Size = new System.Drawing.Size(88, 27);
-            this.RemainingTime.TabIndex = 17;
-            this.RemainingTime.Text = "43760 mWh";
+            this.RemainingCapacity.AutoSize = true;
+            this.RemainingCapacity.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.RemainingCapacity.Location = new System.Drawing.Point(148, 60);
+            this.RemainingCapacity.Name = "RemainingCapacity";
+            this.RemainingCapacity.Size = new System.Drawing.Size(88, 27);
+            this.RemainingCapacity.TabIndex = 17;
+            this.RemainingCapacity.Text = "43760 mWh";
             // 
             // RemainingCapacityLabel
             // 
@@ -879,6 +880,10 @@
             this.checkBox1.Text = "Off";
             this.checkBox1.UseVisualStyleBackColor = true;
             // 
+            // BatteryStatusTimer
+            // 
+            this.BatteryStatusTimer.Tick += new System.EventHandler(this.BatteryStatusTimer_Tick);
+            // 
             // Dashboard
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -960,9 +965,9 @@
         private Label BatteryPercentage;
         private Label BatteryStatus;
         private GroupBox groupBox1;
-        private Label label10;
-        private Label RemainingTimeLabel;
         private Label RemainingTime;
+        private Label RemainingTimeLabel;
+        private Label RemainingCapacity;
         private Label RemainingCapacityLabel;
         private Label BatteryCapacity;
         private Label BatteryCapacityLabel;
@@ -1004,5 +1009,6 @@
         private PictureBox pictureBox1;
         private CheckBox checkBox1;
         private Label label1;
+        private System.Windows.Forms.Timer BatteryStatusTimer;
     }
 }
