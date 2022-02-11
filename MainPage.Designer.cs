@@ -275,7 +275,7 @@
             // BatteryImage
             // 
             this.BatteryImage.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BatteryImage.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.BatteryImage.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.BatteryImage.Location = new System.Drawing.Point(0, 0);
             this.BatteryImage.Margin = new System.Windows.Forms.Padding(0);
             this.BatteryImage.Name = "BatteryImage";
@@ -437,7 +437,7 @@
             // 
             this.LowBatteryIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.LowBatteryIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.LowBatteryIcon.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.LowBatteryIcon.Image = global::BatteryNotifier.Properties.Resources.Low;
             this.LowBatteryIcon.Location = new System.Drawing.Point(3, 3);
             this.LowBatteryIcon.Name = "LowBatteryIcon";
             this.LowBatteryIcon.Size = new System.Drawing.Size(65, 36);
@@ -504,7 +504,7 @@
             // 
             this.FullBatteryIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.FullBatteryIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.FullBatteryIcon.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.FullBatteryIcon.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.FullBatteryIcon.Location = new System.Drawing.Point(3, 3);
             this.FullBatteryIcon.Name = "FullBatteryIcon";
             this.FullBatteryIcon.Size = new System.Drawing.Size(65, 36);
