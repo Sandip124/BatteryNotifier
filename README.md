@@ -1,4 +1,4 @@
-![Windows Battery Notifier](Windows_Battery_Notifier.png)
+![Windows Battery Notifier](BatteryNotifierBanner.png)
 
 # Battery Notifier
 
