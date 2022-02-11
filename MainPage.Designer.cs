@@ -233,7 +233,7 @@
             this.label1.AutoSize = true;
             this.label1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.label1.Font = new System.Drawing.Font("Oswald", 9.749999F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.label1.ForeColor = System.Drawing.Color.Navy;
+            this.label1.ForeColor = System.Drawing.Color.RoyalBlue;
             this.label1.Location = new System.Drawing.Point(3, 478);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(401, 84);
@@ -473,6 +473,7 @@
             // LowBatteryNotificationSetting
             // 
             this.LowBatteryNotificationSetting.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.LowBatteryNotificationSetting.Cursor = System.Windows.Forms.Cursors.Hand;
             this.LowBatteryNotificationSetting.Dock = System.Windows.Forms.DockStyle.Fill;
             this.LowBatteryNotificationSetting.Image = global::BatteryNotifier.Properties.Resources.settings;
             this.LowBatteryNotificationSetting.Location = new System.Drawing.Point(325, 3);
@@ -539,6 +540,7 @@
             // FullBatteryNotificationSetting
             // 
             this.FullBatteryNotificationSetting.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.FullBatteryNotificationSetting.Cursor = System.Windows.Forms.Cursors.Hand;
             this.FullBatteryNotificationSetting.Dock = System.Windows.Forms.DockStyle.Fill;
             this.FullBatteryNotificationSetting.Image = global::BatteryNotifier.Properties.Resources.settings;
             this.FullBatteryNotificationSetting.Location = new System.Drawing.Point(327, 3);
@@ -574,6 +576,9 @@
             this.AppHeader.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.AppHeader.Size = new System.Drawing.Size(401, 36);
             this.AppHeader.TabIndex = 7;
+            this.AppHeader.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AppHeader_MouseDown);
+            this.AppHeader.MouseMove += new System.Windows.Forms.MouseEventHandler(this.AppHeader_MouseMove);
+            this.AppHeader.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AppHeader_MouseUp);
             // 
             // AppHeaderTitle
             // 
@@ -586,9 +591,14 @@
             this.AppHeaderTitle.TabIndex = 16;
             this.AppHeaderTitle.Text = "Windows Battery Notifier";
             this.AppHeaderTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.AppHeaderTitle.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseDown);
+            this.AppHeaderTitle.MouseMove += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseMove);
+            this.AppHeaderTitle.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseUp);
             // 
             // CloseIcon
             // 
+            this.CloseIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
+            this.CloseIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.CloseIcon.Dock = System.Windows.Forms.DockStyle.Fill;
             this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.Close_Square;
             this.CloseIcon.Location = new System.Drawing.Point(365, 0);
