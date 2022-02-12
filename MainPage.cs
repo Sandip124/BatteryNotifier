@@ -153,5 +153,10 @@ namespace BatteryNotifier
         {
             this.RefreshBatteryStatus();
         }
+
+        private void FullBatteryNotificationSetting_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Setting");
+        }
     }
 }

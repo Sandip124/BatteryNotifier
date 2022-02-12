@@ -536,6 +536,7 @@
             this.FullBatteryNotificationSetting.SizeMode = System.Windows.Forms.PictureBoxSizeMode.CenterImage;
             this.FullBatteryNotificationSetting.TabIndex = 12;
             this.FullBatteryNotificationSetting.TabStop = false;
+            this.FullBatteryNotificationSetting.Click += new System.EventHandler(this.FullBatteryNotificationSetting_Click);
             // 
             // FullBatteryLabel
             // 
