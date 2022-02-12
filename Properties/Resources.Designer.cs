@@ -63,9 +63,9 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap battery_icon {
+        internal static System.Drawing.Bitmap ChargingBatteryAnimated {
             get {
-                object obj = ResourceManager.GetObject("battery-icon", resourceCulture);
+                object obj = ResourceManager.GetObject("ChargingBatteryAnimated", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -73,9 +73,9 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap Close_Square {
+        internal static System.Drawing.Bitmap CloseIcon {
             get {
-                object obj = ResourceManager.GetObject("Close Square", resourceCulture);
+                object obj = ResourceManager.GetObject("CloseIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -83,9 +83,9 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap Close_Square_Hover {
+        internal static System.Drawing.Bitmap CloseIconHover {
             get {
-                object obj = ResourceManager.GetObject("Close Square Hover", resourceCulture);
+                object obj = ResourceManager.GetObject("CloseIconHover", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -123,9 +123,29 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap Normal {
+            get {
+                object obj = ResourceManager.GetObject("Normal", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap settings {
             get {
                 object obj = ResourceManager.GetObject("settings", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Unknown {
+            get {
+                object obj = ResourceManager.GetObject("Unknown", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

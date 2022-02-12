@@ -5,7 +5,6 @@ namespace BatteryNotifier
     public partial class Dashboard : Form
     {
         const string DeveloperUrl = "https://github.com/Sandip124/BatteryNotifier/";
-
         public Dashboard()
         {
             InitializeComponent();
@@ -15,73 +14,94 @@ namespace BatteryNotifier
 
         private void CloseIcon_Click(object sender, EventArgs e)
         {
-           this.Hide();
+            this.Hide();
         }
 
         private void CloseIcon_MouseEnter(object sender, EventArgs e)
         {
-            this.CloseIcon.Image = Properties.Resources.Close_Square_Hover;
+            this.CloseIcon.Image = Properties.Resources.CloseIconHover;
         }
 
         private void CloseIcon_MouseLeave(object sender, EventArgs e)
         {
-            this.CloseIcon.Image = Properties.Resources.Close_Square;
+            this.CloseIcon.Image = Properties.Resources.CloseIcon;
         }
 
         private void Dashboard_Load(object sender, EventArgs e)
         {
 
             RefreshBatteryStatus();
+            LoadNotificationSetting();
             BatteryStatusTimer.Enabled = true;
 
         }
+
+        private void LoadNotificationSetting()
+        {
+             var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
+            if (showLowBatteryNotification)
+            {
+                LowBatteryNotificationCheckbox.Checked = true;
+                LowBatteryNotificationCheckbox.Text = "On";
+            }else
+            {
+                LowBatteryNotificationCheckbox.Checked = false;
+                LowBatteryNotificationCheckbox.Text = "Off";
+            }
+
+
+            var showFullBatteryNotification = appSetting.Default.fullBatteryNotification;
+            if (showFullBatteryNotification)
+            {
+                FullBatteryNotificationCheckbox.Checked = true;
+                FullBatteryNotificationCheckbox.Text = "On";
+            }
+            else
+            {
+                FullBatteryNotificationCheckbox.Checked = false;
+                FullBatteryNotificationCheckbox.Text = "Off";
+            }
+        }
+
+        private bool IsCharging = false;
 
         private void RefreshBatteryStatus()
         {
             PowerStatus status = SystemInformation.PowerStatus;
 
-            if (status.PowerLineStatus == PowerLineStatus.Online)
+            if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == false)
             {
+                IsCharging = true;
                 BatteryStatus.Text = "Charging";
                 BatteryStatus.ForeColor = Color.ForestGreen;
+                this.BatteryImage.Image = Properties.Resources.ChargingBatteryAnimated;
             }
-            else if(status.PowerLineStatus is PowerLineStatus.Offline or PowerLineStatus.Unknown)
+            else if (status.PowerLineStatus is PowerLineStatus.Offline or PowerLineStatus.Unknown)
             {
+                IsCharging = false;
                 BatteryStatus.Text = "Not Charging";
                 BatteryStatus.ForeColor = Color.Gray;
-            }
-
-            if (status.BatteryChargeStatus == BatteryChargeStatus.High && status.BatteryLifePercent >= .96)
+                SetBatteryChargeStatus(status);
+            }else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
-                BatteryStatus.Text = "Full Battery";
-                this.BatteryImage.Image = Properties.Resources.Full;
-            }
-            else if (status.BatteryChargeStatus == BatteryChargeStatus.Low)
-            {
-                BatteryStatus.Text = "Battery Low";
-                this.BatteryImage.Image = Properties.Resources.Low;
-            }
-            else if (status.BatteryChargeStatus == BatteryChargeStatus.Critical)
-            {
-                BatteryStatus.Text = "Battery Critical";
-                this.BatteryImage.Image = Properties.Resources.Critical;
-            }
-            else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
-            {
+                IsCharging=false;
                 BatteryStatus.Text = "Looks like you are running on main power !!";
+                this.BatteryImage.Image = Properties.Resources.Unknown;
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
+                IsCharging=false;
                 BatteryStatus.Text = "Only God knows about this battery !!";
+                this.BatteryImage.Image = Properties.Resources.Unknown;
             }
 
-            int powerPercent = (int)(status.BatteryLifePercent * 100);
-            if (powerPercent <= 100)
-                BatteryPercentage.Text = powerPercent + " %";
-            else
-                BatteryPercentage.Text = "0 %";
+            UpdateBatteryPercentage(status);
 
+            UpdateBatteryChargeRemainingStatus(status);
+        }
 
+        private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
+        {
             int secondsRemaining = status.BatteryLifeRemaining;
             if (secondsRemaining >= 0)
             {
@@ -91,6 +111,39 @@ namespace BatteryNotifier
             else
             {
                 RemainingTime.Text = "0 min remaining";
+            }
+        }
+
+        private void UpdateBatteryPercentage(PowerStatus status)
+        {
+            int powerPercent = (int)(status.BatteryLifePercent * 100);
+            if (powerPercent <= 100)
+                BatteryPercentage.Text = powerPercent + " %";
+            else
+                BatteryPercentage.Text = "0 %";
+        }
+
+        private void SetBatteryChargeStatus(PowerStatus powerStatus)
+        {
+            if (powerStatus.BatteryLifePercent >= .96)
+            {
+                BatteryStatus.Text = "Full Battery";
+                this.BatteryImage.Image = Properties.Resources.Full;
+            }
+            else if (powerStatus.BatteryLifePercent >= .4 && powerStatus.BatteryLifePercent <= .96)
+            {
+                BatteryStatus.Text = "Sufficient Battery";
+                this.BatteryImage.Image = Properties.Resources.Normal;
+            }
+            else if (powerStatus.BatteryLifePercent < .4)
+            {
+                BatteryStatus.Text = "Battery Critical";
+                this.BatteryImage.Image = Properties.Resources.Critical;
+            }
+            else if (powerStatus.BatteryLifePercent <= .14)
+            {
+                BatteryStatus.Text = "Battery Low";
+                this.BatteryImage.Image = Properties.Resources.Low;
             }
         }
 
@@ -151,12 +204,41 @@ namespace BatteryNotifier
 
         private void BatteryStatusTimer_Tick(object sender, EventArgs e)
         {
-            this.RefreshBatteryStatus();
+            RefreshBatteryStatus();
         }
 
         private void FullBatteryNotificationSetting_Click(object sender, EventArgs e)
         {
             MessageBox.Show("Setting");
+        }
+
+        private void FullBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
+        {
+            if (FullBatteryNotificationCheckbox.Checked)
+            {
+                FullBatteryNotificationCheckbox.Text = "On";
+            }
+            else
+            {
+                FullBatteryNotificationCheckbox.Text = "Off";
+            }
+            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
+            appSetting.Default.Save();
+        }
+
+        private void LowBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
+        {
+            if (LowBatteryNotificationCheckbox.Checked)
+            {
+                LowBatteryNotificationCheckbox.Text = "On";
+            }
+            else
+            {
+                LowBatteryNotificationCheckbox.Text = "Off";
+            }
+
+            appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
+            appSetting.Default.Save();
         }
     }
 }

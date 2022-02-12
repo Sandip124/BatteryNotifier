@@ -153,7 +153,7 @@
             // 
             this.pictureBox2.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox2.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox2.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.pictureBox2.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.pictureBox2.Location = new System.Drawing.Point(3, 3);
             this.pictureBox2.Name = "pictureBox2";
             this.pictureBox2.Size = new System.Drawing.Size(65, 94);
@@ -192,7 +192,7 @@
             // 
             this.pictureBox4.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox4.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox4.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.pictureBox4.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.pictureBox4.Location = new System.Drawing.Point(3, 3);
             this.pictureBox4.Name = "pictureBox4";
             this.pictureBox4.Size = new System.Drawing.Size(65, 94);
@@ -321,6 +321,7 @@
             this.BatteryStatus.Size = new System.Drawing.Size(269, 38);
             this.BatteryStatus.TabIndex = 2;
             this.BatteryStatus.Text = "😕 I Dont know";
+            this.BatteryStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // groupBox1
             // 
@@ -456,6 +457,7 @@
             this.LowBatteryNotificationCheckbox.TabIndex = 6;
             this.LowBatteryNotificationCheckbox.Text = "Off";
             this.LowBatteryNotificationCheckbox.UseVisualStyleBackColor = true;
+            this.LowBatteryNotificationCheckbox.CheckStateChanged += new System.EventHandler(this.LowBatteryNotificationCheckbox_CheckStateChanged);
             // 
             // LowBatteryNotificationSetting
             // 
@@ -523,6 +525,7 @@
             this.FullBatteryNotificationCheckbox.TabIndex = 6;
             this.FullBatteryNotificationCheckbox.Text = "Off";
             this.FullBatteryNotificationCheckbox.UseVisualStyleBackColor = true;
+            this.FullBatteryNotificationCheckbox.CheckStateChanged += new System.EventHandler(this.FullBatteryNotificationCheckbox_CheckStateChanged);
             // 
             // FullBatteryNotificationSetting
             // 
@@ -582,7 +585,7 @@
             this.CloseIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.CloseIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.CloseIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.Close_Square;
+            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.CloseIcon;
             this.CloseIcon.Location = new System.Drawing.Point(365, 0);
             this.CloseIcon.Margin = new System.Windows.Forms.Padding(0);
             this.CloseIcon.Name = "CloseIcon";
@@ -637,7 +640,7 @@
             // BatteryIcon
             // 
             this.BatteryIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BatteryIcon.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.BatteryIcon.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.BatteryIcon.Location = new System.Drawing.Point(0, 0);
             this.BatteryIcon.Margin = new System.Windows.Forms.Padding(0);
             this.BatteryIcon.Name = "BatteryIcon";
@@ -794,7 +797,7 @@
             // 
             this.pictureBox5.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox5.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox5.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.pictureBox5.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.pictureBox5.Location = new System.Drawing.Point(3, 3);
             this.pictureBox5.Name = "pictureBox5";
             this.pictureBox5.Size = new System.Drawing.Size(65, 36);
@@ -855,7 +858,7 @@
             // 
             this.pictureBox1.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox1.Image = global::BatteryNotifier.Properties.Resources.battery_icon;
+            this.pictureBox1.Image = global::BatteryNotifier.Properties.Resources.Full;
             this.pictureBox1.Location = new System.Drawing.Point(3, 3);
             this.pictureBox1.Name = "pictureBox1";
             this.pictureBox1.Size = new System.Drawing.Size(65, 94);
