@@ -119,6 +119,8 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "SettingPage";
             this.Padding = new System.Windows.Forms.Padding(1);
+            this.ShowIcon = false;
+            this.ShowInTaskbar = false;
             this.Text = "SettingPage";
             this.tableLayoutPanel1.ResumeLayout(false);
             this.SettingHeader.ResumeLayout(false);

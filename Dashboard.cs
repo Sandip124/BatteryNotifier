@@ -8,6 +8,10 @@ namespace BatteryNotifier
     {
         const string DeveloperUrl = "https://github.com/Sandip124/BatteryNotifier/";
 
+        System.Windows.Forms.Timer soundPlayingTimer = new System.Windows.Forms.Timer();
+        SoundPlayer batteryNotification = new SoundPlayer(Properties.Resources.BatteryFull);
+
+
         public Dashboard()
         {
             InitializeComponent();
@@ -37,6 +41,23 @@ namespace BatteryNotifier
             LoadNotificationSetting();
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
+
+            soundPlayingTimer.Enabled = true;
+            soundPlayingTimer.Interval = 1000;
+            soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+        }
+
+        int timerCount = 0;
+
+        private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
+        {
+            if(timerCount >= 15)
+            {
+                soundPlayingTimer.Stop();
+                batteryNotification.Stop();
+                timerCount = 0;
+            }
+            timerCount++;
         }
 
         private void LoadNotificationSetting()
@@ -75,12 +96,22 @@ namespace BatteryNotifier
             if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= .96)
             {
                 BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                PlaySound();
             }
 
             if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= .14)
             {
-                BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.White, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                PlaySound();
             }
+        }
+
+
+
+        private void PlaySound()
+        {
+            soundPlayingTimer.Start();
+            batteryNotification.PlayLooping();
         }
 
         private void RefreshBatteryStatus()
