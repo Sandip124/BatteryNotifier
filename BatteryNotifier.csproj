@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="SieBRUM.FancyAlerts" Version="1.1.0.6" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Update="appSetting.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>

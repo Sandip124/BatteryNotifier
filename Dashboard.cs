@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using BrumCustomAlerts;
+using System.Diagnostics;
+using System.Media;
 
 namespace BatteryNotifier
 {
@@ -31,11 +33,10 @@ namespace BatteryNotifier
 
         private void Dashboard_Load(object sender, EventArgs e)
         {
-
             RefreshBatteryStatus();
             LoadNotificationSetting();
             BatteryStatusTimer.Enabled = true;
-
+            ShowNotificationTimer.Enabled = true;
         }
 
         private void LoadNotificationSetting()
@@ -66,6 +67,21 @@ namespace BatteryNotifier
         }
 
         private bool IsCharging = false;
+
+        private void CheckNotification()
+        {
+            PowerStatus status = SystemInformation.PowerStatus;
+
+            if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= .96)
+            {
+                BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+            }
+
+            if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= .14)
+            {
+                BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.White, AlertType.Info, 15000, AlertLocation.TopMiddle);
+            }
+        }
 
         private void RefreshBatteryStatus()
         {
@@ -193,6 +209,11 @@ namespace BatteryNotifier
 
         private void ViewDeveloper_Click(object sender, EventArgs e)
         {
+            ViewDeveloperUrl();
+        }
+
+        private static void ViewDeveloperUrl()
+        {
             ProcessStartInfo sInfo = new(DeveloperUrl);
             sInfo.UseShellExecute = true;
             Process.Start(sInfo);
@@ -207,11 +228,6 @@ namespace BatteryNotifier
         private void BatteryStatusTimer_Tick(object sender, EventArgs e)
         {
             RefreshBatteryStatus();
-        }
-
-        private void FullBatteryNotificationSetting_Click(object sender, EventArgs e)
-        {
-            MessageBox.Show("Setting");
         }
 
         private void FullBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
@@ -244,6 +260,49 @@ namespace BatteryNotifier
             appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
             appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
+        }
+
+        private void ShowNotificationTimer_Tick(object sender, EventArgs e)
+        {
+            CheckNotification();
+        }
+
+        private void OpenSettingPage()
+        {
+            var settingPage = new SettingPage();
+            settingPage.ShowDialog();
+        }
+
+        private void label9_Click(object sender, EventArgs e)
+        {
+            OpenSettingPage();
+        }
+
+        private void label1_Click(object sender, EventArgs e)
+        {
+            ProcessStartInfo sInfo = new(DeveloperUrl);
+            sInfo.UseShellExecute = true;
+            Process.Start(sInfo);
+        }
+
+        private void label9_MouseEnter(object sender, EventArgs e)
+        {
+            label9.ForeColor = Color.Black;
+        }
+
+        private void label9_MouseLeave(object sender, EventArgs e)
+        {
+            label9.ForeColor = Color.FromArgb(30, 30, 30);
+        }
+
+        private void label1_MouseEnter(object sender, EventArgs e)
+        {
+            label1.ForeColor = Color.Black;
+        }
+
+        private void label1_MouseLeave(object sender, EventArgs e)
+        {
+            label1.ForeColor = Color.FromArgb(30, 30, 30);
         }
     }
 }
