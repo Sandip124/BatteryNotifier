@@ -1,4 +1,6 @@
-﻿namespace BatteryNotifier
+﻿using BatteryNotifier.Helpers;
+
+namespace BatteryNotifier
 {
     public partial class SettingPage : Form
     {
@@ -10,9 +12,7 @@
 
         private void SetDefaultLocation()
         {
-            Rectangle workingArea = Screen.GetWorkingArea(this);
-            this.Location = new Point(workingArea.Right - Size.Width,
-                                      workingArea.Bottom - Size.Height);
+            UIHelper.ShowModal(this, appSetting.Default.showAsModal);
         }
 
         private void pictureBox1_MouseEnter(object sender, EventArgs e)

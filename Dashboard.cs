@@ -1,4 +1,5 @@
-﻿using BrumCustomAlerts;
+﻿using BatteryNotifier.Helpers;
+using BrumCustomAlerts;
 using System.Diagnostics;
 using System.Media;
 
@@ -10,6 +11,8 @@ namespace BatteryNotifier
 
         System.Windows.Forms.Timer soundPlayingTimer = new System.Windows.Forms.Timer();
         SoundPlayer batteryNotification = new SoundPlayer(Properties.Resources.BatteryFull);
+
+        private const int DefaultMusicPlayingDuration = 15;
 
 
         public Dashboard()
@@ -47,43 +50,51 @@ namespace BatteryNotifier
             soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
         }
 
-        int timerCount = 0;
+        readonly CustomTimer timer = new();
 
         private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
-        {
-            if(timerCount >= 15)
+        { 
+            if(timer.TimerCount >= DefaultMusicPlayingDuration)
             {
                 soundPlayingTimer.Stop();
                 batteryNotification.Stop();
-                timerCount = 0;
+                timer.ResetTimer();
             }
-            timerCount++;
+            timer.Increment();
+        }
+
+
+        public class CustomTimer
+        {
+            public int TimerCount { get; private set; } = 0;
+            public void ResetTimer() => TimerCount = 0;
+            public void Increment() => TimerCount++;
         }
 
         private void LoadNotificationSetting()
         {
-             var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
-            if (showLowBatteryNotification)
-            {
-                LowBatteryNotificationCheckbox.Checked = true;
-                LowBatteryNotificationCheckbox.Text = "On";
-            }else
-            {
-                LowBatteryNotificationCheckbox.Checked = false;
-                LowBatteryNotificationCheckbox.Text = "Off";
-            }
-
+            var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
+            RenderCheckboxState(LowBatteryNotificationCheckbox, showLowBatteryNotification);
 
             var showFullBatteryNotification = appSetting.Default.fullBatteryNotification;
-            if (showFullBatteryNotification)
+            RenderCheckboxState(FullBatteryNotificationCheckbox, showFullBatteryNotification);
+        }
+
+        private static void RenderCheckboxState(Control control,bool showNotification)
+        {
+            if (control == null) throw new ArgumentNullException(nameof(control));
+
+            var checkBox = (control as CheckBox)!;
+
+            if (showNotification)
             {
-                FullBatteryNotificationCheckbox.Checked = true;
-                FullBatteryNotificationCheckbox.Text = "On";
+                checkBox.Checked = true;
+                checkBox.Text = "On";
             }
             else
             {
-                FullBatteryNotificationCheckbox.Checked = false;
-                FullBatteryNotificationCheckbox.Text = "Off";
+                checkBox.Checked = false;
+                checkBox.Text = "Off";
             }
         }
 
@@ -91,27 +102,55 @@ namespace BatteryNotifier
 
         private void CheckNotification()
         {
+
             PowerStatus status = SystemInformation.PowerStatus;
 
-            if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= .96)
+            var showFullBatteryNotification = appSetting.Default.fullBatteryNotification;
+
+            if (showFullBatteryNotification)
             {
-                BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
-                PlaySound();
+                if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= appSetting.Default.fullBatteryNotificationValue)
+                {
+                    BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                    PlayFullBatterySound();
+                }
             }
 
-            if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= .14)
+
+            var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
+
+            if (showLowBatteryNotification)
             {
-                BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
-                PlaySound();
+                if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= appSetting.Default.lowBatteryNotificationValue)
+                {
+                    BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                    PlayLowBatterySound();
+                }
             }
         }
 
 
-
-        private void PlaySound()
+        private void PlaySound(string soundLocation)
         {
             soundPlayingTimer.Start();
+
+            if (!string.IsNullOrEmpty(soundLocation))
+            {
+                batteryNotification.SoundLocation = soundLocation;
+            }
             batteryNotification.PlayLooping();
+        }
+
+        private void PlayFullBatterySound()
+        {
+            var soundLocation = appSetting.Default.fullBatteryNotificationMusic;
+            PlaySound(soundLocation);
+        }
+
+        private void PlayLowBatterySound()
+        {
+            var soundLocation = appSetting.Default.lowBatteryNotificationMusic;
+            PlaySound(soundLocation);
         }
 
         private void RefreshBatteryStatus()
@@ -198,9 +237,7 @@ namespace BatteryNotifier
 
         private void SetDefaultLocation()
         {
-            Rectangle workingArea = Screen.GetWorkingArea(this);
-            this.Location = new Point(workingArea.Right - Size.Width,
-                                      workingArea.Bottom - Size.Height);
+            UIHelper.ShowModal(this, appSetting.Default.showAsModal);
         }
 
         private void InitializeContextMenu()

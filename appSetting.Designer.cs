@@ -25,7 +25,7 @@ namespace BatteryNotifier {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool fullBatteryNotification {
             get {
                 return ((bool)(this["fullBatteryNotification"]));
@@ -37,7 +37,7 @@ namespace BatteryNotifier {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
         public bool lowBatteryNotification {
             get {
                 return ((bool)(this["lowBatteryNotification"]));
@@ -92,6 +92,18 @@ namespace BatteryNotifier {
             }
             set {
                 this["lowBatteryNotificationMusic"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool showAsModal {
+            get {
+                return ((bool)(this["showAsModal"]));
+            }
+            set {
+                this["showAsModal"] = value;
             }
         }
     }
