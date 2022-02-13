@@ -458,6 +458,7 @@
             this.LowBatteryNotificationCheckbox.TabIndex = 6;
             this.LowBatteryNotificationCheckbox.Text = "Off";
             this.LowBatteryNotificationCheckbox.UseVisualStyleBackColor = true;
+            this.LowBatteryNotificationCheckbox.CheckedChanged += new System.EventHandler(this.LowBatteryNotificationCheckbox_CheckedChanged);
             this.LowBatteryNotificationCheckbox.CheckStateChanged += new System.EventHandler(this.LowBatteryNotificationCheckbox_CheckStateChanged);
             // 
             // LowBatteryLabel
@@ -511,6 +512,7 @@
             this.FullBatteryNotificationCheckbox.TabIndex = 6;
             this.FullBatteryNotificationCheckbox.Text = "Off";
             this.FullBatteryNotificationCheckbox.UseVisualStyleBackColor = true;
+            this.FullBatteryNotificationCheckbox.CheckedChanged += new System.EventHandler(this.FullBatteryNotificationCheckbox_CheckedChanged);
             this.FullBatteryNotificationCheckbox.CheckStateChanged += new System.EventHandler(this.FullBatteryNotificationCheckbox_CheckStateChanged);
             // 
             // FullBatteryLabel
@@ -592,9 +594,9 @@
             this.label1.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.label1.Location = new System.Drawing.Point(183, 4);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(115, 27);
+            this.label1.Size = new System.Drawing.Size(89, 27);
             this.label1.TabIndex = 22;
-            this.label1.Text = "View Developers";
+            this.label1.Text = "View Source";
             this.label1.Click += new System.EventHandler(this.label1_Click);
             this.label1.MouseEnter += new System.EventHandler(this.label1_MouseEnter);
             this.label1.MouseLeave += new System.EventHandler(this.label1_MouseLeave);
@@ -922,7 +924,7 @@
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "Battery Notifier";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Dashboard_FormClosing);
+            this.Activated += new System.EventHandler(this.Dashboard_Activated);
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.tableLayoutPanel5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();

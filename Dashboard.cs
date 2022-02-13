@@ -109,7 +109,7 @@ namespace BatteryNotifier
 
             if (showFullBatteryNotification)
             {
-                if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= appSetting.Default.fullBatteryNotificationValue)
+                if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue/100)
                 {
                     BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
                     PlayFullBatterySound();
@@ -121,7 +121,7 @@ namespace BatteryNotifier
 
             if (showLowBatteryNotification)
             {
-                if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= appSetting.Default.lowBatteryNotificationValue)
+                if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue/100)
                 {
                     BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
                     PlayLowBatterySound();
@@ -137,6 +137,10 @@ namespace BatteryNotifier
             if (!string.IsNullOrEmpty(soundLocation))
             {
                 batteryNotification.SoundLocation = soundLocation;
+            }
+            else
+            {
+                batteryNotification.Stream = Properties.Resources.BatteryFull;
             }
             batteryNotification.PlayLooping();
         }
@@ -198,17 +202,14 @@ namespace BatteryNotifier
             }
             else
             {
-                RemainingTime.Text = "0 min remaining";
+                RemainingTime.Text = status.BatteryLifePercent*100+ " % remaining";
             }
         }
 
         private void UpdateBatteryPercentage(PowerStatus status)
         {
             int powerPercent = (int)(status.BatteryLifePercent * 100);
-            if (powerPercent <= 100)
-                BatteryPercentage.Text = powerPercent + " %";
-            else
-                BatteryPercentage.Text = "0 %";
+            BatteryPercentage.Text = (powerPercent <= 100 ? powerPercent.ToString() : "0") + " %";
         }
 
         private void SetBatteryChargeStatus(PowerStatus powerStatus)
@@ -300,34 +301,12 @@ namespace BatteryNotifier
 
         private void FullBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
         {
-            if (FullBatteryNotificationCheckbox.Checked)
-            {
-                FullBatteryNotificationCheckbox.Text = "On";
-            }
-            else
-            {
-                FullBatteryNotificationCheckbox.Text = "Off";
-            }
+            RenderCheckboxState(FullBatteryNotificationCheckbox, FullBatteryNotificationCheckbox.Checked);
         }
 
         private void LowBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
         {
-            if (LowBatteryNotificationCheckbox.Checked)
-            {
-                LowBatteryNotificationCheckbox.Text = "On";
-            }
-            else
-            {
-                LowBatteryNotificationCheckbox.Text = "Off";
-            }
-        }
-
-        private void Dashboard_FormClosing(object sender, FormClosingEventArgs e)
-        {
-
-            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
-            appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
-            appSetting.Default.Save();
+            RenderCheckboxState(LowBatteryNotificationCheckbox, LowBatteryNotificationCheckbox.Checked);
         }
 
         private void ShowNotificationTimer_Tick(object sender, EventArgs e)
@@ -371,6 +350,24 @@ namespace BatteryNotifier
         private void label1_MouseLeave(object sender, EventArgs e)
         {
             label1.ForeColor = Color.FromArgb(30, 30, 30);
+        }
+
+        private void FullBatteryNotificationCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
+            appSetting.Default.Save();
+        }
+
+        private void LowBatteryNotificationCheckbox_CheckedChanged(object sender, EventArgs e)
+        {
+            appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
+            appSetting.Default.Save();
+        }
+
+        private void Dashboard_Activated(object sender, EventArgs e)
+        {
+            RefreshBatteryStatus();
+            LoadNotificationSetting();
         }
     }
 }
