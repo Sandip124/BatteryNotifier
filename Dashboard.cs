@@ -42,12 +42,20 @@ namespace BatteryNotifier
         {
             RefreshBatteryStatus();
             LoadNotificationSetting();
+            RenderBatteryInfo();
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
 
             soundPlayingTimer.Enabled = true;
             soundPlayingTimer.Interval = 1000;
             soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+        }
+
+        private void RenderBatteryInfo()
+        {
+            BatteryCapacity.Text = "4760 mWh";
+            CurrentCapacityValue.Text = "3680 mWh";
+
         }
 
         readonly CustomTimer timer = new();

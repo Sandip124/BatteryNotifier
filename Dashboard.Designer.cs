@@ -48,7 +48,7 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.RemainingTime = new System.Windows.Forms.Label();
             this.RemainingTimeLabel = new System.Windows.Forms.Label();
-            this.RemainingCapacity = new System.Windows.Forms.Label();
+            this.CurrentCapacityValue = new System.Windows.Forms.Label();
             this.RemainingCapacityLabel = new System.Windows.Forms.Label();
             this.BatteryCapacity = new System.Windows.Forms.Label();
             this.BatteryCapacityLabel = new System.Windows.Forms.Label();
@@ -330,7 +330,7 @@
             // 
             this.groupBox1.Controls.Add(this.RemainingTime);
             this.groupBox1.Controls.Add(this.RemainingTimeLabel);
-            this.groupBox1.Controls.Add(this.RemainingCapacity);
+            this.groupBox1.Controls.Add(this.CurrentCapacityValue);
             this.groupBox1.Controls.Add(this.RemainingCapacityLabel);
             this.groupBox1.Controls.Add(this.BatteryCapacity);
             this.groupBox1.Controls.Add(this.BatteryCapacityLabel);
@@ -348,7 +348,7 @@
             // 
             this.RemainingTime.AutoSize = true;
             this.RemainingTime.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.RemainingTime.Location = new System.Drawing.Point(148, 93);
+            this.RemainingTime.Location = new System.Drawing.Point(167, 93);
             this.RemainingTime.Name = "RemainingTime";
             this.RemainingTime.Size = new System.Drawing.Size(134, 27);
             this.RemainingTime.TabIndex = 19;
@@ -364,15 +364,15 @@
             this.RemainingTimeLabel.TabIndex = 18;
             this.RemainingTimeLabel.Text = "Remaining Time :";
             // 
-            // RemainingCapacity
+            // CurrentCapacityValue
             // 
-            this.RemainingCapacity.AutoSize = true;
-            this.RemainingCapacity.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.RemainingCapacity.Location = new System.Drawing.Point(148, 60);
-            this.RemainingCapacity.Name = "RemainingCapacity";
-            this.RemainingCapacity.Size = new System.Drawing.Size(88, 27);
-            this.RemainingCapacity.TabIndex = 17;
-            this.RemainingCapacity.Text = "43760 mWh";
+            this.CurrentCapacityValue.AutoSize = true;
+            this.CurrentCapacityValue.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.CurrentCapacityValue.Location = new System.Drawing.Point(167, 60);
+            this.CurrentCapacityValue.Name = "CurrentCapacityValue";
+            this.CurrentCapacityValue.Size = new System.Drawing.Size(88, 27);
+            this.CurrentCapacityValue.TabIndex = 17;
+            this.CurrentCapacityValue.Text = "43760 mWh";
             // 
             // RemainingCapacityLabel
             // 
@@ -380,15 +380,15 @@
             this.RemainingCapacityLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.RemainingCapacityLabel.Location = new System.Drawing.Point(6, 60);
             this.RemainingCapacityLabel.Name = "RemainingCapacityLabel";
-            this.RemainingCapacityLabel.Size = new System.Drawing.Size(136, 27);
+            this.RemainingCapacityLabel.Size = new System.Drawing.Size(118, 27);
             this.RemainingCapacityLabel.TabIndex = 16;
-            this.RemainingCapacityLabel.Text = "Remaining Capacity :";
+            this.RemainingCapacityLabel.Text = "Current Capacity :";
             // 
             // BatteryCapacity
             // 
             this.BatteryCapacity.AutoSize = true;
             this.BatteryCapacity.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.BatteryCapacity.Location = new System.Drawing.Point(148, 25);
+            this.BatteryCapacity.Location = new System.Drawing.Point(167, 25);
             this.BatteryCapacity.Name = "BatteryCapacity";
             this.BatteryCapacity.Size = new System.Drawing.Size(88, 27);
             this.BatteryCapacity.TabIndex = 15;
@@ -400,9 +400,9 @@
             this.BatteryCapacityLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryCapacityLabel.Location = new System.Drawing.Point(6, 25);
             this.BatteryCapacityLabel.Name = "BatteryCapacityLabel";
-            this.BatteryCapacityLabel.Size = new System.Drawing.Size(117, 27);
+            this.BatteryCapacityLabel.Size = new System.Drawing.Size(155, 27);
             this.BatteryCapacityLabel.TabIndex = 14;
-            this.BatteryCapacityLabel.Text = "Battery Capacity :";
+            this.BatteryCapacityLabel.Text = "Designed Max Capacity :";
             // 
             // groupBox2
             // 
@@ -990,9 +990,9 @@
         private GroupBox groupBox1;
         private Label RemainingTime;
         private Label RemainingTimeLabel;
-        private Label RemainingCapacity;
+        private Label CurrentCapacityValue;
         private Label RemainingCapacityLabel;
-        private Label BatteryCapacity;
+        private Label DesignedMaxCapacity;
         private Label BatteryCapacityLabel;
         private GroupBox groupBox2;
         private TableLayoutPanel tableLayoutPanel12;
@@ -1034,5 +1034,6 @@
         private System.Windows.Forms.Timer ShowNotificationTimer;
         private Panel panel3;
         private Label label9;
+        private Label BatteryCapacity;
     }
 }
