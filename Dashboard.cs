@@ -12,6 +12,9 @@ namespace BatteryNotifier
         System.Windows.Forms.Timer soundPlayingTimer = new System.Windows.Forms.Timer();
         SoundPlayer batteryNotification = new SoundPlayer(Properties.Resources.BatteryFull);
 
+        private Point lastLocation;
+        private bool mouseDown;
+
         private const int DefaultMusicPlayingDuration = 15;
 
 
@@ -376,6 +379,38 @@ namespace BatteryNotifier
         {
             RefreshBatteryStatus();
             LoadNotificationSetting();
+            SetDefaultLocation();
+        }
+
+        private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
+        {
+            if(appSetting.Default.showAsModal)
+            {
+                mouseDown = true;
+                lastLocation = e.Location;
+            }
+        }
+
+        private void AppHeaderTitle_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.showAsModal)
+            {
+                if (mouseDown)
+                {
+                    Location = new Point(
+                        Location.X - lastLocation.X + e.X, Location.Y - lastLocation.Y + e.Y);
+
+                    Update();
+                }
+            }
+        }
+
+        private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.showAsModal)
+            {
+                mouseDown = false;
+            }
         }
     }
 }

@@ -4,6 +4,9 @@ namespace BatteryNotifier
 {
     public partial class SettingPage : Form
     {
+        private Point lastLocation;
+        private bool mouseDown;
+
         public SettingPage()
         {
             InitializeComponent();
@@ -120,6 +123,38 @@ namespace BatteryNotifier
         private void SettingPage_Activated(object sender, EventArgs e)
         {
             LoadSettings();
+            SetDefaultLocation();
+        }
+
+        private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.showAsModal)
+            {
+                mouseDown = true;
+                lastLocation = e.Location;
+            }
+        }
+
+        private void AppHeaderTitle_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.showAsModal)
+            {
+                if (mouseDown)
+                {
+                    Location = new Point(
+                        Location.X - lastLocation.X + e.X, Location.Y - lastLocation.Y + e.Y);
+
+                    Update();
+                }
+            }
+        }
+
+        private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.showAsModal)
+            {
+                mouseDown = false;
+            }
         }
     }
 }

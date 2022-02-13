@@ -10,6 +10,14 @@
                 form.Location = new Point(workingArea.Right - form.Size.Width,
                                           workingArea.Bottom - form.Size.Height);
                 form.Update();
+                form.ShowInTaskbar = false;
+                form.ShowIcon = false;
+            }
+            else
+            {
+                form.ShowInTaskbar = true;
+                form.ShowIcon = true;
+                form.StartPosition = FormStartPosition.CenterScreen;
             }
         }
     }
