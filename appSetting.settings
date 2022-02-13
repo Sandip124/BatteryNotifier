@@ -2,22 +2,22 @@
 <SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="BatteryNotifier" GeneratedClassName="appSetting">
   <Profiles />
   <Settings>
-    <Setting Name="fullBatteryNotification" Type="System.Boolean" Scope="Application">
+    <Setting Name="fullBatteryNotification" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="lowBatteryNotification" Type="System.Boolean" Scope="Application">
+    <Setting Name="lowBatteryNotification" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
-    <Setting Name="fullBatteryNotificationValue" Type="System.Int32" Scope="Application">
+    <Setting Name="fullBatteryNotificationValue" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">96</Value>
     </Setting>
-    <Setting Name="lowBatteryNotificationValue" Type="System.Int32" Scope="Application">
+    <Setting Name="lowBatteryNotificationValue" Type="System.Int32" Scope="User">
       <Value Profile="(Default)">25</Value>
     </Setting>
-    <Setting Name="fullBatteryNotificationMusic" Type="System.String" Scope="Application">
+    <Setting Name="fullBatteryNotificationMusic" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="lowBatteryNotificationMusic" Type="System.String" Scope="Application">
+    <Setting Name="lowBatteryNotificationMusic" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
   </Settings>

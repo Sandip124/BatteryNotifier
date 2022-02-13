@@ -5,11 +5,13 @@ namespace BatteryNotifier
     public partial class Dashboard : Form
     {
         const string DeveloperUrl = "https://github.com/Sandip124/BatteryNotifier/";
+
         public Dashboard()
         {
             InitializeComponent();
             InitializeContextMenu();
             SetDefaultLocation();
+
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -222,8 +224,6 @@ namespace BatteryNotifier
             {
                 FullBatteryNotificationCheckbox.Text = "Off";
             }
-            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
-            appSetting.Default.Save();
         }
 
         private void LowBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
@@ -236,7 +236,12 @@ namespace BatteryNotifier
             {
                 LowBatteryNotificationCheckbox.Text = "Off";
             }
+        }
 
+        private void Dashboard_FormClosing(object sender, FormClosingEventArgs e)
+        {
+
+            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
             appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
         }
