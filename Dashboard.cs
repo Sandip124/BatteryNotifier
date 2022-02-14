@@ -54,6 +54,8 @@ namespace BatteryNotifier
             soundPlayingTimer.Enabled = true;
             soundPlayingTimer.Interval = 1000;
             soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+
+          
         }
 
         private void RenderBatteryInfo()
@@ -66,8 +68,8 @@ namespace BatteryNotifier
         readonly CustomTimer timer = new();
 
         private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
-        { 
-            if(timer.TimerCount >= DefaultMusicPlayingDuration)
+        {
+            if (timer.TimerCount >= DefaultMusicPlayingDuration)
             {
                 soundPlayingTimer.Stop();
                 batteryNotification.Stop();
@@ -93,7 +95,7 @@ namespace BatteryNotifier
             RenderCheckboxState(FullBatteryNotificationCheckbox, showFullBatteryNotification);
         }
 
-        private static void RenderCheckboxState(Control control,bool showNotification)
+        private static void RenderCheckboxState(Control control, bool showNotification)
         {
             if (control == null) throw new ArgumentNullException(nameof(control));
 
@@ -122,15 +124,16 @@ namespace BatteryNotifier
 
             if (showFullBatteryNotification)
             {
-                if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue/100)
+                if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
                 {
                     //BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
-    //                new ToastContentBuilder()
-    //.AddArgument("action", "viewConversation")
-    //.AddArgument("conversationId", 9813)
-    //.AddText("Andrew sent you a picture")
-    //.AddText("Check this out, The Enchantments in Washington!")
-    //.show();
+                    new ToastContentBuilder()
+                    .AddArgument("action", "viewConversation")
+                    .AddArgument("conversationId", 9813)
+                    .AddText("Andrew sent you a picture")
+                    .AddText("Check this out, The Enchantments in Washington!")
+                    .Show();
+
                     PlayFullBatterySound();
                 }
             }
@@ -140,7 +143,7 @@ namespace BatteryNotifier
 
             if (showLowBatteryNotification)
             {
-                if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue/100)
+                if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)
                 {
                     //BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
                     PlayLowBatterySound();
@@ -193,15 +196,16 @@ namespace BatteryNotifier
                 BatteryStatus.Text = "Not Charging";
                 BatteryStatus.ForeColor = Color.Gray;
                 SetBatteryChargeStatus(status);
-            }else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+            }
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
-                IsCharging=false;
+                IsCharging = false;
                 BatteryStatus.Text = "Looks like you are running on main power !!";
                 this.BatteryImage.Image = Properties.Resources.Unknown;
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
-                IsCharging=false;
+                IsCharging = false;
                 BatteryStatus.Text = "Only God knows about this battery !!";
                 this.BatteryImage.Image = Properties.Resources.Unknown;
             }
@@ -221,7 +225,7 @@ namespace BatteryNotifier
             }
             else
             {
-                RemainingTime.Text = status.BatteryLifePercent*100+ " % remaining";
+                RemainingTime.Text = status.BatteryLifePercent * 100 + " % remaining";
             }
         }
 
@@ -392,7 +396,7 @@ namespace BatteryNotifier
 
         private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
         {
-            if(appSetting.Default.showAsModal)
+            if (appSetting.Default.showAsModal)
             {
                 mouseDown = true;
                 lastLocation = e.Location;
