@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <None Remove="appSetting.settings" />
+    <None Remove="battery-icon.ico" />
+    <None Remove="batteryNotifier.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,6 +22,12 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>appSetting.Designer.cs</LastGenOutput>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="battery-icon.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="batteryNotifier.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
 

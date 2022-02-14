@@ -54,8 +54,6 @@ namespace BatteryNotifier
             soundPlayingTimer.Enabled = true;
             soundPlayingTimer.Interval = 1000;
             soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
-
-          
         }
 
         private void RenderBatteryInfo()
@@ -126,13 +124,13 @@ namespace BatteryNotifier
             {
                 if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
                 {
-                    //BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
                     new ToastContentBuilder()
-                    .AddArgument("action", "viewConversation")
-                    .AddArgument("conversationId", 9813)
-                    .AddText("Andrew sent you a picture")
-                    .AddText("Check this out, The Enchantments in Washington!")
-                    .Show();
+                    .AddText("Full Battery")
+                    .AddText("Battery is full please unplug the charger.")
+                    .Show(toast =>
+                    {
+                        toast.ExpirationTime = DateTime.Now.AddSeconds(30);
+                    });
 
                     PlayFullBatterySound();
                 }
@@ -145,7 +143,14 @@ namespace BatteryNotifier
             {
                 if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)
                 {
-                    //BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                    new ToastContentBuilder()
+                   .AddText("Low Battery")
+                   .AddText("Battery is low.Please Connect to Charger.")
+                   .Show(toast =>
+                   {
+                       toast.ExpirationTime = DateTime.Now.AddSeconds(30);
+                   });
+
                     PlayLowBatterySound();
                 }
             }
