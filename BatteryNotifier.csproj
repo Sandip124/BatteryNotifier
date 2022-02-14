@@ -8,13 +8,12 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <PackageProjectUrl>https://github.com/Sandip124/BatteryNotifier</PackageProjectUrl>
     <Description>An windows app for notifying when battery is full or low.</Description>
-    <PackageIcon>battery-icon.ico</PackageIcon>
+    <PackageIcon>batteryNotifier.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="appSetting.settings" />
     <None Remove="battery-icon.ico" />
-    <None Remove="batteryNotifier.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,13 +28,6 @@
     <EmbeddedResource Include="batteryNotifier.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\..\battery-icon.ico">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -60,6 +52,13 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="batteryNotifier.png">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
   </ItemGroup>
 
 </Project>

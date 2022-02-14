@@ -236,9 +236,9 @@ namespace BatteryNotifier
             this.label4.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label4.Location = new System.Drawing.Point(4, 112);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(120, 27);
+            this.label4.Size = new System.Drawing.Size(121, 27);
             this.label4.TabIndex = 21;
-            this.label4.Text = "Full Battery Sound";
+            this.label4.Text = "Low Battery Sound";
             // 
             // lowBatteryTrackbar
             // 
@@ -280,7 +280,7 @@ namespace BatteryNotifier
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(193, 27);
             this.label6.TabIndex = 18;
-            this.label6.Text = "Show Full Battery Notification";
+            this.label6.Text = "Show Low Battery Notification";
             // 
             // panel4
             // 
