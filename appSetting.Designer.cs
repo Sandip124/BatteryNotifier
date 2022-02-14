@@ -106,5 +106,17 @@ namespace BatteryNotifier {
                 this["showAsModal"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool darkThemeApplied {
+            get {
+                return ((bool)(this["darkThemeApplied"]));
+            }
+            set {
+                this["darkThemeApplied"] = value;
+            }
+        }
     }
 }

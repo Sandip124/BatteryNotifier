@@ -48,19 +48,20 @@ namespace BatteryNotifier
             RefreshBatteryStatus();
             LoadNotificationSetting();
             RenderBatteryInfo();
+            ApplyTheme();
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
 
             soundPlayingTimer.Enabled = true;
             soundPlayingTimer.Interval = 1000;
             soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+
         }
 
         private void RenderBatteryInfo()
         {
             BatteryCapacity.Text = "4760 mWh";
             CurrentCapacityValue.Text = "3680 mWh";
-
         }
 
         readonly CustomTimer timer = new();
@@ -193,7 +194,8 @@ namespace BatteryNotifier
                 IsCharging = true;
                 BatteryStatus.Text = "Charging";
                 BatteryStatus.ForeColor = Color.ForestGreen;
-                this.BatteryImage.Image = Properties.Resources.ChargingBatteryAnimated;
+                UpdateChargingAnimation();
+
             }
             else if (status.PowerLineStatus is PowerLineStatus.Offline or PowerLineStatus.Unknown)
             {
@@ -218,6 +220,18 @@ namespace BatteryNotifier
             UpdateBatteryPercentage(status);
 
             UpdateBatteryChargeRemainingStatus(status);
+        }
+
+        private void UpdateChargingAnimation()
+        {
+            if (appSetting.Default.darkThemeApplied)
+            {
+                this.BatteryImage.Image = Properties.Resources.ChargingBatteryAnimatedDark;
+            }
+            else
+            {
+                this.BatteryImage.Image = Properties.Resources.ChargingBatteryAnimated;
+            }
         }
 
         private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
@@ -342,10 +356,13 @@ namespace BatteryNotifier
             CheckNotification();
         }
 
-        private static void OpenSettingPage()
+        private void OpenSettingPage()
         {
+            Hide();
             var settingPage = new SettingPage();
             settingPage.ShowDialog();
+            Show();
+            UpdateChargingAnimation();
         }
 
         private void label9_Click(object sender, EventArgs e)
@@ -362,22 +379,48 @@ namespace BatteryNotifier
 
         private void label9_MouseEnter(object sender, EventArgs e)
         {
-            label9.ForeColor = Color.Black;
+            ApplyThemeForFooterMouseEnter(SettingLabel);            
         }
 
         private void label9_MouseLeave(object sender, EventArgs e)
         {
-            label9.ForeColor = Color.FromArgb(30, 30, 30);
+            ApplyThemeForFooterMouseLeave(SettingLabel);
         }
 
         private void label1_MouseEnter(object sender, EventArgs e)
         {
-            label1.ForeColor = Color.Black;
+            ApplyThemeForFooterMouseEnter(ViewSourceLabel);
         }
 
         private void label1_MouseLeave(object sender, EventArgs e)
         {
-            label1.ForeColor = Color.FromArgb(30, 30, 30);
+            ApplyThemeForFooterMouseLeave(ViewSourceLabel);
+        }
+
+        private void ApplyThemeForFooterMouseEnter(Control control)
+        {
+            var label = (control as Label)!;
+            if (appSetting.Default.darkThemeApplied)
+            {
+                label.ForeColor = Color.White;
+            }
+            else
+            {
+                label.ForeColor = Color.Black;
+            }
+        }
+
+        private void ApplyThemeForFooterMouseLeave(Control control)
+        {
+            var label = (control as Label)!;
+            if (appSetting.Default.darkThemeApplied)
+            {
+                label.ForeColor = Color.FromArgb(160, 160, 160);
+            }
+            else
+            {
+                label.ForeColor = Color.FromArgb(50, 50, 50);
+            }
         }
 
         private void FullBatteryNotificationCheckbox_CheckedChanged(object sender, EventArgs e)
@@ -397,6 +440,35 @@ namespace BatteryNotifier
             RefreshBatteryStatus();
             LoadNotificationSetting();
             SetDefaultLocation();
+            ApplyTheme();
+        }
+
+        private void ApplyTheme()
+        {
+            if (appSetting.Default.darkThemeApplied)
+            {
+                AppContainer.BackColor = Color.FromArgb(30, 30, 30);
+                AppHeader.BackColor = Color.Black;
+                AppHeaderTitle.ForeColor = Color.White;
+                BatteryPercentage.ForeColor = Color.White;
+                BatteryDetailGroupBox.ForeColor = Color.White;
+                NotificationSettingGroupBox.ForeColor = Color.White;
+                AppFooter.BackColor = Color.Black;
+                SettingLabel.ForeColor = Color.FromArgb(160,160,160);
+                ViewSourceLabel.ForeColor = Color.FromArgb(160, 160, 160);
+            }
+            else
+            {
+                AppContainer.BackColor = Color.White;
+                AppHeader.BackColor = Color.AliceBlue;
+                AppHeaderTitle.ForeColor = Color.Black;
+                BatteryPercentage.ForeColor = Color.Black;
+                BatteryDetailGroupBox.ForeColor = Color.Black;
+                NotificationSettingGroupBox.ForeColor = Color.Black;
+                AppFooter.BackColor = Color.AliceBlue;
+                SettingLabel.ForeColor = Color.Black;
+                ViewSourceLabel.ForeColor = Color.Black;
+            }
         }
 
         private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)

@@ -82,6 +82,16 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap ChargingBatteryAnimatedDark {
+            get {
+                object obj = ResourceManager.GetObject("ChargingBatteryAnimatedDark", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap CloseIcon {
             get {
                 object obj = ResourceManager.GetObject("CloseIcon", resourceCulture);
@@ -105,6 +115,16 @@ namespace BatteryNotifier.Properties {
         internal static System.Drawing.Bitmap Critical {
             get {
                 object obj = ResourceManager.GetObject("Critical", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap DarkMode {
+            get {
+                object obj = ResourceManager.GetObject("DarkMode", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -155,6 +175,16 @@ namespace BatteryNotifier.Properties {
         internal static System.Drawing.Bitmap Unknown {
             get {
                 object obj = ResourceManager.GetObject("Unknown", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Window {
+            get {
+                object obj = ResourceManager.GetObject("Window", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
