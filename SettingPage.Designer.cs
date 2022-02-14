@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SettingPage));
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.SettingHeader = new System.Windows.Forms.TableLayoutPanel();
             this.panel1 = new System.Windows.Forms.Panel();
@@ -412,6 +413,7 @@
             this.ClientSize = new System.Drawing.Size(410, 490);
             this.Controls.Add(this.tableLayoutPanel1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "SettingPage";
             this.Padding = new System.Windows.Forms.Padding(1);
             this.ShowIcon = false;
