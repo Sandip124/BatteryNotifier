@@ -19,7 +19,7 @@ jobs:
 
     env:
       Solution_Name: BatteryNotifier.sln                         # Replace with your solution name, i.e. MyWpfApp.sln.
-      Wap_Project_Directory: ./publish/    # Replace with the Wap project directory relative to the solution, i.e. MyWpfApp.Package.
+      Wap_Project_Directory: BatteryNotifier    # Replace with the Wap project directory relative to the solution, i.e. MyWpfApp.Package.
       Wap_Project_Path: BatteryNotifier.csproj                   # Replace with the path to your Wap project, i.e. MyWpf.App.Package\MyWpfApp.Package.wapproj.
 
     steps:
@@ -58,4 +58,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: MSIX Package
-        path: ${{ env.Wap_Project_Directory }}
+        path: ${{ env.Wap_Project_Directory }}/publish
