@@ -1,4 +1,6 @@
-﻿namespace BatteryNotifier
+﻿using System.Windows.Forms;
+
+namespace BatteryNotifier
 {
     partial class Dashboard
     {

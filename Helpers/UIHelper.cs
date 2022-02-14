@@ -1,4 +1,8 @@
-﻿namespace BatteryNotifier.Helpers
+﻿using System;
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace BatteryNotifier.Helpers
 {
     public static class UIHelper
     {

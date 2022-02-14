@@ -1,6 +1,8 @@
-﻿namespace BatteryNotifier
+﻿using System.Windows.Forms;
+
+namespace BatteryNotifier
 {
-    partial class SettingPage
+    partial class SettingPage : Form
     {
         /// <summary>
         /// Required designer variable.

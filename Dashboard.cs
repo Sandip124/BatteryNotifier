@@ -1,16 +1,18 @@
 ﻿using BatteryNotifier.Helpers;
-using BrumCustomAlerts;
+using Microsoft.Toolkit.Uwp.Notifications;
+using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Media;
+using System.Windows.Forms;
 
 namespace BatteryNotifier
 {
     public partial class Dashboard : Form
     {
         const string DeveloperUrl = "https://github.com/Sandip124/BatteryNotifier/";
-
-        System.Windows.Forms.Timer soundPlayingTimer = new System.Windows.Forms.Timer();
-        SoundPlayer batteryNotification = new SoundPlayer(Properties.Resources.BatteryFull);
+        readonly System.Windows.Forms.Timer soundPlayingTimer = new();
+        readonly SoundPlayer batteryNotification = new(Properties.Resources.BatteryFull);
 
         private Point lastLocation;
         private bool mouseDown;
@@ -122,7 +124,13 @@ namespace BatteryNotifier
             {
                 if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue/100)
                 {
-                    BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                    //BrumAlertFactory.OpenAlert("Battery is full please unplug the charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+    //                new ToastContentBuilder()
+    //.AddArgument("action", "viewConversation")
+    //.AddArgument("conversationId", 9813)
+    //.AddText("Andrew sent you a picture")
+    //.AddText("Check this out, The Enchantments in Washington!")
+    //.show();
                     PlayFullBatterySound();
                 }
             }
@@ -134,7 +142,7 @@ namespace BatteryNotifier
             {
                 if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue/100)
                 {
-                    BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
+                    //BrumAlertFactory.OpenAlert("Please Connect to Charger.", Color.Black, Color.Gray, AlertType.Info, 15000, AlertLocation.TopMiddle);
                     PlayLowBatterySound();
                 }
             }
@@ -325,7 +333,7 @@ namespace BatteryNotifier
             CheckNotification();
         }
 
-        private void OpenSettingPage()
+        private static void OpenSettingPage()
         {
             var settingPage = new SettingPage();
             settingPage.ShowDialog();
