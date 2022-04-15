@@ -1,5 +1,4 @@
 ﻿using BatteryNotifier.Helpers;
-using Microsoft.Toolkit.Uwp.Notifications;
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -10,14 +9,14 @@ namespace BatteryNotifier
 {
     public partial class Dashboard : Form
     {
-        const string DeveloperUrl = "https://github.com/Sandip124/BatteryNotifier/";
-        readonly System.Windows.Forms.Timer soundPlayingTimer = new();
-        readonly SoundPlayer batteryNotification = new(Properties.Resources.BatteryFull);
+        const string _developerUrl = "https://github.com/Sandip124/BatteryNotifier/";
+        readonly Timer _soundPlayingTimer = new();
+        readonly SoundPlayer _batteryNotification = new(Properties.Resources.BatteryFull);
 
-        private Point lastLocation;
-        private bool mouseDown;
+        private Point _lastLocation;
+        private bool _mouseDown;
 
-        private const int DefaultMusicPlayingDuration = 15;
+        private const int _defaultMusicPlayingDuration = 15;
 
 
         public Dashboard()
@@ -25,7 +24,6 @@ namespace BatteryNotifier
             InitializeComponent();
             InitializeContextMenu();
             SetDefaultLocation();
-
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -52,29 +50,30 @@ namespace BatteryNotifier
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
 
-            soundPlayingTimer.Enabled = true;
-            soundPlayingTimer.Interval = 1000;
-            soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+            _soundPlayingTimer.Enabled = true;
+            _soundPlayingTimer.Interval = 1000;
+            _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
 
         }
 
         private void RenderBatteryInfo()
         {
+            // the battery detail is hardcoded for now.
             BatteryCapacity.Text = "4760 mWh";
             CurrentCapacityValue.Text = "3680 mWh";
         }
 
-        readonly CustomTimer timer = new();
+        readonly CustomTimer _timer = new();
 
         private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
         {
-            if (timer.TimerCount >= DefaultMusicPlayingDuration)
+            if (_timer.TimerCount >= _defaultMusicPlayingDuration)
             {
-                soundPlayingTimer.Stop();
-                batteryNotification.Stop();
-                timer.ResetTimer();
+                _soundPlayingTimer.Stop();
+                _batteryNotification.Stop();
+                _timer.ResetTimer();
             }
-            timer.Increment();
+            _timer.Increment();
         }
 
 
@@ -112,7 +111,7 @@ namespace BatteryNotifier
             }
         }
 
-        private bool IsCharging = false;
+        private bool _isCharging = false;
 
         private void CheckNotification()
         {
@@ -123,34 +122,22 @@ namespace BatteryNotifier
 
             if (showFullBatteryNotification)
             {
-                if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
+                if (status.PowerLineStatus == PowerLineStatus.Online && _isCharging == true && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
                 {
-                    new ToastContentBuilder()
-                    .AddText("Full Battery")
-                    .AddText("Battery is full please unplug the charger.")
-                    .Show(toast =>
-                    {
-                        toast.ExpirationTime = DateTime.Now.AddSeconds(30);
-                    });
+                    BatteryNotifierIcon.ShowBalloonTip(30, "Full Battery", "Battery is full please unplug the charger.", ToolTipIcon.Info);
 
                     PlayFullBatterySound();
                 }
             }
 
-
             var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
 
             if (showLowBatteryNotification)
             {
-                if (status.PowerLineStatus == PowerLineStatus.Offline && IsCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)
+                if (status.PowerLineStatus == PowerLineStatus.Offline && _isCharging == false && status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)
                 {
-                    new ToastContentBuilder()
-                   .AddText("Low Battery")
-                   .AddText("Battery is low.Please Connect to Charger.")
-                   .Show(toast =>
-                   {
-                       toast.ExpirationTime = DateTime.Now.AddSeconds(30);
-                   });
+
+                    BatteryNotifierIcon.ShowBalloonTip(30, "Low Battery", "Battery is low.Please Connect to Charger.", ToolTipIcon.Info);
 
                     PlayLowBatterySound();
                 }
@@ -160,17 +147,17 @@ namespace BatteryNotifier
 
         private void PlaySound(string soundLocation)
         {
-            soundPlayingTimer.Start();
+            _soundPlayingTimer.Start();
 
             if (!string.IsNullOrEmpty(soundLocation))
             {
-                batteryNotification.SoundLocation = soundLocation;
+                _batteryNotification.SoundLocation = soundLocation;
             }
             else
             {
-                batteryNotification.Stream = Properties.Resources.BatteryFull;
+                _batteryNotification.Stream = Properties.Resources.BatteryFull;
             }
-            batteryNotification.PlayLooping();
+            _batteryNotification.PlayLooping();
         }
 
         private void PlayFullBatterySound()
@@ -189,9 +176,9 @@ namespace BatteryNotifier
         {
             PowerStatus status = SystemInformation.PowerStatus;
 
-            if (status.PowerLineStatus == PowerLineStatus.Online && IsCharging == false)
+            if (status.PowerLineStatus == PowerLineStatus.Online && _isCharging == false)
             {
-                IsCharging = true;
+                _isCharging = true;
                 BatteryStatus.Text = "Charging";
                 BatteryStatus.ForeColor = Color.ForestGreen;
                 UpdateChargingAnimation();
@@ -199,20 +186,20 @@ namespace BatteryNotifier
             }
             else if (status.PowerLineStatus is PowerLineStatus.Offline or PowerLineStatus.Unknown)
             {
-                IsCharging = false;
+                _isCharging = false;
                 BatteryStatus.Text = "Not Charging";
                 BatteryStatus.ForeColor = Color.Gray;
                 SetBatteryChargeStatus(status);
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
-                IsCharging = false;
+                _isCharging = false;
                 BatteryStatus.Text = "Looks like you are running on main power !!";
                 this.BatteryImage.Image = Properties.Resources.Unknown;
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
-                IsCharging = false;
+                _isCharging = false;
                 BatteryStatus.Text = "Only God knows about this battery !!";
                 this.BatteryImage.Image = Properties.Resources.Unknown;
             }
@@ -325,7 +312,7 @@ namespace BatteryNotifier
 
         private static void ViewDeveloperUrl()
         {
-            ProcessStartInfo sInfo = new(DeveloperUrl);
+            ProcessStartInfo sInfo = new(_developerUrl);
             sInfo.UseShellExecute = true;
             Process.Start(sInfo);
         }
@@ -372,7 +359,7 @@ namespace BatteryNotifier
 
         private void label1_Click(object sender, EventArgs e)
         {
-            ProcessStartInfo sInfo = new(DeveloperUrl);
+            ProcessStartInfo sInfo = new(_developerUrl);
             sInfo.UseShellExecute = true;
             Process.Start(sInfo);
         }
@@ -475,8 +462,8 @@ namespace BatteryNotifier
         {
             if (appSetting.Default.showAsModal)
             {
-                mouseDown = true;
-                lastLocation = e.Location;
+                _mouseDown = true;
+                _lastLocation = e.Location;
             }
         }
 
@@ -484,10 +471,10 @@ namespace BatteryNotifier
         {
             if (appSetting.Default.showAsModal)
             {
-                if (mouseDown)
+                if (_mouseDown)
                 {
                     Location = new Point(
-                        Location.X - lastLocation.X + e.X, Location.Y - lastLocation.Y + e.Y);
+                        Location.X - _lastLocation.X + e.X, Location.Y - _lastLocation.Y + e.Y);
 
                     Update();
                 }
@@ -498,8 +485,20 @@ namespace BatteryNotifier
         {
             if (appSetting.Default.showAsModal)
             {
-                mouseDown = false;
+                _mouseDown = false;
             }
+        }
+
+        private void BatteryNotifierIcon_BalloonTipClicked(object sender, EventArgs e)
+        {
+            this.Show();
+            this.Activate();
+        }
+
+        private void BatteryNotifierIcon_BalloonTipClosed(object sender, EventArgs e)
+        {
+            _batteryNotification.Stop();
+            _soundPlayingTimer.Stop();
         }
     }
 }

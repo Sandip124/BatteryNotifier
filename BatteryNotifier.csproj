@@ -9,11 +9,17 @@
     <PackageProjectUrl>https://github.com/Sandip124/BatteryNotifier</PackageProjectUrl>
     <Description>An windows app for notifying when battery is full or low.</Description>
     <PackageIcon>batteryNotifier.png</PackageIcon>
+    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <ApplicationIcon>battery-icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="appSetting.settings" />
     <None Remove="battery-icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="battery-icon.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,10 +34,6 @@
     <EmbeddedResource Include="batteryNotifier.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.0.0" />
   </ItemGroup>
 
   <ItemGroup>

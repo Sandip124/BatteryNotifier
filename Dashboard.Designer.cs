@@ -135,6 +135,8 @@ namespace BatteryNotifier
             this.BatteryNotifierIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("BatteryNotifierIcon.Icon")));
             this.BatteryNotifierIcon.Text = "Battery Notifier";
             this.BatteryNotifierIcon.Visible = true;
+            this.BatteryNotifierIcon.BalloonTipClicked += new System.EventHandler(this.BatteryNotifierIcon_BalloonTipClicked);
+            this.BatteryNotifierIcon.BalloonTipClosed += new System.EventHandler(this.BatteryNotifierIcon_BalloonTipClosed);
             this.BatteryNotifierIcon.Click += new System.EventHandler(this.BatteryNotifierIcon_Click);
             // 
             // tableLayoutPanel5
@@ -225,13 +227,14 @@ namespace BatteryNotifier
             this.AppContainer.Controls.Add(this.AppFooter, 0, 2);
             this.AppContainer.Dock = System.Windows.Forms.DockStyle.Fill;
             this.AppContainer.Location = new System.Drawing.Point(1, 1);
+            this.AppContainer.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.AppContainer.Name = "AppContainer";
             this.AppContainer.RowCount = 3;
             this.AppContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 8.932461F));
             this.AppContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 91.06754F));
-            this.AppContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 39F));
-            this.AppContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 20F));
-            this.AppContainer.Size = new System.Drawing.Size(408, 488);
+            this.AppContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 52F));
+            this.AppContainer.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 27F));
+            this.AppContainer.Size = new System.Drawing.Size(467, 651);
             this.AppContainer.TabIndex = 6;
             // 
             // tableLayoutPanel9
@@ -242,13 +245,14 @@ namespace BatteryNotifier
             this.tableLayoutPanel9.Controls.Add(this.BatteryDetailGroupBox, 0, 1);
             this.tableLayoutPanel9.Controls.Add(this.NotificationSettingGroupBox, 0, 2);
             this.tableLayoutPanel9.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel9.Location = new System.Drawing.Point(3, 43);
+            this.tableLayoutPanel9.Location = new System.Drawing.Point(3, 57);
+            this.tableLayoutPanel9.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.tableLayoutPanel9.Name = "tableLayoutPanel9";
             this.tableLayoutPanel9.RowCount = 3;
-            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 100F));
-            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 150F));
+            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 133F));
+            this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 200F));
             this.tableLayoutPanel9.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel9.Size = new System.Drawing.Size(402, 402);
+            this.tableLayoutPanel9.Size = new System.Drawing.Size(461, 537);
             this.tableLayoutPanel9.TabIndex = 6;
             // 
             // panel2
@@ -258,13 +262,13 @@ namespace BatteryNotifier
             this.panel2.Location = new System.Drawing.Point(0, 0);
             this.panel2.Margin = new System.Windows.Forms.Padding(0);
             this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(402, 100);
+            this.panel2.Size = new System.Drawing.Size(461, 133);
             this.panel2.TabIndex = 0;
             // 
             // tableLayoutPanel10
             // 
             this.tableLayoutPanel10.ColumnCount = 2;
-            this.tableLayoutPanel10.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 120F));
+            this.tableLayoutPanel10.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 137F));
             this.tableLayoutPanel10.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.tableLayoutPanel10.Controls.Add(this.BatteryImage, 0, 0);
             this.tableLayoutPanel10.Controls.Add(this.tableLayoutPanel11, 1, 0);
@@ -274,7 +278,7 @@ namespace BatteryNotifier
             this.tableLayoutPanel10.Name = "tableLayoutPanel10";
             this.tableLayoutPanel10.RowCount = 1;
             this.tableLayoutPanel10.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel10.Size = new System.Drawing.Size(402, 100);
+            this.tableLayoutPanel10.Size = new System.Drawing.Size(461, 133);
             this.tableLayoutPanel10.TabIndex = 0;
             // 
             // BatteryImage
@@ -284,7 +288,7 @@ namespace BatteryNotifier
             this.BatteryImage.Location = new System.Drawing.Point(0, 0);
             this.BatteryImage.Margin = new System.Windows.Forms.Padding(0);
             this.BatteryImage.Name = "BatteryImage";
-            this.BatteryImage.Size = new System.Drawing.Size(120, 100);
+            this.BatteryImage.Size = new System.Drawing.Size(137, 133);
             this.BatteryImage.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.BatteryImage.TabIndex = 1;
             this.BatteryImage.TabStop = false;
@@ -296,12 +300,13 @@ namespace BatteryNotifier
             this.tableLayoutPanel11.Controls.Add(this.BatteryPercentage, 0, 0);
             this.tableLayoutPanel11.Controls.Add(this.BatteryStatus, 0, 1);
             this.tableLayoutPanel11.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel11.Location = new System.Drawing.Point(123, 3);
+            this.tableLayoutPanel11.Location = new System.Drawing.Point(140, 4);
+            this.tableLayoutPanel11.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.tableLayoutPanel11.Name = "tableLayoutPanel11";
             this.tableLayoutPanel11.RowCount = 2;
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 59.57447F));
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 40.42553F));
-            this.tableLayoutPanel11.Size = new System.Drawing.Size(276, 94);
+            this.tableLayoutPanel11.Size = new System.Drawing.Size(318, 125);
             this.tableLayoutPanel11.TabIndex = 2;
             // 
             // BatteryPercentage
@@ -311,7 +316,7 @@ namespace BatteryNotifier
             this.BatteryPercentage.Font = new System.Drawing.Font("Oswald", 24F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.BatteryPercentage.Location = new System.Drawing.Point(3, 0);
             this.BatteryPercentage.Name = "BatteryPercentage";
-            this.BatteryPercentage.Size = new System.Drawing.Size(270, 56);
+            this.BatteryPercentage.Size = new System.Drawing.Size(312, 74);
             this.BatteryPercentage.TabIndex = 0;
             this.BatteryPercentage.Text = "0%";
             // 
@@ -321,9 +326,9 @@ namespace BatteryNotifier
             this.BatteryStatus.Dock = System.Windows.Forms.DockStyle.Fill;
             this.BatteryStatus.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryStatus.ForeColor = System.Drawing.Color.Gray;
-            this.BatteryStatus.Location = new System.Drawing.Point(3, 56);
+            this.BatteryStatus.Location = new System.Drawing.Point(3, 74);
             this.BatteryStatus.Name = "BatteryStatus";
-            this.BatteryStatus.Size = new System.Drawing.Size(270, 38);
+            this.BatteryStatus.Size = new System.Drawing.Size(312, 51);
             this.BatteryStatus.TabIndex = 2;
             this.BatteryStatus.Text = "😕 I Dont know";
             this.BatteryStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -339,10 +344,11 @@ namespace BatteryNotifier
             this.BatteryDetailGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.BatteryDetailGroupBox.Font = new System.Drawing.Font("Roboto", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryDetailGroupBox.ForeColor = System.Drawing.SystemColors.ControlText;
-            this.BatteryDetailGroupBox.Location = new System.Drawing.Point(8, 108);
-            this.BatteryDetailGroupBox.Margin = new System.Windows.Forms.Padding(8);
+            this.BatteryDetailGroupBox.Location = new System.Drawing.Point(9, 144);
+            this.BatteryDetailGroupBox.Margin = new System.Windows.Forms.Padding(9, 11, 9, 11);
             this.BatteryDetailGroupBox.Name = "BatteryDetailGroupBox";
-            this.BatteryDetailGroupBox.Size = new System.Drawing.Size(386, 134);
+            this.BatteryDetailGroupBox.Padding = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.BatteryDetailGroupBox.Size = new System.Drawing.Size(443, 178);
             this.BatteryDetailGroupBox.TabIndex = 3;
             this.BatteryDetailGroupBox.TabStop = false;
             this.BatteryDetailGroupBox.Text = "Battery Details";
@@ -351,9 +357,9 @@ namespace BatteryNotifier
             // 
             this.RemainingTime.AutoSize = true;
             this.RemainingTime.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.RemainingTime.Location = new System.Drawing.Point(167, 93);
+            this.RemainingTime.Location = new System.Drawing.Point(191, 124);
             this.RemainingTime.Name = "RemainingTime";
-            this.RemainingTime.Size = new System.Drawing.Size(134, 27);
+            this.RemainingTime.Size = new System.Drawing.Size(165, 35);
             this.RemainingTime.TabIndex = 19;
             this.RemainingTime.Text = "2 Hour 15  minutes";
             // 
@@ -361,9 +367,9 @@ namespace BatteryNotifier
             // 
             this.RemainingTimeLabel.AutoSize = true;
             this.RemainingTimeLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.RemainingTimeLabel.Location = new System.Drawing.Point(6, 93);
+            this.RemainingTimeLabel.Location = new System.Drawing.Point(7, 124);
             this.RemainingTimeLabel.Name = "RemainingTimeLabel";
-            this.RemainingTimeLabel.Size = new System.Drawing.Size(114, 27);
+            this.RemainingTimeLabel.Size = new System.Drawing.Size(142, 35);
             this.RemainingTimeLabel.TabIndex = 18;
             this.RemainingTimeLabel.Text = "Remaining Time :";
             // 
@@ -371,9 +377,9 @@ namespace BatteryNotifier
             // 
             this.CurrentCapacityValue.AutoSize = true;
             this.CurrentCapacityValue.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.CurrentCapacityValue.Location = new System.Drawing.Point(167, 60);
+            this.CurrentCapacityValue.Location = new System.Drawing.Point(191, 80);
             this.CurrentCapacityValue.Name = "CurrentCapacityValue";
-            this.CurrentCapacityValue.Size = new System.Drawing.Size(88, 27);
+            this.CurrentCapacityValue.Size = new System.Drawing.Size(110, 35);
             this.CurrentCapacityValue.TabIndex = 17;
             this.CurrentCapacityValue.Text = "43760 mWh";
             // 
@@ -381,9 +387,9 @@ namespace BatteryNotifier
             // 
             this.RemainingCapacityLabel.AutoSize = true;
             this.RemainingCapacityLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.RemainingCapacityLabel.Location = new System.Drawing.Point(6, 60);
+            this.RemainingCapacityLabel.Location = new System.Drawing.Point(7, 80);
             this.RemainingCapacityLabel.Name = "RemainingCapacityLabel";
-            this.RemainingCapacityLabel.Size = new System.Drawing.Size(118, 27);
+            this.RemainingCapacityLabel.Size = new System.Drawing.Size(147, 35);
             this.RemainingCapacityLabel.TabIndex = 16;
             this.RemainingCapacityLabel.Text = "Current Capacity :";
             // 
@@ -391,9 +397,9 @@ namespace BatteryNotifier
             // 
             this.BatteryCapacity.AutoSize = true;
             this.BatteryCapacity.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.BatteryCapacity.Location = new System.Drawing.Point(167, 25);
+            this.BatteryCapacity.Location = new System.Drawing.Point(191, 33);
             this.BatteryCapacity.Name = "BatteryCapacity";
-            this.BatteryCapacity.Size = new System.Drawing.Size(88, 27);
+            this.BatteryCapacity.Size = new System.Drawing.Size(110, 35);
             this.BatteryCapacity.TabIndex = 15;
             this.BatteryCapacity.Text = "43760 mWh";
             // 
@@ -401,9 +407,9 @@ namespace BatteryNotifier
             // 
             this.BatteryCapacityLabel.AutoSize = true;
             this.BatteryCapacityLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.BatteryCapacityLabel.Location = new System.Drawing.Point(6, 25);
+            this.BatteryCapacityLabel.Location = new System.Drawing.Point(7, 33);
             this.BatteryCapacityLabel.Name = "BatteryCapacityLabel";
-            this.BatteryCapacityLabel.Size = new System.Drawing.Size(155, 27);
+            this.BatteryCapacityLabel.Size = new System.Drawing.Size(194, 35);
             this.BatteryCapacityLabel.TabIndex = 14;
             this.BatteryCapacityLabel.Text = "Designed Max Capacity :";
             // 
@@ -413,10 +419,11 @@ namespace BatteryNotifier
             this.NotificationSettingGroupBox.Controls.Add(this.tableLayoutPanel13);
             this.NotificationSettingGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.NotificationSettingGroupBox.Font = new System.Drawing.Font("Roboto", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.NotificationSettingGroupBox.Location = new System.Drawing.Point(8, 258);
-            this.NotificationSettingGroupBox.Margin = new System.Windows.Forms.Padding(8);
+            this.NotificationSettingGroupBox.Location = new System.Drawing.Point(9, 344);
+            this.NotificationSettingGroupBox.Margin = new System.Windows.Forms.Padding(9, 11, 9, 11);
             this.NotificationSettingGroupBox.Name = "NotificationSettingGroupBox";
-            this.NotificationSettingGroupBox.Size = new System.Drawing.Size(386, 136);
+            this.NotificationSettingGroupBox.Padding = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.NotificationSettingGroupBox.Size = new System.Drawing.Size(443, 182);
             this.NotificationSettingGroupBox.TabIndex = 4;
             this.NotificationSettingGroupBox.TabStop = false;
             this.NotificationSettingGroupBox.Text = "Notification Setting";
@@ -424,18 +431,19 @@ namespace BatteryNotifier
             // tableLayoutPanel12
             // 
             this.tableLayoutPanel12.ColumnCount = 3;
-            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 71F));
+            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 81F));
             this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 66F));
+            this.tableLayoutPanel12.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 75F));
             this.tableLayoutPanel12.Controls.Add(this.LowBatteryIcon, 0, 0);
             this.tableLayoutPanel12.Controls.Add(this.LowBatteryNotificationCheckbox, 2, 0);
             this.tableLayoutPanel12.Controls.Add(this.LowBatteryLabel, 1, 0);
-            this.tableLayoutPanel12.Location = new System.Drawing.Point(4, 77);
+            this.tableLayoutPanel12.Location = new System.Drawing.Point(5, 103);
+            this.tableLayoutPanel12.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.tableLayoutPanel12.Name = "tableLayoutPanel12";
             this.tableLayoutPanel12.RowCount = 1;
             this.tableLayoutPanel12.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel12.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 42F));
-            this.tableLayoutPanel12.Size = new System.Drawing.Size(376, 42);
+            this.tableLayoutPanel12.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tableLayoutPanel12.Size = new System.Drawing.Size(430, 56);
             this.tableLayoutPanel12.TabIndex = 8;
             // 
             // LowBatteryIcon
@@ -443,9 +451,10 @@ namespace BatteryNotifier
             this.LowBatteryIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.LowBatteryIcon.Dock = System.Windows.Forms.DockStyle.Fill;
             this.LowBatteryIcon.Image = global::BatteryNotifier.Properties.Resources.Low;
-            this.LowBatteryIcon.Location = new System.Drawing.Point(3, 3);
+            this.LowBatteryIcon.Location = new System.Drawing.Point(3, 4);
+            this.LowBatteryIcon.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.LowBatteryIcon.Name = "LowBatteryIcon";
-            this.LowBatteryIcon.Size = new System.Drawing.Size(65, 36);
+            this.LowBatteryIcon.Size = new System.Drawing.Size(75, 48);
             this.LowBatteryIcon.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.LowBatteryIcon.TabIndex = 5;
             this.LowBatteryIcon.TabStop = false;
@@ -455,9 +464,10 @@ namespace BatteryNotifier
             this.LowBatteryNotificationCheckbox.AutoSize = true;
             this.LowBatteryNotificationCheckbox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.LowBatteryNotificationCheckbox.Font = new System.Drawing.Font("Roboto", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.LowBatteryNotificationCheckbox.Location = new System.Drawing.Point(313, 3);
+            this.LowBatteryNotificationCheckbox.Location = new System.Drawing.Point(358, 4);
+            this.LowBatteryNotificationCheckbox.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.LowBatteryNotificationCheckbox.Name = "LowBatteryNotificationCheckbox";
-            this.LowBatteryNotificationCheckbox.Size = new System.Drawing.Size(60, 36);
+            this.LowBatteryNotificationCheckbox.Size = new System.Drawing.Size(69, 48);
             this.LowBatteryNotificationCheckbox.TabIndex = 6;
             this.LowBatteryNotificationCheckbox.Text = "Off";
             this.LowBatteryNotificationCheckbox.UseVisualStyleBackColor = true;
@@ -468,9 +478,9 @@ namespace BatteryNotifier
             // 
             this.LowBatteryLabel.Dock = System.Windows.Forms.DockStyle.Top;
             this.LowBatteryLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.LowBatteryLabel.Location = new System.Drawing.Point(74, 0);
+            this.LowBatteryLabel.Location = new System.Drawing.Point(84, 0);
             this.LowBatteryLabel.Name = "LowBatteryLabel";
-            this.LowBatteryLabel.Size = new System.Drawing.Size(233, 42);
+            this.LowBatteryLabel.Size = new System.Drawing.Size(268, 56);
             this.LowBatteryLabel.TabIndex = 5;
             this.LowBatteryLabel.Text = "Low Battery Notification";
             this.LowBatteryLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -478,18 +488,19 @@ namespace BatteryNotifier
             // tableLayoutPanel13
             // 
             this.tableLayoutPanel13.ColumnCount = 3;
-            this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 71F));
+            this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 81F));
             this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 66F));
+            this.tableLayoutPanel13.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 75F));
             this.tableLayoutPanel13.Controls.Add(this.FullBatteryIcon, 0, 0);
             this.tableLayoutPanel13.Controls.Add(this.FullBatteryNotificationCheckbox, 2, 0);
             this.tableLayoutPanel13.Controls.Add(this.FullBatteryLabel, 1, 0);
-            this.tableLayoutPanel13.Location = new System.Drawing.Point(4, 29);
+            this.tableLayoutPanel13.Location = new System.Drawing.Point(5, 39);
+            this.tableLayoutPanel13.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.tableLayoutPanel13.Name = "tableLayoutPanel13";
             this.tableLayoutPanel13.RowCount = 1;
             this.tableLayoutPanel13.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tableLayoutPanel13.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 42F));
-            this.tableLayoutPanel13.Size = new System.Drawing.Size(376, 42);
+            this.tableLayoutPanel13.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 56F));
+            this.tableLayoutPanel13.Size = new System.Drawing.Size(430, 56);
             this.tableLayoutPanel13.TabIndex = 7;
             // 
             // FullBatteryIcon
@@ -497,9 +508,10 @@ namespace BatteryNotifier
             this.FullBatteryIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.FullBatteryIcon.Dock = System.Windows.Forms.DockStyle.Fill;
             this.FullBatteryIcon.Image = global::BatteryNotifier.Properties.Resources.Full;
-            this.FullBatteryIcon.Location = new System.Drawing.Point(3, 3);
+            this.FullBatteryIcon.Location = new System.Drawing.Point(3, 4);
+            this.FullBatteryIcon.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.FullBatteryIcon.Name = "FullBatteryIcon";
-            this.FullBatteryIcon.Size = new System.Drawing.Size(65, 36);
+            this.FullBatteryIcon.Size = new System.Drawing.Size(75, 48);
             this.FullBatteryIcon.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.FullBatteryIcon.TabIndex = 5;
             this.FullBatteryIcon.TabStop = false;
@@ -509,9 +521,10 @@ namespace BatteryNotifier
             this.FullBatteryNotificationCheckbox.AutoSize = true;
             this.FullBatteryNotificationCheckbox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.FullBatteryNotificationCheckbox.Font = new System.Drawing.Font("Roboto", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.FullBatteryNotificationCheckbox.Location = new System.Drawing.Point(313, 3);
+            this.FullBatteryNotificationCheckbox.Location = new System.Drawing.Point(358, 4);
+            this.FullBatteryNotificationCheckbox.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.FullBatteryNotificationCheckbox.Name = "FullBatteryNotificationCheckbox";
-            this.FullBatteryNotificationCheckbox.Size = new System.Drawing.Size(60, 36);
+            this.FullBatteryNotificationCheckbox.Size = new System.Drawing.Size(69, 48);
             this.FullBatteryNotificationCheckbox.TabIndex = 6;
             this.FullBatteryNotificationCheckbox.Text = "Off";
             this.FullBatteryNotificationCheckbox.UseVisualStyleBackColor = true;
@@ -522,9 +535,9 @@ namespace BatteryNotifier
             // 
             this.FullBatteryLabel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.FullBatteryLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.FullBatteryLabel.Location = new System.Drawing.Point(74, 0);
+            this.FullBatteryLabel.Location = new System.Drawing.Point(84, 0);
             this.FullBatteryLabel.Name = "FullBatteryLabel";
-            this.FullBatteryLabel.Size = new System.Drawing.Size(233, 42);
+            this.FullBatteryLabel.Size = new System.Drawing.Size(268, 56);
             this.FullBatteryLabel.TabIndex = 5;
             this.FullBatteryLabel.Text = "Full Battery Notification";
             this.FullBatteryLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -534,7 +547,7 @@ namespace BatteryNotifier
             this.AppHeader.BackColor = System.Drawing.Color.AliceBlue;
             this.AppHeader.ColumnCount = 2;
             this.AppHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.AppHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 36F));
+            this.AppHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 41F));
             this.AppHeader.Controls.Add(this.AppHeaderTitle, 0, 0);
             this.AppHeader.Controls.Add(this.CloseIcon, 1, 0);
             this.AppHeader.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -543,7 +556,7 @@ namespace BatteryNotifier
             this.AppHeader.Name = "AppHeader";
             this.AppHeader.RowCount = 1;
             this.AppHeader.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.AppHeader.Size = new System.Drawing.Size(408, 40);
+            this.AppHeader.Size = new System.Drawing.Size(467, 53);
             this.AppHeader.TabIndex = 7;
             // 
             // AppHeaderTitle
@@ -555,7 +568,7 @@ namespace BatteryNotifier
             this.AppHeaderTitle.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
             this.AppHeaderTitle.Location = new System.Drawing.Point(3, 0);
             this.AppHeaderTitle.Name = "AppHeaderTitle";
-            this.AppHeaderTitle.Size = new System.Drawing.Size(366, 40);
+            this.AppHeaderTitle.Size = new System.Drawing.Size(420, 53);
             this.AppHeaderTitle.TabIndex = 16;
             this.AppHeaderTitle.Text = "Windows Battery Notifier";
             this.AppHeaderTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -570,10 +583,10 @@ namespace BatteryNotifier
             this.CloseIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.CloseIcon.Dock = System.Windows.Forms.DockStyle.Fill;
             this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.CloseIcon;
-            this.CloseIcon.Location = new System.Drawing.Point(372, 0);
+            this.CloseIcon.Location = new System.Drawing.Point(426, 0);
             this.CloseIcon.Margin = new System.Windows.Forms.Padding(0);
             this.CloseIcon.Name = "CloseIcon";
-            this.CloseIcon.Size = new System.Drawing.Size(36, 40);
+            this.CloseIcon.Size = new System.Drawing.Size(41, 53);
             this.CloseIcon.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.CloseIcon.TabIndex = 0;
             this.CloseIcon.TabStop = false;
@@ -588,10 +601,10 @@ namespace BatteryNotifier
             this.AppFooter.Controls.Add(this.SettingLabel);
             this.AppFooter.Dock = System.Windows.Forms.DockStyle.Fill;
             this.AppFooter.ForeColor = System.Drawing.Color.Crimson;
-            this.AppFooter.Location = new System.Drawing.Point(0, 448);
+            this.AppFooter.Location = new System.Drawing.Point(0, 598);
             this.AppFooter.Margin = new System.Windows.Forms.Padding(0);
             this.AppFooter.Name = "AppFooter";
-            this.AppFooter.Size = new System.Drawing.Size(408, 40);
+            this.AppFooter.Size = new System.Drawing.Size(467, 53);
             this.AppFooter.TabIndex = 8;
             // 
             // ViewSourceLabel
@@ -600,9 +613,9 @@ namespace BatteryNotifier
             this.ViewSourceLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.ViewSourceLabel.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.ViewSourceLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.ViewSourceLabel.Location = new System.Drawing.Point(183, 4);
+            this.ViewSourceLabel.Location = new System.Drawing.Point(209, 5);
             this.ViewSourceLabel.Name = "ViewSourceLabel";
-            this.ViewSourceLabel.Size = new System.Drawing.Size(89, 27);
+            this.ViewSourceLabel.Size = new System.Drawing.Size(110, 35);
             this.ViewSourceLabel.TabIndex = 22;
             this.ViewSourceLabel.Text = "View Source";
             this.ViewSourceLabel.Click += new System.EventHandler(this.label1_Click);
@@ -615,9 +628,9 @@ namespace BatteryNotifier
             this.SettingLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.SettingLabel.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.SettingLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.SettingLabel.Location = new System.Drawing.Point(113, 4);
+            this.SettingLabel.Location = new System.Drawing.Point(129, 5);
             this.SettingLabel.Name = "SettingLabel";
-            this.SettingLabel.Size = new System.Drawing.Size(59, 27);
+            this.SettingLabel.Size = new System.Drawing.Size(73, 35);
             this.SettingLabel.TabIndex = 21;
             this.SettingLabel.Text = "Setting";
             this.SettingLabel.Click += new System.EventHandler(this.label9_Click);
@@ -738,7 +751,7 @@ namespace BatteryNotifier
             this.label7.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.label7.Location = new System.Drawing.Point(148, 93);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(134, 27);
+            this.label7.Size = new System.Drawing.Size(165, 35);
             this.label7.TabIndex = 19;
             this.label7.Text = "2 Hour 15  minutes";
             // 
@@ -748,7 +761,7 @@ namespace BatteryNotifier
             this.label8.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label8.Location = new System.Drawing.Point(6, 93);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(114, 27);
+            this.label8.Size = new System.Drawing.Size(142, 35);
             this.label8.TabIndex = 18;
             this.label8.Text = "Remaining Time :";
             // 
@@ -758,7 +771,7 @@ namespace BatteryNotifier
             this.label5.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.label5.Location = new System.Drawing.Point(148, 60);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(88, 27);
+            this.label5.Size = new System.Drawing.Size(110, 35);
             this.label5.TabIndex = 17;
             this.label5.Text = "43760 mWh";
             // 
@@ -768,7 +781,7 @@ namespace BatteryNotifier
             this.label6.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label6.Location = new System.Drawing.Point(6, 60);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(136, 27);
+            this.label6.Size = new System.Drawing.Size(171, 35);
             this.label6.TabIndex = 16;
             this.label6.Text = "Remaining Capacity :";
             // 
@@ -778,7 +791,7 @@ namespace BatteryNotifier
             this.label4.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.label4.Location = new System.Drawing.Point(148, 25);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(88, 27);
+            this.label4.Size = new System.Drawing.Size(110, 35);
             this.label4.TabIndex = 15;
             this.label4.Text = "43760 mWh";
             // 
@@ -788,7 +801,7 @@ namespace BatteryNotifier
             this.label3.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label3.Location = new System.Drawing.Point(6, 25);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(117, 27);
+            this.label3.Size = new System.Drawing.Size(146, 35);
             this.label3.TabIndex = 14;
             this.label3.Text = "Battery Capacity :";
             // 
@@ -916,15 +929,16 @@ namespace BatteryNotifier
             // 
             // Dashboard
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.MenuHighlight;
-            this.ClientSize = new System.Drawing.Size(410, 490);
+            this.ClientSize = new System.Drawing.Size(469, 653);
             this.Controls.Add(this.AppContainer);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.HelpButton = true;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Location = new System.Drawing.Point(90, 90);
+            this.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "Dashboard";
