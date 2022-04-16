@@ -2,7 +2,7 @@
 
 # Battery Notifier
 
-An windows app to track your battery and give notification when the battery is full.
+An beatutiful windows app to track your battery charging status and notifies you when the battery is full or when you need to connect your charger.
 
 Screenshot:
 
