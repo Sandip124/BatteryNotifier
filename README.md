@@ -1,4 +1,4 @@
-![Windows Battery Notifier](BatteryNotifierBanner.png)
+![Windows Battery Notifier](BatteryNotifierLogo.png)
 
 # Battery Notifier
 
@@ -6,4 +6,4 @@ An windows app to track your battery and give notification when the battery is f
 
 Screenshot:
 
-![Screenshot](Battery_Notifier.png)
+![Screenshot](BatteryNotifierBanner.jpg)
