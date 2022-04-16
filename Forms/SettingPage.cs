@@ -2,6 +2,7 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier
 {
@@ -147,9 +148,14 @@ namespace BatteryNotifier
             {
                 if (mouseDown)
                 {
+                    var xPosition = Location.X - lastLocation.X + e.X;
+                    var yPosition = Location.Y - lastLocation.Y + e.Y;
                     Location = new Point(
-                        Location.X - lastLocation.X + e.X, Location.Y - lastLocation.Y + e.Y);
+                        xPosition, yPosition);
 
+                    appSetting.Default.WindowPositionX = xPosition;
+                    appSetting.Default.WindowPositionY = yPosition;
+                    appSetting.Default.Save();
                     Update();
                 }
             }

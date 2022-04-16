@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace BatteryNotifier {
+namespace BatteryNotifier.Setting {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
@@ -116,6 +116,30 @@ namespace BatteryNotifier {
             }
             set {
                 this["darkThemeApplied"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int WindowPositionX {
+            get {
+                return ((int)(this["WindowPositionX"]));
+            }
+            set {
+                this["WindowPositionX"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int WindowPositionY {
+            get {
+                return ((int)(this["WindowPositionY"]));
+            }
+            set {
+                this["WindowPositionY"] = value;
             }
         }
     }

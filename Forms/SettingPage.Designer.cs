@@ -480,8 +480,6 @@ namespace BatteryNotifier
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "SettingPage";
             this.Padding = new System.Windows.Forms.Padding(1);
-            this.ShowIcon = false;
-            this.ShowInTaskbar = false;
             this.Text = "SettingPage";
             this.Activated += new System.EventHandler(this.SettingPage_Activated);
             this.Load += new System.EventHandler(this.SettingPage_Load);

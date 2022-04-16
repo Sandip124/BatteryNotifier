@@ -21,6 +21,11 @@ namespace BatteryNotifier.Helpers
             {
                 form.ShowInTaskbar = true;
                 form.ShowIcon = true;
+
+                var xPosition = Setting.appSetting.Default.WindowPositionX;
+                var yPosition = Setting.appSetting.Default.WindowPositionY;
+
+                form.Location = new Point(xPosition, yPosition);
                 form.StartPosition = FormStartPosition.CenterScreen;
             }
         }
