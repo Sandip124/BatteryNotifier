@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace BatteryNotifier
+namespace BatteryNotifier.Forms
 {
     partial class SettingPage : Form
     {
@@ -129,7 +129,7 @@ namespace BatteryNotifier
             // 
             this.AppHeaderTitle.BackColor = System.Drawing.Color.Transparent;
             this.AppHeaderTitle.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.AppHeaderTitle.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.AppHeaderTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.AppHeaderTitle.Location = new System.Drawing.Point(0, 0);
             this.AppHeaderTitle.Name = "AppHeaderTitle";
             this.AppHeaderTitle.Size = new System.Drawing.Size(372, 40);
@@ -228,10 +228,10 @@ namespace BatteryNotifier
             // 
             this.LowBatterySoundLabel.AutoSize = true;
             this.LowBatterySoundLabel.BackColor = System.Drawing.Color.Transparent;
-            this.LowBatterySoundLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.LowBatterySoundLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.LowBatterySoundLabel.Location = new System.Drawing.Point(7, 283);
             this.LowBatterySoundLabel.Name = "LowBatterySoundLabel";
-            this.LowBatterySoundLabel.Size = new System.Drawing.Size(48, 27);
+            this.LowBatterySoundLabel.Size = new System.Drawing.Size(56, 20);
             this.LowBatterySoundLabel.TabIndex = 21;
             this.LowBatterySoundLabel.Text = "Sound";
             // 
@@ -290,21 +290,21 @@ namespace BatteryNotifier
             // 
             this.LowBatteryPercentageLabel.AutoSize = true;
             this.LowBatteryPercentageLabel.BackColor = System.Drawing.Color.Transparent;
-            this.LowBatteryPercentageLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.LowBatteryPercentageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.LowBatteryPercentageLabel.Location = new System.Drawing.Point(5, 233);
             this.LowBatteryPercentageLabel.Name = "LowBatteryPercentageLabel";
-            this.LowBatteryPercentageLabel.Size = new System.Drawing.Size(106, 27);
+            this.LowBatteryPercentageLabel.Size = new System.Drawing.Size(99, 20);
             this.LowBatteryPercentageLabel.TabIndex = 19;
-            this.LowBatteryPercentageLabel.Text = "Percentage (%)";
+            this.LowBatteryPercentageLabel.Text = "Percentage :";
             // 
             // FullBatterySoundLabel
             // 
             this.FullBatterySoundLabel.AutoSize = true;
             this.FullBatterySoundLabel.BackColor = System.Drawing.Color.Transparent;
-            this.FullBatterySoundLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.FullBatterySoundLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.FullBatterySoundLabel.Location = new System.Drawing.Point(6, 127);
             this.FullBatterySoundLabel.Name = "FullBatterySoundLabel";
-            this.FullBatterySoundLabel.Size = new System.Drawing.Size(48, 27);
+            this.FullBatterySoundLabel.Size = new System.Drawing.Size(56, 20);
             this.FullBatterySoundLabel.TabIndex = 21;
             this.FullBatterySoundLabel.Text = "Sound";
             // 
@@ -333,7 +333,7 @@ namespace BatteryNotifier
             // ShowFullBatteryNotificationLabel
             // 
             this.ShowFullBatteryNotificationLabel.BackColor = System.Drawing.Color.Transparent;
-            this.ShowFullBatteryNotificationLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.ShowFullBatteryNotificationLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.ShowFullBatteryNotificationLabel.Location = new System.Drawing.Point(53, 34);
             this.ShowFullBatteryNotificationLabel.Name = "ShowFullBatteryNotificationLabel";
             this.ShowFullBatteryNotificationLabel.Size = new System.Drawing.Size(193, 27);
@@ -343,7 +343,7 @@ namespace BatteryNotifier
             // LowBatteryNotificationLabel
             // 
             this.LowBatteryNotificationLabel.BackColor = System.Drawing.Color.Transparent;
-            this.LowBatteryNotificationLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.LowBatteryNotificationLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.LowBatteryNotificationLabel.Location = new System.Drawing.Point(53, 187);
             this.LowBatteryNotificationLabel.Name = "LowBatteryNotificationLabel";
             this.LowBatteryNotificationLabel.Size = new System.Drawing.Size(193, 27);
@@ -375,12 +375,12 @@ namespace BatteryNotifier
             // 
             this.BatteryPercentageLabel.AutoSize = true;
             this.BatteryPercentageLabel.BackColor = System.Drawing.Color.Transparent;
-            this.BatteryPercentageLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.BatteryPercentageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryPercentageLabel.Location = new System.Drawing.Point(7, 76);
             this.BatteryPercentageLabel.Name = "BatteryPercentageLabel";
-            this.BatteryPercentageLabel.Size = new System.Drawing.Size(106, 27);
+            this.BatteryPercentageLabel.Size = new System.Drawing.Size(91, 20);
             this.BatteryPercentageLabel.TabIndex = 19;
-            this.BatteryPercentageLabel.Text = "Percentage (%)";
+            this.BatteryPercentageLabel.Text = "Percentage";
             // 
             // DarkModelPanel
             // 
@@ -408,10 +408,10 @@ namespace BatteryNotifier
             // DarkModeLabel
             // 
             this.DarkModeLabel.AutoSize = true;
-            this.DarkModeLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.DarkModeLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.DarkModeLabel.Location = new System.Drawing.Point(37, 3);
             this.DarkModeLabel.Name = "DarkModeLabel";
-            this.DarkModeLabel.Size = new System.Drawing.Size(75, 27);
+            this.DarkModeLabel.Size = new System.Drawing.Size(87, 20);
             this.DarkModeLabel.TabIndex = 16;
             this.DarkModeLabel.Text = "Dark Mode";
             // 
@@ -451,10 +451,10 @@ namespace BatteryNotifier
             // ShowAsWindowLabel
             // 
             this.ShowAsWindowLabel.AutoSize = true;
-            this.ShowAsWindowLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.ShowAsWindowLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.ShowAsWindowLabel.Location = new System.Drawing.Point(37, 2);
             this.ShowAsWindowLabel.Name = "ShowAsWindowLabel";
-            this.ShowAsWindowLabel.Size = new System.Drawing.Size(107, 27);
+            this.ShowAsWindowLabel.Size = new System.Drawing.Size(126, 20);
             this.ShowAsWindowLabel.TabIndex = 16;
             this.ShowAsWindowLabel.Text = "Show as window";
             // 
