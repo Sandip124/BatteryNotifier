@@ -1,6 +1,6 @@
 ﻿using System.Windows.Forms;
 
-namespace BatteryNotifier
+namespace BatteryNotifier.Forms
 {
     partial class Dashboard
     {
@@ -310,18 +310,19 @@ namespace BatteryNotifier
             // 
             this.BatteryPercentage.AutoSize = true;
             this.BatteryPercentage.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BatteryPercentage.Font = new System.Drawing.Font("Oswald", 24F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.BatteryPercentage.Font = new System.Drawing.Font("Microsoft Sans Serif", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.BatteryPercentage.Location = new System.Drawing.Point(3, 0);
             this.BatteryPercentage.Name = "BatteryPercentage";
             this.BatteryPercentage.Size = new System.Drawing.Size(270, 56);
             this.BatteryPercentage.TabIndex = 0;
             this.BatteryPercentage.Text = "0%";
+            this.BatteryPercentage.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // BatteryStatus
             // 
             this.BatteryStatus.AutoSize = true;
             this.BatteryStatus.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BatteryStatus.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.BatteryStatus.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryStatus.ForeColor = System.Drawing.Color.Gray;
             this.BatteryStatus.Location = new System.Drawing.Point(3, 56);
             this.BatteryStatus.Name = "BatteryStatus";
@@ -342,7 +343,7 @@ namespace BatteryNotifier
             this.BatteryDetailGroupBox.Font = new System.Drawing.Font("Roboto", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryDetailGroupBox.ForeColor = System.Drawing.SystemColors.ControlText;
             this.BatteryDetailGroupBox.Location = new System.Drawing.Point(8, 108);
-            this.BatteryDetailGroupBox.Margin = new System.Windows.Forms.Padding(8, 8, 8, 8);
+            this.BatteryDetailGroupBox.Margin = new System.Windows.Forms.Padding(8);
             this.BatteryDetailGroupBox.Name = "BatteryDetailGroupBox";
             this.BatteryDetailGroupBox.Size = new System.Drawing.Size(386, 134);
             this.BatteryDetailGroupBox.TabIndex = 3;
@@ -352,60 +353,60 @@ namespace BatteryNotifier
             // RemainingTime
             // 
             this.RemainingTime.AutoSize = true;
-            this.RemainingTime.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.RemainingTime.Location = new System.Drawing.Point(167, 93);
+            this.RemainingTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.RemainingTime.Location = new System.Drawing.Point(195, 93);
             this.RemainingTime.Name = "RemainingTime";
-            this.RemainingTime.Size = new System.Drawing.Size(134, 27);
+            this.RemainingTime.Size = new System.Drawing.Size(161, 20);
             this.RemainingTime.TabIndex = 19;
             this.RemainingTime.Text = "2 Hour 15  minutes";
             // 
             // RemainingTimeLabel
             // 
             this.RemainingTimeLabel.AutoSize = true;
-            this.RemainingTimeLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.RemainingTimeLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.RemainingTimeLabel.Location = new System.Drawing.Point(6, 93);
             this.RemainingTimeLabel.Name = "RemainingTimeLabel";
-            this.RemainingTimeLabel.Size = new System.Drawing.Size(114, 27);
+            this.RemainingTimeLabel.Size = new System.Drawing.Size(131, 20);
             this.RemainingTimeLabel.TabIndex = 18;
             this.RemainingTimeLabel.Text = "Remaining Time :";
             // 
             // CurrentCapacityValue
             // 
             this.CurrentCapacityValue.AutoSize = true;
-            this.CurrentCapacityValue.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.CurrentCapacityValue.Location = new System.Drawing.Point(167, 60);
+            this.CurrentCapacityValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.CurrentCapacityValue.Location = new System.Drawing.Point(195, 60);
             this.CurrentCapacityValue.Name = "CurrentCapacityValue";
-            this.CurrentCapacityValue.Size = new System.Drawing.Size(88, 27);
+            this.CurrentCapacityValue.Size = new System.Drawing.Size(104, 20);
             this.CurrentCapacityValue.TabIndex = 17;
             this.CurrentCapacityValue.Text = "43760 mWh";
             // 
             // RemainingCapacityLabel
             // 
             this.RemainingCapacityLabel.AutoSize = true;
-            this.RemainingCapacityLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.RemainingCapacityLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.RemainingCapacityLabel.Location = new System.Drawing.Point(6, 60);
             this.RemainingCapacityLabel.Name = "RemainingCapacityLabel";
-            this.RemainingCapacityLabel.Size = new System.Drawing.Size(118, 27);
+            this.RemainingCapacityLabel.Size = new System.Drawing.Size(135, 20);
             this.RemainingCapacityLabel.TabIndex = 16;
             this.RemainingCapacityLabel.Text = "Current Capacity :";
             // 
             // BatteryCapacity
             // 
             this.BatteryCapacity.AutoSize = true;
-            this.BatteryCapacity.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.BatteryCapacity.Location = new System.Drawing.Point(167, 25);
+            this.BatteryCapacity.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.BatteryCapacity.Location = new System.Drawing.Point(195, 25);
             this.BatteryCapacity.Name = "BatteryCapacity";
-            this.BatteryCapacity.Size = new System.Drawing.Size(88, 27);
+            this.BatteryCapacity.Size = new System.Drawing.Size(104, 20);
             this.BatteryCapacity.TabIndex = 15;
             this.BatteryCapacity.Text = "43760 mWh";
             // 
             // BatteryCapacityLabel
             // 
             this.BatteryCapacityLabel.AutoSize = true;
-            this.BatteryCapacityLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.BatteryCapacityLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryCapacityLabel.Location = new System.Drawing.Point(6, 25);
             this.BatteryCapacityLabel.Name = "BatteryCapacityLabel";
-            this.BatteryCapacityLabel.Size = new System.Drawing.Size(155, 27);
+            this.BatteryCapacityLabel.Size = new System.Drawing.Size(183, 20);
             this.BatteryCapacityLabel.TabIndex = 14;
             this.BatteryCapacityLabel.Text = "Designed Max Capacity :";
             // 
@@ -416,7 +417,7 @@ namespace BatteryNotifier
             this.NotificationSettingGroupBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.NotificationSettingGroupBox.Font = new System.Drawing.Font("Roboto", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.NotificationSettingGroupBox.Location = new System.Drawing.Point(8, 258);
-            this.NotificationSettingGroupBox.Margin = new System.Windows.Forms.Padding(8, 8, 8, 8);
+            this.NotificationSettingGroupBox.Margin = new System.Windows.Forms.Padding(8);
             this.NotificationSettingGroupBox.Name = "NotificationSettingGroupBox";
             this.NotificationSettingGroupBox.Size = new System.Drawing.Size(386, 136);
             this.NotificationSettingGroupBox.TabIndex = 4;
@@ -469,7 +470,7 @@ namespace BatteryNotifier
             // LowBatteryLabel
             // 
             this.LowBatteryLabel.Dock = System.Windows.Forms.DockStyle.Top;
-            this.LowBatteryLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.LowBatteryLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.LowBatteryLabel.Location = new System.Drawing.Point(74, 0);
             this.LowBatteryLabel.Name = "LowBatteryLabel";
             this.LowBatteryLabel.Size = new System.Drawing.Size(233, 42);
@@ -523,7 +524,7 @@ namespace BatteryNotifier
             // FullBatteryLabel
             // 
             this.FullBatteryLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.FullBatteryLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.FullBatteryLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.FullBatteryLabel.Location = new System.Drawing.Point(74, 0);
             this.FullBatteryLabel.Name = "FullBatteryLabel";
             this.FullBatteryLabel.Size = new System.Drawing.Size(233, 42);
@@ -553,7 +554,7 @@ namespace BatteryNotifier
             this.AppHeaderTitle.AutoSize = true;
             this.AppHeaderTitle.BackColor = System.Drawing.Color.Transparent;
             this.AppHeaderTitle.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.AppHeaderTitle.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.AppHeaderTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.AppHeaderTitle.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
             this.AppHeaderTitle.Location = new System.Drawing.Point(3, 0);
             this.AppHeaderTitle.Name = "AppHeaderTitle";
@@ -600,31 +601,31 @@ namespace BatteryNotifier
             // 
             this.ViewSourceLabel.AutoSize = true;
             this.ViewSourceLabel.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.ViewSourceLabel.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.ViewSourceLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.ViewSourceLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.ViewSourceLabel.Location = new System.Drawing.Point(183, 4);
+            this.ViewSourceLabel.Location = new System.Drawing.Point(183, 9);
             this.ViewSourceLabel.Name = "ViewSourceLabel";
-            this.ViewSourceLabel.Size = new System.Drawing.Size(89, 27);
+            this.ViewSourceLabel.Size = new System.Drawing.Size(109, 20);
             this.ViewSourceLabel.TabIndex = 22;
             this.ViewSourceLabel.Text = "View Source";
-            this.ViewSourceLabel.Click += new System.EventHandler(this.label1_Click);
-            this.ViewSourceLabel.MouseEnter += new System.EventHandler(this.label1_MouseEnter);
-            this.ViewSourceLabel.MouseLeave += new System.EventHandler(this.label1_MouseLeave);
+            this.ViewSourceLabel.Click += new System.EventHandler(this.ViewSourceLabel_Click);
+            this.ViewSourceLabel.MouseEnter += new System.EventHandler(this.ViewSourceLabel_MouseEnter);
+            this.ViewSourceLabel.MouseLeave += new System.EventHandler(this.ViewSourceLabel_MouseLeave);
             // 
             // SettingLabel
             // 
             this.SettingLabel.AutoSize = true;
             this.SettingLabel.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.SettingLabel.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.SettingLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.SettingLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.SettingLabel.Location = new System.Drawing.Point(113, 4);
+            this.SettingLabel.Location = new System.Drawing.Point(113, 9);
             this.SettingLabel.Name = "SettingLabel";
-            this.SettingLabel.Size = new System.Drawing.Size(59, 27);
+            this.SettingLabel.Size = new System.Drawing.Size(67, 20);
             this.SettingLabel.TabIndex = 21;
             this.SettingLabel.Text = "Setting";
-            this.SettingLabel.Click += new System.EventHandler(this.label9_Click);
-            this.SettingLabel.MouseEnter += new System.EventHandler(this.label9_MouseEnter);
-            this.SettingLabel.MouseLeave += new System.EventHandler(this.label9_MouseLeave);
+            this.SettingLabel.Click += new System.EventHandler(this.SettingLabel_Click);
+            this.SettingLabel.MouseEnter += new System.EventHandler(this.SettingLabel_MouseEnter);
+            this.SettingLabel.MouseLeave += new System.EventHandler(this.SettingLabel_MouseLeave);
             // 
             // tableLayoutPanel1
             // 
@@ -697,7 +698,7 @@ namespace BatteryNotifier
             // 
             this.BatteryPercentageLabel.AutoSize = true;
             this.BatteryPercentageLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BatteryPercentageLabel.Font = new System.Drawing.Font("Oswald", 24F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.BatteryPercentageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 24F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.BatteryPercentageLabel.Location = new System.Drawing.Point(3, 0);
             this.BatteryPercentageLabel.Name = "BatteryPercentageLabel";
             this.BatteryPercentageLabel.Size = new System.Drawing.Size(68, 8);
@@ -708,7 +709,7 @@ namespace BatteryNotifier
             // 
             this.BatteryStatusLabel.AutoSize = true;
             this.BatteryStatusLabel.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.BatteryStatusLabel.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.BatteryStatusLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryStatusLabel.ForeColor = System.Drawing.Color.Gray;
             this.BatteryStatusLabel.Location = new System.Drawing.Point(3, 8);
             this.BatteryStatusLabel.Name = "BatteryStatusLabel";
@@ -737,60 +738,60 @@ namespace BatteryNotifier
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.label7.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.label7.Location = new System.Drawing.Point(148, 93);
             this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(134, 27);
+            this.label7.Size = new System.Drawing.Size(161, 20);
             this.label7.TabIndex = 19;
             this.label7.Text = "2 Hour 15  minutes";
             // 
             // label8
             // 
             this.label8.AutoSize = true;
-            this.label8.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.label8.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label8.Location = new System.Drawing.Point(6, 93);
             this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(114, 27);
+            this.label8.Size = new System.Drawing.Size(131, 20);
             this.label8.TabIndex = 18;
             this.label8.Text = "Remaining Time :";
             // 
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.label5.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.label5.Location = new System.Drawing.Point(148, 60);
             this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(88, 27);
+            this.label5.Size = new System.Drawing.Size(104, 20);
             this.label5.TabIndex = 17;
             this.label5.Text = "43760 mWh";
             // 
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.label6.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label6.Location = new System.Drawing.Point(6, 60);
             this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(136, 27);
+            this.label6.Size = new System.Drawing.Size(158, 20);
             this.label6.TabIndex = 16;
             this.label6.Text = "Remaining Capacity :";
             // 
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Font = new System.Drawing.Font("Oswald SemiBold", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.label4.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.label4.Location = new System.Drawing.Point(148, 25);
             this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(88, 27);
+            this.label4.Size = new System.Drawing.Size(104, 20);
             this.label4.TabIndex = 15;
             this.label4.Text = "43760 mWh";
             // 
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.label3.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label3.Location = new System.Drawing.Point(6, 25);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(117, 27);
+            this.label3.Size = new System.Drawing.Size(133, 20);
             this.label3.TabIndex = 14;
             this.label3.Text = "Battery Capacity :";
             // 
@@ -861,7 +862,7 @@ namespace BatteryNotifier
             // label2
             // 
             this.label2.Dock = System.Windows.Forms.DockStyle.Top;
-            this.label2.Font = new System.Drawing.Font("Oswald", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.label2.Location = new System.Drawing.Point(74, 0);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(245, 42);
@@ -934,6 +935,8 @@ namespace BatteryNotifier
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "Battery Notifier";
             this.Activated += new System.EventHandler(this.Dashboard_Activated);
+            this.Deactivate += new System.EventHandler(this.Dashboard_Deactivate);
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Dashboard_FormClosing);
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.tableLayoutPanel5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();

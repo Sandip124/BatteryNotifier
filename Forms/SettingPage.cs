@@ -1,40 +1,43 @@
-﻿using BatteryNotifier.Helpers;
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
+using BatteryNotifier.Helpers;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
-namespace BatteryNotifier
+namespace BatteryNotifier.Forms
 {
-    public partial class SettingPage : Form
+    public partial class SettingPage
     {
-        private Point lastLocation;
-        private bool mouseDown;
+        private readonly Debouncer.Debouncer _debouncer;
+
+        private Point _lastLocation;
+        private bool _mouseDown;
 
         public SettingPage()
         {
             InitializeComponent();
             SetDefaultLocation();
+            _debouncer = new Debouncer.Debouncer();
         }
 
         private void SetDefaultLocation()
         {
-            UIHelper.ShowModal(this, appSetting.Default.showAsModal);
+            this.ShowModal(appSetting.Default.showAsModal);
         }
 
         private void pictureBox1_MouseEnter(object sender, EventArgs e)
         {
-            this.CloseIcon.Image = Properties.Resources.CloseIconHover;
+            CloseIcon.Image = Properties.Resources.CloseIconHover;
         }
 
         private void pictureBox1_MouseLeave(object sender, EventArgs e)
         {
-            this.CloseIcon.Image = Properties.Resources.CloseIcon;
+            CloseIcon.Image = Properties.Resources.CloseIcon;
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
         {
-            this.Close();
+            Close();
         }
 
         private void SettingPage_Load(object sender, EventArgs e)
@@ -45,6 +48,7 @@ namespace BatteryNotifier
 
         private void LoadSettings()
         {
+            SuspendLayout();
             ShowAsWindow.Checked = appSetting.Default.showAsModal;
             DarkModeCheckbox.Checked = appSetting.Default.darkThemeApplied;
 
@@ -57,6 +61,8 @@ namespace BatteryNotifier
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatteryPercentageValue.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatterySoundPath.Text = appSetting.Default.lowBatteryNotificationMusic;
+
+            ResumeLayout();
         }
 
         private void fullBatteryTrackbar_Scroll(object sender, EventArgs e)
@@ -74,12 +80,11 @@ namespace BatteryNotifier
             var fileBrowser = new OpenFileDialog();
             fileBrowser.ShowDialog();
 
-            if (fileBrowser.CheckFileExists)
-            {
-                fullbatterySoundPath.Text = fileBrowser.FileName;
-                appSetting.Default.fullBatteryNotificationMusic = fullbatterySoundPath.Text;
-                appSetting.Default.Save();
-            }
+            if (!fileBrowser.CheckFileExists) return;
+            
+            fullbatterySoundPath.Text = fileBrowser.FileName;
+            appSetting.Default.fullBatteryNotificationMusic = fullbatterySoundPath.Text;
+            appSetting.Default.Save();
         }
 
         private void browseLowBatterySoundButton_Click(object sender, EventArgs e)
@@ -87,13 +92,11 @@ namespace BatteryNotifier
             var fileBrowser = new OpenFileDialog();
             fileBrowser.ShowDialog();
 
-            if (fileBrowser.CheckFileExists)
-            {
-                lowBatterySoundPath.Text = fileBrowser.FileName;
-                appSetting.Default.lowBatteryNotificationMusic = lowBatterySoundPath.Text;
-                appSetting.Default.Save();
-            }
-            
+            if (!fileBrowser.CheckFileExists) return;
+            lowBatterySoundPath.Text = fileBrowser.FileName;
+            appSetting.Default.lowBatteryNotificationMusic = lowBatterySoundPath.Text;
+            appSetting.Default.Save();
+
         }
 
         private void ShowAsWindow_CheckedChanged(object sender, EventArgs e)
@@ -116,14 +119,24 @@ namespace BatteryNotifier
 
         private void fullBatteryTrackbar_ValueChanged(object sender, EventArgs e)
         {
-            appSetting.Default.fullBatteryNotificationValue = fullBatteryTrackbar.Value;
-            appSetting.Default.Save();
+            _debouncer.Debounce(SaveSetting, 500);
+
+            void SaveSetting()
+            {
+                appSetting.Default.fullBatteryNotificationValue = fullBatteryTrackbar.Value;
+                appSetting.Default.Save();
+            }
         }
 
         private void lowBatteryTrackbar_ValueChanged(object sender, EventArgs e)
         {
-            appSetting.Default.lowBatteryNotificationValue = lowBatteryTrackbar.Value;
-            appSetting.Default.Save();
+            _debouncer.Debounce(SaveSetting, 500);
+            void SaveSetting()
+            {
+                appSetting.Default.lowBatteryNotificationValue = lowBatteryTrackbar.Value;
+                appSetting.Default.Save();
+            }
+           
         }
 
         private void SettingPage_Activated(object sender, EventArgs e)
@@ -135,37 +148,40 @@ namespace BatteryNotifier
 
         private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
         {
-            if (appSetting.Default.showAsModal)
-            {
-                mouseDown = true;
-                lastLocation = e.Location;
-            }
+            if (!appSetting.Default.showAsModal) return;
+            
+            _mouseDown = true;
+            _lastLocation = e.Location;
         }
 
         private void AppHeaderTitle_MouseMove(object sender, MouseEventArgs e)
         {
-            if (appSetting.Default.showAsModal)
-            {
-                if (mouseDown)
-                {
-                    var xPosition = Location.X - lastLocation.X + e.X;
-                    var yPosition = Location.Y - lastLocation.Y + e.Y;
-                    Location = new Point(
-                        xPosition, yPosition);
+            if (!appSetting.Default.showAsModal) return;
+            if (!_mouseDown) return;
 
-                    appSetting.Default.WindowPositionX = xPosition;
-                    appSetting.Default.WindowPositionY = yPosition;
-                    appSetting.Default.Save();
-                    Update();
-                }
+            var xPosition = Location.X - _lastLocation.X + e.X;
+            var yPosition = Location.Y - _lastLocation.Y + e.Y;
+            Location = new Point(
+                xPosition, yPosition);
+            Update();
+
+            _debouncer.Debounce(UpdateLocation, 500);
+
+            void UpdateLocation()
+            {
+                appSetting.Default.WindowPositionX = xPosition;
+                appSetting.Default.WindowPositionY = yPosition;
+                appSetting.Default.Save();
             }
+
+           
         }
 
         private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
         {
             if (appSetting.Default.showAsModal)
             {
-                mouseDown = false;
+                _mouseDown = false;
             }
         }
 
@@ -173,14 +189,16 @@ namespace BatteryNotifier
         {
             appSetting.Default.darkThemeApplied = DarkModeCheckbox.Checked;
             appSetting.Default.Save();
-
             ApplyTheme();
+
         }
 
         private void ApplyTheme()
         {
-            if(appSetting.Default.darkThemeApplied)
+            SuspendLayout();
+            if (appSetting.Default.darkThemeApplied)
             {
+                
                 ShowAsWindowPanel.BackColor = Color.FromArgb(20, 20, 20);
                 DarkModelPanel.BackColor = Color.FromArgb(20, 20, 20);
                 SettingHeader.BackColor = Color.Black;
@@ -211,6 +229,7 @@ namespace BatteryNotifier
             }
             else
             {
+
                 ShowAsWindowPanel.BackColor = Color.WhiteSmoke;
                 DarkModelPanel.BackColor = Color.WhiteSmoke;
                 SettingHeader.BackColor = Color.AliceBlue;
@@ -228,12 +247,12 @@ namespace BatteryNotifier
 
                 BatteryPercentageLabel.ForeColor = Color.Black;
                 FullBatterySoundLabel.ForeColor = Color.Black;
-                fullbatterySoundPath.BackColor= Color.White;
+                fullbatterySoundPath.BackColor = Color.White;
                 fullbatterySoundPath.ForeColor = Color.Black;
                 browseFullBatterySoundButton.BackColor = Color.LightGray;
                 browseFullBatterySoundButton.ForeColor = Color.Black;
                 LowBatteryNotificationLabel.ForeColor = Color.Black;
-                LowBatteryPercentageLabel.ForeColor= Color.Black;
+                LowBatteryPercentageLabel.ForeColor = Color.Black;
                 LowBatterySoundLabel.ForeColor = Color.Black;
                 lowBatterySoundPath.BackColor = Color.White;
                 lowBatterySoundPath.ForeColor = Color.Black;
@@ -241,6 +260,17 @@ namespace BatteryNotifier
                 browseLowBatterySoundButton.ForeColor = Color.Black;
 
             }
+            ResumeLayout();
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+
+            if (keyData == (Keys.Escape))
+            {
+                this.Close();
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
         }
     }
 }

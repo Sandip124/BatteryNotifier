@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace BatteryNotifier.Helpers
 {
-    public static class UIHelper
+    public static class UiHelper
     {
         public static void ShowModal(this Form form,bool showAsModal)
         {
