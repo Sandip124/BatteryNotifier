@@ -8,6 +8,8 @@ namespace BatteryNotifier.Forms
 {
     public partial class SettingPage
     {
+        private readonly Debouncer.Debouncer _debouncer;
+
         private Point _lastLocation;
         private bool _mouseDown;
 
@@ -15,6 +17,7 @@ namespace BatteryNotifier.Forms
         {
             InitializeComponent();
             SetDefaultLocation();
+            _debouncer = new Debouncer.Debouncer();
         }
 
         private void SetDefaultLocation()
@@ -116,14 +119,24 @@ namespace BatteryNotifier.Forms
 
         private void fullBatteryTrackbar_ValueChanged(object sender, EventArgs e)
         {
-            appSetting.Default.fullBatteryNotificationValue = fullBatteryTrackbar.Value;
-            appSetting.Default.Save();
+            _debouncer.Debounce(SaveSetting, 500);
+
+            void SaveSetting()
+            {
+                appSetting.Default.fullBatteryNotificationValue = fullBatteryTrackbar.Value;
+                appSetting.Default.Save();
+            }
         }
 
         private void lowBatteryTrackbar_ValueChanged(object sender, EventArgs e)
         {
-            appSetting.Default.lowBatteryNotificationValue = lowBatteryTrackbar.Value;
-            appSetting.Default.Save();
+            _debouncer.Debounce(SaveSetting, 500);
+            void SaveSetting()
+            {
+                appSetting.Default.lowBatteryNotificationValue = lowBatteryTrackbar.Value;
+                appSetting.Default.Save();
+            }
+           
         }
 
         private void SettingPage_Activated(object sender, EventArgs e)
@@ -145,16 +158,23 @@ namespace BatteryNotifier.Forms
         {
             if (!appSetting.Default.showAsModal) return;
             if (!_mouseDown) return;
-            
+
             var xPosition = Location.X - _lastLocation.X + e.X;
             var yPosition = Location.Y - _lastLocation.Y + e.Y;
             Location = new Point(
                 xPosition, yPosition);
-
-            appSetting.Default.WindowPositionX = xPosition;
-            appSetting.Default.WindowPositionY = yPosition;
-            appSetting.Default.Save();
             Update();
+
+            _debouncer.Debounce(UpdateLocation, 500);
+
+            void UpdateLocation()
+            {
+                appSetting.Default.WindowPositionX = xPosition;
+                appSetting.Default.WindowPositionY = yPosition;
+                appSetting.Default.Save();
+            }
+
+           
         }
 
         private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)

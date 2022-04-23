@@ -10,6 +10,7 @@ namespace BatteryNotifier.Forms
 {
     public partial class Dashboard : Form
     {
+        private readonly Debouncer.Debouncer _debouncer;
         private const string SourceUrl = "https://github.com/Sandip124/BatteryNotifier/";
         private readonly Timer _soundPlayingTimer = new();
         private readonly SoundPlayer _batteryNotification = new(Properties.Resources.BatteryFull);
@@ -24,6 +25,7 @@ namespace BatteryNotifier.Forms
             InitializeComponent();
             InitializeContextMenu();
             SetDefaultLocation();
+            _debouncer = new Debouncer.Debouncer();
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -203,7 +205,6 @@ namespace BatteryNotifier.Forms
             }
 
             UpdateBatteryPercentage(status);
-
             UpdateBatteryChargeRemainingStatus(status);
         }
 
@@ -277,19 +278,20 @@ namespace BatteryNotifier.Forms
             };
             exitAppToolStripItem.Click += ExitApp_Click!;
 
-            ToolStripMenuItem viewDeveloperToolStripItem = new("ViewDevelopers")
+            ToolStripMenuItem viewSourceToolStripItem = new("ViewSource")
             {
-                Text = "View Developer",
-                Name = "ViewDeveloper",
+                Text = "View Source",
+                Name = "ViewSource",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = new Font("Microsoft Sans Serif", 10.2F)
             };
-            viewDeveloperToolStripItem.Click += ViewSource_Click!;
+            viewSourceToolStripItem.Click += ViewSource_Click!;
 
-            contextMenu.Items.Add(viewDeveloperToolStripItem);
+            contextMenu.Items.Add(viewSourceToolStripItem);
             contextMenu.Items.Add(exitAppToolStripItem);
 
             BatteryNotifierIcon.ContextMenuStrip = contextMenu;
+            Update();
         }
 
 
@@ -452,15 +454,21 @@ namespace BatteryNotifier.Forms
         {
             if (!appSetting.Default.showAsModal) return;
             if (!_mouseDown) return;
+
             var xPosition = Location.X - _lastLocation.X + e.X;
             var yPosition = Location.Y - _lastLocation.Y + e.Y;
             Location = new Point(
                 xPosition, yPosition);
-
-            appSetting.Default.WindowPositionX = xPosition;
-            appSetting.Default.WindowPositionY= yPosition;
-            appSetting.Default.Save();
             Update();
+
+            _debouncer.Debounce(UpdateLocation, 500);
+
+            void UpdateLocation()
+            {
+                appSetting.Default.WindowPositionX = xPosition;
+                appSetting.Default.WindowPositionY = yPosition;
+                appSetting.Default.Save();
+            }
         }
 
         private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
@@ -496,6 +504,12 @@ namespace BatteryNotifier.Forms
                 this.Close();
             }
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void Dashboard_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            BatteryStatusTimer.Stop();
+            _soundPlayingTimer.Stop();
         }
     }
 }
