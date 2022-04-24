@@ -24,7 +24,7 @@ namespace BatteryNotifier.Forms
         {
             InitializeComponent();
             InitializeContextMenu();
-            SetDefaultLocation();
+            RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
         }
 
@@ -259,9 +259,9 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void SetDefaultLocation()
+        private void RenderFormArea()
         {
-            this.ShowModal(appSetting.Default.showAsModal);
+            this.RenderFormPosition(appSetting.Default.showAsModal);
         }
 
         private void InitializeContextMenu()
@@ -407,7 +407,7 @@ namespace BatteryNotifier.Forms
             BatteryStatusTimer.Start();
             RefreshBatteryStatus();
             LoadNotificationSetting();
-            SetDefaultLocation();
+            RenderFormArea();
             ApplyTheme();
             UpdateChargingAnimation();
         }

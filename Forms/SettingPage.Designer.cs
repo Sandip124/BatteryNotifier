@@ -411,7 +411,7 @@ namespace BatteryNotifier.Forms
             // 
             this.DarkModeLabel.AutoSize = true;
             this.DarkModeLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.DarkModeLabel.Location = new System.Drawing.Point(37, 3);
+            this.DarkModeLabel.Location = new System.Drawing.Point(37, 7);
             this.DarkModeLabel.Name = "DarkModeLabel";
             this.DarkModeLabel.Size = new System.Drawing.Size(87, 20);
             this.DarkModeLabel.TabIndex = 16;
@@ -454,11 +454,12 @@ namespace BatteryNotifier.Forms
             // 
             this.ShowAsWindowLabel.AutoSize = true;
             this.ShowAsWindowLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.ShowAsWindowLabel.Location = new System.Drawing.Point(37, 2);
+            this.ShowAsWindowLabel.Location = new System.Drawing.Point(37, 7);
             this.ShowAsWindowLabel.Name = "ShowAsWindowLabel";
             this.ShowAsWindowLabel.Size = new System.Drawing.Size(126, 20);
             this.ShowAsWindowLabel.TabIndex = 16;
             this.ShowAsWindowLabel.Text = "Show as window";
+            this.ShowAsWindowLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // ShowAsWindow
             // 

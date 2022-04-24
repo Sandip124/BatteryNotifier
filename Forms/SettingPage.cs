@@ -16,13 +16,13 @@ namespace BatteryNotifier.Forms
         public SettingPage()
         {
             InitializeComponent();
-            SetDefaultLocation();
+            RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
         }
 
-        private void SetDefaultLocation()
+        private void RenderFormArea()
         {
-            this.ShowModal(appSetting.Default.showAsModal);
+            this.RenderFormPosition(appSetting.Default.showAsModal);
         }
 
         private void pictureBox1_MouseEnter(object sender, EventArgs e)
@@ -142,7 +142,7 @@ namespace BatteryNotifier.Forms
         private void SettingPage_Activated(object sender, EventArgs e)
         {
             LoadSettings();
-            SetDefaultLocation();
+            RenderFormArea();
             ApplyTheme();
         }
 

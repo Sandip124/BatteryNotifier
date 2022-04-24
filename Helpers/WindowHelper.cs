@@ -4,16 +4,20 @@ using System.Windows.Forms;
 
 namespace BatteryNotifier.Helpers
 {
-    public static class UiHelper
+    public static class WindowHelper
     {
-        public static void ShowModal(this Form form,bool showAsModal)
+        public static void RenderFormPosition(this Form form,bool showAsModal)
         {
+            Rectangle workingArea = Screen.GetWorkingArea(form);
+
+            var xPosition = Setting.appSetting.Default.WindowPositionX;
+            var yPosition = Setting.appSetting.Default.WindowPositionY;
+
+            form.SuspendLayout();
             if (!showAsModal)
             {
-                Rectangle workingArea = Screen.GetWorkingArea(form);
                 form.Location = new Point(workingArea.Right - form.Size.Width,
                                           workingArea.Bottom - form.Size.Height);
-                form.Update();
                 form.ShowInTaskbar = false;
                 form.ShowIcon = false;
             }
@@ -21,13 +25,10 @@ namespace BatteryNotifier.Helpers
             {
                 form.ShowInTaskbar = true;
                 form.ShowIcon = true;
-
-                var xPosition = Setting.appSetting.Default.WindowPositionX;
-                var yPosition = Setting.appSetting.Default.WindowPositionY;
-
                 form.Location = new Point(xPosition, yPosition);
-                form.StartPosition = FormStartPosition.CenterScreen;
             }
+            form.ResumeLayout();
+            form.Update();
         }
     }
 }
