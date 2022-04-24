@@ -225,7 +225,7 @@ namespace BatteryNotifier.Forms
             }
             else
             {
-                RemainingTime.Text = $@"{status.BatteryLifePercent * 100} % remaining";
+                RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100,0)} % remaining";
             }
         }
 
