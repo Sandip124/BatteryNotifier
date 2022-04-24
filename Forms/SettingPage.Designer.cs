@@ -218,6 +218,7 @@ namespace BatteryNotifier.Forms
             // 
             // lowBatteryPercentageValue
             // 
+            this.lowBatteryPercentageValue.Enabled = false;
             this.lowBatteryPercentageValue.Location = new System.Drawing.Point(311, 240);
             this.lowBatteryPercentageValue.Name = "lowBatteryPercentageValue";
             this.lowBatteryPercentageValue.ReadOnly = true;
@@ -262,6 +263,7 @@ namespace BatteryNotifier.Forms
             // 
             // fullbatteryPercentageValue
             // 
+            this.fullbatteryPercentageValue.Enabled = false;
             this.fullbatteryPercentageValue.Location = new System.Drawing.Point(311, 79);
             this.fullbatteryPercentageValue.Name = "fullbatteryPercentageValue";
             this.fullbatteryPercentageValue.ReadOnly = true;

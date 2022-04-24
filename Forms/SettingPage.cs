@@ -226,6 +226,10 @@ namespace BatteryNotifier.Forms
                 lowBatterySoundPath.ForeColor = Color.White;
                 browseLowBatterySoundButton.BackColor = Color.FromArgb(20, 20, 20);
                 browseLowBatterySoundButton.ForeColor = Color.White;
+                lowBatteryPercentageValue.BackColor = Color.FromArgb(20, 20, 20);
+                lowBatteryPercentageValue.ForeColor = Color.White;
+                fullbatteryPercentageValue.BackColor = Color.FromArgb(20, 20, 20);
+                fullbatteryPercentageValue.ForeColor = Color.White;
             }
             else
             {
@@ -258,6 +262,10 @@ namespace BatteryNotifier.Forms
                 lowBatterySoundPath.ForeColor = Color.Black;
                 browseLowBatterySoundButton.BackColor = Color.LightGray;
                 browseLowBatterySoundButton.ForeColor = Color.Black;
+                lowBatteryPercentageValue.BackColor = Color.LightGray;
+                lowBatteryPercentageValue.ForeColor = Color.Black;
+                fullbatteryPercentageValue.BackColor = Color.LightGray;
+                fullbatteryPercentageValue.ForeColor = Color.Black;
 
             }
             ResumeLayout();
