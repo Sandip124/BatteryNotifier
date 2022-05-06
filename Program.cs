@@ -36,13 +36,19 @@ namespace BatteryNotifier
                 return;
             }
 
-            Task.Run(() => InitUpdateManager()).Wait();
+#if RELEASE
 
+            Task.Run(() => InitUpdateManager()).Wait();
             UpdateTask.Start();
+            var version = UpdateManager.CurrentlyInstalledVersion().ToString();
+#else
+            var version = UtilityHelper.AssemblyVersion;
+
+#endif
+            
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            var version = UpdateManager.CurrentlyInstalledVersion().ToString();
             Application.Run(new Dashboard(version));
 
         }

@@ -142,5 +142,17 @@ namespace BatteryNotifier.Setting {
                 this["WindowPositionY"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool LaunchAtStartup {
+            get {
+                return ((bool)(this["LaunchAtStartup"]));
+            }
+            set {
+                this["LaunchAtStartup"] = value;
+            }
+        }
     }
 }
