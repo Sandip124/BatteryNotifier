@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>BatteryNotifier</id>
+    <version>1.6.0</version>
+    <title>Battery Notifier</title>
+    <authors>Sandip Chaudhary</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <projectUrl>https://github.com/Sandip124/BatteryNotifier</projectUrl>
+    <description>A beautiful app for  notifiying when battery is full.</description>
+    <releaseNotes>Summary of changes made in this release of the package.</releaseNotes>
+    <copyright>$copyright$</copyright>
+    <tags>Tag1 Tag2</tags>
+  </metadata>
+
+	<files>
+		<file src="bin\Release\net6.0-windows\**" target="lib\net45" />
+	</files>
+</package>
