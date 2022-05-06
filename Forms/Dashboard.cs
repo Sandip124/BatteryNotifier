@@ -5,6 +5,7 @@ using System.Media;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
+using Microsoft.Win32;
 using Squirrel;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
@@ -27,7 +28,7 @@ namespace BatteryNotifier.Forms
             InitializeContextMenu();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
-            VersionLabel.Text = version;
+            VersionLabel.Text = $"v {version}";
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -514,5 +515,9 @@ namespace BatteryNotifier.Forms
             BatteryStatusTimer.Stop();
             _soundPlayingTimer.Stop();
         }
+
+
+
+
     }
 }

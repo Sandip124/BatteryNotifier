@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using BatteryNotifier.Helpers;
+using Microsoft.Win32;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Forms
@@ -44,6 +45,8 @@ namespace BatteryNotifier.Forms
         {
             LoadSettings();
             ApplyTheme();
+
+            HandleStartup();
         }
 
         private void LoadSettings()
@@ -51,6 +54,7 @@ namespace BatteryNotifier.Forms
             SuspendLayout();
             ShowAsWindow.Checked = appSetting.Default.showAsModal;
             DarkModeCheckbox.Checked = appSetting.Default.darkThemeApplied;
+            launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
 
             showFullBatteryNotification.Checked = appSetting.Default.fullBatteryNotification;
             fullBatteryTrackbar.Value = appSetting.Default.fullBatteryNotificationValue;
@@ -201,6 +205,7 @@ namespace BatteryNotifier.Forms
                 
                 ShowAsWindowPanel.BackColor = Color.FromArgb(20, 20, 20);
                 DarkModelPanel.BackColor = Color.FromArgb(20, 20, 20);
+                LaunchAtStartupPanel.BackColor = Color.FromArgb(20, 20, 20);
                 SettingHeader.BackColor = Color.Black;
                 AppHeaderTitle.ForeColor = Color.White;
                 SettingContainer.BackColor = Color.FromArgb(30, 30, 30);
@@ -209,6 +214,7 @@ namespace BatteryNotifier.Forms
 
                 ShowAsWindowLabel.ForeColor = Color.White;
                 DarkModeLabel.ForeColor = Color.White;
+                LaunchAtStartUpLabel.ForeColor = Color.White;
 
                 fullBatteryTrackbar.BackColor = Color.FromArgb(30, 30, 30);
                 lowBatteryTrackbar.BackColor = Color.FromArgb(30, 30, 30);
@@ -236,6 +242,7 @@ namespace BatteryNotifier.Forms
 
                 ShowAsWindowPanel.BackColor = Color.WhiteSmoke;
                 DarkModelPanel.BackColor = Color.WhiteSmoke;
+                LaunchAtStartupPanel.BackColor = Color.WhiteSmoke;
                 SettingHeader.BackColor = Color.AliceBlue;
                 AppHeaderTitle.ForeColor = Color.Black;
                 SettingContainer.BackColor = Color.White;
@@ -248,6 +255,7 @@ namespace BatteryNotifier.Forms
 
                 ShowAsWindowLabel.ForeColor = Color.Black;
                 DarkModeLabel.ForeColor = Color.Black;
+                LaunchAtStartUpLabel.ForeColor = Color.Black;
 
                 BatteryPercentageLabel.ForeColor = Color.Black;
                 FullBatterySoundLabel.ForeColor = Color.Black;
@@ -280,5 +288,44 @@ namespace BatteryNotifier.Forms
             }
             return base.ProcessCmdKey(ref msg, keyData);
         }
+
+        private void launchAtStartup_CheckedChanged(object sender, EventArgs e)
+        {
+            HandleStartup();
+        }
+
+        private void HandleStartup()
+        {
+            var windowsStartupAppsKey = OpenWindowsStartupAppsKey();
+            var screenCropperStartupValue = windowsStartupAppsKey.GetValue("BatteryNotifier");
+
+            if (launchAtStartup.Checked)
+            {
+                if (screenCropperStartupValue == null)
+                {
+                    windowsStartupAppsKey.SetValue("BatteryNotifier", Application.ExecutablePath);
+                }
+            }
+            else
+            {
+                if (screenCropperStartupValue != null)
+                {
+                    windowsStartupAppsKey.DeleteValue("BatteryNotifier");
+                }
+            }
+            appSetting.Default.LaunchAtStartup = launchAtStartup.Checked;
+            appSetting.Default.Save();
+        }
+
+        /// <summary>
+        /// Opens and returns a key where Windows stores paths to executables that load on startup
+        /// </summary>
+        private RegistryKey OpenWindowsStartupAppsKey()
+        {
+            var currentUserRegKey = Registry.CurrentUser;
+
+            return currentUserRegKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+        }
+
     }
 }
