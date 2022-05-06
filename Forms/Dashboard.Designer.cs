@@ -67,6 +67,7 @@ namespace BatteryNotifier.Forms
             this.AppHeaderTitle = new System.Windows.Forms.Label();
             this.CloseIcon = new System.Windows.Forms.PictureBox();
             this.AppFooter = new System.Windows.Forms.Panel();
+            this.VersionLabel = new System.Windows.Forms.Label();
             this.ViewSourceLabel = new System.Windows.Forms.Label();
             this.SettingLabel = new System.Windows.Forms.Label();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
@@ -94,7 +95,6 @@ namespace BatteryNotifier.Forms
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.BatteryStatusTimer = new System.Windows.Forms.Timer(this.components);
             this.ShowNotificationTimer = new System.Windows.Forms.Timer(this.components);
-            this.VersionLabel = new System.Windows.Forms.Label();
             this.tableLayoutPanel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.tableLayoutPanel6.SuspendLayout();
@@ -329,7 +329,7 @@ namespace BatteryNotifier.Forms
             this.BatteryStatus.Name = "BatteryStatus";
             this.BatteryStatus.Size = new System.Drawing.Size(270, 38);
             this.BatteryStatus.TabIndex = 2;
-            this.BatteryStatus.Text = "😕 I Dont know";
+            this.BatteryStatus.Text = "Charging status";
             this.BatteryStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // BatteryDetailGroupBox
@@ -598,6 +598,18 @@ namespace BatteryNotifier.Forms
             this.AppFooter.Name = "AppFooter";
             this.AppFooter.Size = new System.Drawing.Size(408, 40);
             this.AppFooter.TabIndex = 8;
+            // 
+            // VersionLabel
+            // 
+            this.VersionLabel.AutoSize = true;
+            this.VersionLabel.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.VersionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
+            this.VersionLabel.Location = new System.Drawing.Point(252, 9);
+            this.VersionLabel.Name = "VersionLabel";
+            this.VersionLabel.Size = new System.Drawing.Size(70, 20);
+            this.VersionLabel.TabIndex = 23;
+            this.VersionLabel.Text = "Version";
             // 
             // ViewSourceLabel
             // 
@@ -918,18 +930,6 @@ namespace BatteryNotifier.Forms
             // 
             this.ShowNotificationTimer.Interval = 30000;
             this.ShowNotificationTimer.Tick += new System.EventHandler(this.ShowNotificationTimer_Tick);
-            // 
-            // VersionLabel
-            // 
-            this.VersionLabel.AutoSize = true;
-            this.VersionLabel.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.VersionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.VersionLabel.Location = new System.Drawing.Point(255, 9);
-            this.VersionLabel.Name = "VersionLabel";
-            this.VersionLabel.Size = new System.Drawing.Size(70, 20);
-            this.VersionLabel.TabIndex = 23;
-            this.VersionLabel.Text = "Version";
             // 
             // Dashboard
             // 

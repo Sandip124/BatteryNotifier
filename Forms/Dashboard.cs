@@ -427,6 +427,7 @@ namespace BatteryNotifier.Forms
                 AppFooter.BackColor = Color.Black;
                 SettingLabel.ForeColor = Color.FromArgb(160,160,160);
                 ViewSourceLabel.ForeColor = Color.FromArgb(160, 160, 160);
+                VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
             }
             else
             {
@@ -439,6 +440,7 @@ namespace BatteryNotifier.Forms
                 AppFooter.BackColor = Color.AliceBlue;
                 SettingLabel.ForeColor = Color.Black;
                 ViewSourceLabel.ForeColor = Color.Black;
+                VersionLabel.ForeColor = Color.Black;
             }
             ResumeLayout();
         }
