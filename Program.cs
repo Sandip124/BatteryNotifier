@@ -28,9 +28,6 @@ namespace BatteryNotifier
             if (ProcessHelper.IsAlreadyRunning())
             {
                 MessageBox.Show("Battery Notifier is already running!");
-                //activate main page
-                Process[] proc = Process.GetProcessesByName("BatteryNotifier");
-                Interaction.AppActivate(proc[0].MainWindowTitle);
                 return;
             }
 
@@ -40,7 +37,8 @@ namespace BatteryNotifier
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Dashboard());
+            var version = UpdateManager.CurrentlyInstalledVersion().ToString();
+            Application.Run(new Dashboard(version));
 
         }
 
