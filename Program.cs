@@ -6,11 +6,13 @@ using BatteryNotifier.Forms;
 using System.Threading.Tasks;
 using Squirrel;
 using BatteryNotifier.Helpers;
+using System.Threading;
 
 namespace BatteryNotifier
 {
     internal static class Program
     {
+        private static string appGuid = "D2ED1949-C00C-4F99-87DD-B5A6CE56A733";
 
         private static Task UpdateTask = new(CheckForUpdates);
 
@@ -25,9 +27,12 @@ namespace BatteryNotifier
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledExpection);
             AppDomain.CurrentDomain.ProcessExit += OnExit;
 
-            if (ProcessHelper.IsAlreadyRunning())
+            using Mutex mutex = new Mutex(false, "Global\\" + appGuid);
+            if (!mutex.WaitOne(0, false))
             {
                 MessageBox.Show("Battery Notifier is already running!");
+                Process[] proc = Process.GetProcessesByName("BatteryNotifier");
+                Interaction.AppActivate(proc[0].MainWindowTitle);
                 return;
             }
 
