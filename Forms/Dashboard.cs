@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Media;
 using System.Windows.Forms;
+using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
@@ -11,7 +12,6 @@ namespace BatteryNotifier.Forms
     public partial class Dashboard : Form
     {
         private readonly Debouncer.Debouncer _debouncer;
-        private const string SourceUrl = "https://github.com/Sandip124/BatteryNotifier/";
         private readonly Timer _soundPlayingTimer = new();
         private readonly SoundPlayer _batteryNotification = new(Properties.Resources.BatteryFull);
 
@@ -307,7 +307,7 @@ namespace BatteryNotifier.Forms
 
         private static void ViewDeveloperUrl()
         {
-            ProcessStartInfo sInfo = new(SourceUrl)
+            ProcessStartInfo sInfo = new(Constant.SourceUrl)
             {
                 UseShellExecute = true
             };
