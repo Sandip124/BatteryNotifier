@@ -5,6 +5,7 @@ using System.Media;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
+using Squirrel;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Forms
@@ -20,17 +21,18 @@ namespace BatteryNotifier.Forms
 
         private const int DefaultMusicPlayingDuration = 15;
 
-        public Dashboard()
+        public Dashboard(string version)
         {
             InitializeComponent();
             InitializeContextMenu();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
+            VersionLabel.Text = version;
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
         {
-            Hide();
+            Hide(); 
         }
 
         private void CloseIcon_MouseEnter(object sender, EventArgs e)
@@ -56,7 +58,6 @@ namespace BatteryNotifier.Forms
             _soundPlayingTimer.Enabled = true;
             _soundPlayingTimer.Interval = 1000;
             _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
-
             this.ResumeLayout();
         }
 

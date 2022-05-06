@@ -94,6 +94,7 @@ namespace BatteryNotifier.Forms
             this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.BatteryStatusTimer = new System.Windows.Forms.Timer(this.components);
             this.ShowNotificationTimer = new System.Windows.Forms.Timer(this.components);
+            this.VersionLabel = new System.Windows.Forms.Label();
             this.tableLayoutPanel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
             this.tableLayoutPanel6.SuspendLayout();
@@ -354,7 +355,7 @@ namespace BatteryNotifier.Forms
             // 
             this.RemainingTime.AutoSize = true;
             this.RemainingTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.RemainingTime.Location = new System.Drawing.Point(195, 93);
+            this.RemainingTime.Location = new System.Drawing.Point(143, 93);
             this.RemainingTime.Name = "RemainingTime";
             this.RemainingTime.Size = new System.Drawing.Size(161, 20);
             this.RemainingTime.TabIndex = 19;
@@ -374,7 +375,7 @@ namespace BatteryNotifier.Forms
             // 
             this.CurrentCapacityValue.AutoSize = true;
             this.CurrentCapacityValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.CurrentCapacityValue.Location = new System.Drawing.Point(195, 60);
+            this.CurrentCapacityValue.Location = new System.Drawing.Point(150, 60);
             this.CurrentCapacityValue.Name = "CurrentCapacityValue";
             this.CurrentCapacityValue.Size = new System.Drawing.Size(104, 20);
             this.CurrentCapacityValue.TabIndex = 17;
@@ -394,7 +395,7 @@ namespace BatteryNotifier.Forms
             // 
             this.BatteryCapacity.AutoSize = true;
             this.BatteryCapacity.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.BatteryCapacity.Location = new System.Drawing.Point(195, 25);
+            this.BatteryCapacity.Location = new System.Drawing.Point(200, 25);
             this.BatteryCapacity.Name = "BatteryCapacity";
             this.BatteryCapacity.Size = new System.Drawing.Size(104, 20);
             this.BatteryCapacity.TabIndex = 15;
@@ -587,6 +588,7 @@ namespace BatteryNotifier.Forms
             // AppFooter
             // 
             this.AppFooter.BackColor = System.Drawing.Color.AliceBlue;
+            this.AppFooter.Controls.Add(this.VersionLabel);
             this.AppFooter.Controls.Add(this.ViewSourceLabel);
             this.AppFooter.Controls.Add(this.SettingLabel);
             this.AppFooter.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -603,7 +605,7 @@ namespace BatteryNotifier.Forms
             this.ViewSourceLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.ViewSourceLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.ViewSourceLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.ViewSourceLabel.Location = new System.Drawing.Point(183, 9);
+            this.ViewSourceLabel.Location = new System.Drawing.Point(140, 9);
             this.ViewSourceLabel.Name = "ViewSourceLabel";
             this.ViewSourceLabel.Size = new System.Drawing.Size(109, 20);
             this.ViewSourceLabel.TabIndex = 22;
@@ -618,7 +620,7 @@ namespace BatteryNotifier.Forms
             this.SettingLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.SettingLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.SettingLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.SettingLabel.Location = new System.Drawing.Point(113, 9);
+            this.SettingLabel.Location = new System.Drawing.Point(70, 9);
             this.SettingLabel.Name = "SettingLabel";
             this.SettingLabel.Size = new System.Drawing.Size(67, 20);
             this.SettingLabel.TabIndex = 21;
@@ -917,6 +919,18 @@ namespace BatteryNotifier.Forms
             this.ShowNotificationTimer.Interval = 30000;
             this.ShowNotificationTimer.Tick += new System.EventHandler(this.ShowNotificationTimer_Tick);
             // 
+            // VersionLabel
+            // 
+            this.VersionLabel.AutoSize = true;
+            this.VersionLabel.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.VersionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
+            this.VersionLabel.Location = new System.Drawing.Point(255, 9);
+            this.VersionLabel.Name = "VersionLabel";
+            this.VersionLabel.Size = new System.Drawing.Size(70, 20);
+            this.VersionLabel.TabIndex = 23;
+            this.VersionLabel.Text = "Version";
+            // 
             // Dashboard
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
@@ -1047,5 +1061,6 @@ namespace BatteryNotifier.Forms
         private Panel AppFooter;
         private Label SettingLabel;
         private Label BatteryCapacity;
+        private Label VersionLabel;
     }
 }
