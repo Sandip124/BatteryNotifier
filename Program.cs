@@ -100,7 +100,8 @@ namespace BatteryNotifier
             }
             finally
             {
-                (MainForm as Dashboard)?.UpdateStatus(string.Empty);
+              Thread.Sleep(3000);
+              (MainForm as Dashboard)?.UpdateStatus(string.Empty);
             }
         }
 
