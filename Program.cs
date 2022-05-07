@@ -30,9 +30,6 @@ namespace BatteryNotifier
             using Mutex mutex = new Mutex(false, "Global\\" + appGuid);
             if (!mutex.WaitOne(0, false))
             {
-                MessageBox.Show("Battery Notifier is already running!");
-                Process[] proc = Process.GetProcessesByName("BatteryNotifier");
-                Interaction.AppActivate(proc[0].MainWindowTitle);
                 return;
             }
 
