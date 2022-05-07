@@ -6,8 +6,6 @@ using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
 using BatteryNotifier.Properties;
-using Microsoft.Win32;
-using Squirrel;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Forms
@@ -16,7 +14,7 @@ namespace BatteryNotifier.Forms
     {
         private readonly Debouncer.Debouncer _debouncer;
         private readonly Timer _soundPlayingTimer = new();
-        private readonly SoundPlayer _batteryNotification = new(Properties.Resources.BatteryFull);
+        private readonly SoundPlayer _batteryNotification = new(Resources.BatteryFull);
 
         private Point _lastLocation;
         private bool _mouseDown;
@@ -163,7 +161,7 @@ namespace BatteryNotifier.Forms
             }
             else
             {
-                _batteryNotification.Stream = Properties.Resources.BatteryFull;
+                _batteryNotification.Stream = Resources.BatteryFull;
             }
             _batteryNotification.PlayLooping();
         }
@@ -201,12 +199,12 @@ namespace BatteryNotifier.Forms
             {
                 _isCharging = false;
                 BatteryStatus.Text = "💀 Are you running on main power !!";
-                BatteryImage.Image = Properties.Resources.Unknown;
+                BatteryImage.Image = Resources.Unknown;
             }else if(status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "😇 Only God knows about this battery !!";
-                this.BatteryImage.Image = Properties.Resources.Unknown;
+                this.BatteryImage.Image = Resources.Unknown;
             }
 
             UpdateBatteryPercentage(status);
@@ -216,8 +214,8 @@ namespace BatteryNotifier.Forms
         private void UpdateChargingAnimation()
         {
             BatteryImage.Image = appSetting.Default.darkThemeApplied
-                ? Properties.Resources.ChargingBatteryAnimatedDark
-                : Properties.Resources.ChargingBatteryAnimated;
+                ? Resources.ChargingBatteryAnimatedDark
+                : Resources.ChargingBatteryAnimated;
         }
 
         private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
@@ -245,22 +243,22 @@ namespace BatteryNotifier.Forms
             if (powerStatus.BatteryLifePercent >= .96)
             {
                 BatteryStatus.Text = "🔋 Full Battery";
-                BatteryImage.Image = Properties.Resources.Full;
+                BatteryImage.Image = Resources.Full;
             }
             else if (powerStatus.BatteryLifePercent >= .4 && powerStatus.BatteryLifePercent <= .96)
             {
                 BatteryStatus.Text = "🔋 Sufficient Battery";
-                BatteryImage.Image = Properties.Resources.Normal;
+                BatteryImage.Image = Resources.Normal;
             }
             else if (powerStatus.BatteryLifePercent < .4)
             {
                 BatteryStatus.Text = "⚠ Battery Critical";
-                BatteryImage.Image = Properties.Resources.Critical;
+                BatteryImage.Image = Resources.Critical;
             }
             else if (powerStatus.BatteryLifePercent <= .14)
             {
                 BatteryStatus.Text = "🔌 Battery Low";
-                BatteryImage.Image = Properties.Resources.Low;
+                BatteryImage.Image = Resources.Low;
             }
         }
 

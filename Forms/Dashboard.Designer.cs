@@ -583,7 +583,7 @@ namespace BatteryNotifier.Forms
             this.CloseIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.CloseIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.CloseIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.CloseIcon;
+            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.closeIconLight;
             this.CloseIcon.Location = new System.Drawing.Point(372, 0);
             this.CloseIcon.Margin = new System.Windows.Forms.Padding(0);
             this.CloseIcon.Name = "CloseIcon";
@@ -875,7 +875,6 @@ namespace BatteryNotifier.Forms
             // 
             this.pictureBox6.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox6.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox6.Image = global::BatteryNotifier.Properties.Resources.settings;
             this.pictureBox6.Location = new System.Drawing.Point(391, 3);
             this.pictureBox6.Name = "pictureBox6";
             this.pictureBox6.Size = new System.Drawing.Size(34, 36);
