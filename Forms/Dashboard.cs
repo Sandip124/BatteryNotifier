@@ -21,13 +21,22 @@ namespace BatteryNotifier.Forms
 
         private const int DefaultMusicPlayingDuration = 15;
 
-        public Dashboard(string version)
+        public Dashboard()
         {
             InitializeComponent();
             InitializeContextMenu();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
-            VersionLabel.Text = $"v {version}";
+        }
+
+        public void SetVersion(string ver)
+        {
+            VersionLabel.Text = $"v {ver}";
+        }
+
+        public void UpdateStatus(string status)
+        {
+            CheckingForUpdateLabel.Text = status;
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -211,13 +220,29 @@ namespace BatteryNotifier.Forms
             UpdateBatteryChargeRemainingStatus(status);
         }
 
+        bool isRenderingChargingStatusForDarkMode = false;
+        bool isRenderingChargingStatusForLightMode = false;
+
         private void UpdateChargingAnimation()
         {
             if (!_isCharging) return;
 
-            BatteryImage.Image = appSetting.Default.darkThemeApplied
-                ? Resources.ChargingBatteryAnimatedDark
-                : Resources.ChargingBatteryAnimated;
+            if (appSetting.Default.darkThemeApplied)
+            {
+                if(!isRenderingChargingStatusForDarkMode)
+                {
+                    BatteryImage.Image = Resources.ChargingBatteryAnimatedDark;
+                    isRenderingChargingStatusForDarkMode = true;
+                }
+            }
+            else
+            {
+                if(!isRenderingChargingStatusForLightMode)
+                {
+                    BatteryImage.Image = Resources.ChargingBatteryAnimated;
+                    isRenderingChargingStatusForLightMode = true;
+                }
+            }
         }
 
         private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
@@ -433,6 +458,7 @@ namespace BatteryNotifier.Forms
                 ViewSourceLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 CloseIcon.Image = Resources.closeIconDark;
+                CheckingForUpdateLabel.ForeColor = Color.White;
             }
             else
             {
@@ -447,6 +473,7 @@ namespace BatteryNotifier.Forms
                 ViewSourceLabel.ForeColor = Color.Black;
                 VersionLabel.ForeColor = Color.Black;
                 CloseIcon.Image = Resources.closeIconLight;
+                CheckingForUpdateLabel.ForeColor = Color.Black;
             }
             ResumeLayout();
         }
