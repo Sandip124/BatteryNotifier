@@ -5,6 +5,7 @@ using System.Media;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
+using BatteryNotifier.Properties;
 using Microsoft.Win32;
 using Squirrel;
 using appSetting = BatteryNotifier.Setting.appSetting;
@@ -38,12 +39,23 @@ namespace BatteryNotifier.Forms
 
         private void CloseIcon_MouseEnter(object sender, EventArgs e)
         {
-            this.CloseIcon.Image = Properties.Resources.CloseIconHover;
+            CloseIcon.Image = Resources.closeIconHoverState;
+            CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
         private void CloseIcon_MouseLeave(object sender, EventArgs e)
         {
-            this.CloseIcon.Image = Properties.Resources.CloseIcon;
+            CloseIcon.BackColor = Color.Transparent;
+
+            if (appSetting.Default.darkThemeApplied)
+            {
+                CloseIcon.Image = Resources.closeIconDark;
+            }
+            else
+            {
+                CloseIcon.Image = Resources.closeIconLight;
+            }
+           
         }
 
         private void Dashboard_Load(object sender, EventArgs e)
@@ -172,38 +184,29 @@ namespace BatteryNotifier.Forms
         {
             var status = SystemInformation.PowerStatus;
 
-            switch (status.PowerLineStatus)
+            if (status.PowerLineStatus == PowerLineStatus.Online && status.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery && _isCharging == false)
             {
-                case PowerLineStatus.Online when _isCharging == false:
-                    _isCharging = true;
-                    BatteryStatus.Text = "Charging";
-                    BatteryStatus.ForeColor = Color.ForestGreen;
-                    UpdateChargingAnimation();
-                    break;
-                case PowerLineStatus.Offline or PowerLineStatus.Unknown:
-                    _isCharging = false;
-                    BatteryStatus.Text = "Not Charging";
-                    BatteryStatus.ForeColor = Color.Gray;
-                    SetBatteryChargeStatus(status);
-                    break;
-                default:
-                {
-                    switch (status.BatteryChargeStatus)
-                    {
-                        case BatteryChargeStatus.NoSystemBattery:
-                            _isCharging = false;
-                            BatteryStatus.Text = "Looks like you are running on main power !!";
-                            BatteryImage.Image = Properties.Resources.Unknown;
-                            break;
-                        case BatteryChargeStatus.Unknown:
-                            _isCharging = false;
-                            BatteryStatus.Text = "Only God knows about this battery !!";
-                            this.BatteryImage.Image = Properties.Resources.Unknown;
-                            break;
-                    }
-
-                    break;
-                }
+                _isCharging = true;
+                BatteryStatus.Text = "⚡ Charging";
+                BatteryStatus.ForeColor = Color.ForestGreen;
+                UpdateChargingAnimation();
+            }
+            else if (status.PowerLineStatus == PowerLineStatus.Offline || status.PowerLineStatus == PowerLineStatus.Unknown)
+            {
+                _isCharging = false;
+                BatteryStatus.Text = "🙄 Not Charging";
+                BatteryStatus.ForeColor = Color.Gray;
+                SetBatteryChargeStatus(status);
+            }else if(status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+            {
+                _isCharging = false;
+                BatteryStatus.Text = "💀 Are you running on main power !!";
+                BatteryImage.Image = Properties.Resources.Unknown;
+            }else if(status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
+            {
+                _isCharging = false;
+                BatteryStatus.Text = "😇 Only God knows about this battery !!";
+                this.BatteryImage.Image = Properties.Resources.Unknown;
             }
 
             UpdateBatteryPercentage(status);
@@ -241,22 +244,22 @@ namespace BatteryNotifier.Forms
         {
             if (powerStatus.BatteryLifePercent >= .96)
             {
-                BatteryStatus.Text = "Full Battery";
+                BatteryStatus.Text = "🔋 Full Battery";
                 BatteryImage.Image = Properties.Resources.Full;
             }
             else if (powerStatus.BatteryLifePercent >= .4 && powerStatus.BatteryLifePercent <= .96)
             {
-                BatteryStatus.Text = "Sufficient Battery";
+                BatteryStatus.Text = "🔋 Sufficient Battery";
                 BatteryImage.Image = Properties.Resources.Normal;
             }
             else if (powerStatus.BatteryLifePercent < .4)
             {
-                BatteryStatus.Text = "Battery Critical";
+                BatteryStatus.Text = "⚠ Battery Critical";
                 BatteryImage.Image = Properties.Resources.Critical;
             }
             else if (powerStatus.BatteryLifePercent <= .14)
             {
-                BatteryStatus.Text = "Battery Low";
+                BatteryStatus.Text = "🔌 Battery Low";
                 BatteryImage.Image = Properties.Resources.Low;
             }
         }
@@ -429,6 +432,7 @@ namespace BatteryNotifier.Forms
                 SettingLabel.ForeColor = Color.FromArgb(160,160,160);
                 ViewSourceLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
+                CloseIcon.Image = Resources.closeIconDark;
             }
             else
             {
@@ -442,6 +446,7 @@ namespace BatteryNotifier.Forms
                 SettingLabel.ForeColor = Color.Black;
                 ViewSourceLabel.ForeColor = Color.Black;
                 VersionLabel.ForeColor = Color.Black;
+                CloseIcon.Image = Resources.closeIconLight;
             }
             ResumeLayout();
         }

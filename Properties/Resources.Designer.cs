@@ -102,9 +102,39 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap closeIconDark {
+            get {
+                object obj = ResourceManager.GetObject("closeIconDark", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap CloseIconHover {
             get {
                 object obj = ResourceManager.GetObject("CloseIconHover", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap closeIconHoverState {
+            get {
+                object obj = ResourceManager.GetObject("closeIconHoverState", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap closeIconLight {
+            get {
+                object obj = ResourceManager.GetObject("closeIconLight", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

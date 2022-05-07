@@ -2,6 +2,7 @@
 using System.Drawing;
 using System.Windows.Forms;
 using BatteryNotifier.Helpers;
+using BatteryNotifier.Properties;
 using Microsoft.Win32;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
@@ -28,12 +29,22 @@ namespace BatteryNotifier.Forms
 
         private void pictureBox1_MouseEnter(object sender, EventArgs e)
         {
-            CloseIcon.Image = Properties.Resources.CloseIconHover;
+            CloseIcon.Image = Resources.closeIconHoverState;
+            CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
         private void pictureBox1_MouseLeave(object sender, EventArgs e)
         {
-            CloseIcon.Image = Properties.Resources.CloseIcon;
+            CloseIcon.BackColor = Color.Transparent;
+
+            if (appSetting.Default.darkThemeApplied)
+            {
+                CloseIcon.Image = Resources.closeIconDark;
+            }
+            else
+            {
+                CloseIcon.Image = Resources.closeIconLight;
+            }
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -236,6 +247,8 @@ namespace BatteryNotifier.Forms
                 lowBatteryPercentageValue.ForeColor = Color.White;
                 fullbatteryPercentageValue.BackColor = Color.FromArgb(20, 20, 20);
                 fullbatteryPercentageValue.ForeColor = Color.White;
+
+                CloseIcon.Image = Resources.closeIconDark;
             }
             else
             {
@@ -274,6 +287,8 @@ namespace BatteryNotifier.Forms
                 lowBatteryPercentageValue.ForeColor = Color.Black;
                 fullbatteryPercentageValue.BackColor = Color.LightGray;
                 fullbatteryPercentageValue.ForeColor = Color.Black;
+
+                CloseIcon.Image = Resources.closeIconLight;
 
             }
             ResumeLayout();
