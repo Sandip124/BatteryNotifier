@@ -211,13 +211,29 @@ namespace BatteryNotifier.Forms
             UpdateBatteryChargeRemainingStatus(status);
         }
 
+        bool isRenderingChargingStatusForDarkMode = false;
+        bool isRenderingChargingStatusForLightMode = false;
+
         private void UpdateChargingAnimation()
         {
             if (!_isCharging) return;
 
-            BatteryImage.Image = appSetting.Default.darkThemeApplied
-                ? Resources.ChargingBatteryAnimatedDark
-                : Resources.ChargingBatteryAnimated;
+            if (appSetting.Default.darkThemeApplied)
+            {
+                if(!isRenderingChargingStatusForDarkMode)
+                {
+                    BatteryImage.Image = Resources.ChargingBatteryAnimatedDark;
+                    isRenderingChargingStatusForDarkMode = true;
+                }
+            }
+            else
+            {
+                if(!isRenderingChargingStatusForLightMode)
+                {
+                    BatteryImage.Image = Resources.ChargingBatteryAnimated;
+                    isRenderingChargingStatusForLightMode = true;
+                }
+            }
         }
 
         private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
