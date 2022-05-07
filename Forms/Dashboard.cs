@@ -21,13 +21,22 @@ namespace BatteryNotifier.Forms
 
         private const int DefaultMusicPlayingDuration = 15;
 
-        public Dashboard(string version)
+        public Dashboard()
         {
             InitializeComponent();
             InitializeContextMenu();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
-            VersionLabel.Text = $"v {version}";
+        }
+
+        public void SetVersion(string ver)
+        {
+            VersionLabel.Text = $"v {ver}";
+        }
+
+        public void UpdateStatus(string status)
+        {
+            CheckingForUpdateLabel.Text = status;
         }
 
         private void CloseIcon_Click(object sender, EventArgs e)
@@ -449,6 +458,7 @@ namespace BatteryNotifier.Forms
                 ViewSourceLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 CloseIcon.Image = Resources.closeIconDark;
+                CheckingForUpdateLabel.ForeColor = Color.White;
             }
             else
             {
@@ -463,6 +473,7 @@ namespace BatteryNotifier.Forms
                 ViewSourceLabel.ForeColor = Color.Black;
                 VersionLabel.ForeColor = Color.Black;
                 CloseIcon.Image = Resources.closeIconLight;
+                CheckingForUpdateLabel.ForeColor = Color.Black;
             }
             ResumeLayout();
         }

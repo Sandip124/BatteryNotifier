@@ -18,6 +18,12 @@ namespace BatteryNotifier
 
         public static UpdateManager UpdateManager;
 
+        private static Form MainForm;
+
+        private static bool IsUpdateInProgress = false;
+
+        private static string version = UtilityHelper.AssemblyVersion;
+
         /// <summary>
         ///  The main entry point for the application.
         /// </summary>
@@ -33,20 +39,23 @@ namespace BatteryNotifier
                 return;
             }
 
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+
+            MainForm = new Dashboard();
+            var dashboard = MainForm as Dashboard;
 #if RELEASE
 
             Task.Run(() => InitUpdateManager()).Wait();
             UpdateTask.Start();
-            var version = UpdateManager.CurrentlyInstalledVersion().ToString();
-#else
-            var version = UtilityHelper.AssemblyVersion;
-
+            version = UpdateManager.CurrentlyInstalledVersion().ToString();
+            dashboard?.UpdateStatus("Checking for update ...");
+            IsUpdateInProgress = true;
 #endif
-            
 
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Dashboard(version));
+            dashboard?.SetVersion(version);
+
+            Application.Run(dashboard);
 
         }
 
@@ -56,7 +65,7 @@ namespace BatteryNotifier
             {
                 UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceUrl}");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 MessageBox.Show("Could not initialize update manager!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -74,12 +83,13 @@ namespace BatteryNotifier
 
                     if (releaseEntry != null)
                     {
-                        MessageBox.Show($"Battery Notifier version {releaseEntry.Version.ToString()} has been downloaded!" +
-                            $"\nUpdates will take effect after restrat!", "Update", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        if (!IsUpdateInProgress) return;
+                        IsUpdateInProgress = false;
+                        (MainForm as Dashboard)?.UpdateStatus($"Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 MessageBox.Show("Could not update app!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
