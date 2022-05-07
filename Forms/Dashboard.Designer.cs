@@ -626,12 +626,12 @@ namespace BatteryNotifier.Forms
             // 
             this.VersionLabel.AutoSize = true;
             this.VersionLabel.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
+            this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.VersionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.VersionLabel.Location = new System.Drawing.Point(333, 15);
             this.VersionLabel.Name = "VersionLabel";
             this.VersionLabel.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.VersionLabel.Size = new System.Drawing.Size(47, 13);
+            this.VersionLabel.Size = new System.Drawing.Size(51, 16);
             this.VersionLabel.TabIndex = 23;
             this.VersionLabel.Text = "v 1.0.0";
             // 
