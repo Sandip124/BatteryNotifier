@@ -213,6 +213,8 @@ namespace BatteryNotifier.Forms
 
         private void UpdateChargingAnimation()
         {
+            if (!_isCharging) return;
+
             BatteryImage.Image = appSetting.Default.darkThemeApplied
                 ? Resources.ChargingBatteryAnimatedDark
                 : Resources.ChargingBatteryAnimated;
