@@ -92,9 +92,9 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap CloseIcon {
+        internal static System.Drawing.Bitmap closeIconDark {
             get {
-                object obj = ResourceManager.GetObject("CloseIcon", resourceCulture);
+                object obj = ResourceManager.GetObject("closeIconDark", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -102,9 +102,19 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap CloseIconHover {
+        internal static System.Drawing.Bitmap closeIconHoverState {
             get {
-                object obj = ResourceManager.GetObject("CloseIconHover", resourceCulture);
+                object obj = ResourceManager.GetObject("closeIconHoverState", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap closeIconLight {
+            get {
+                object obj = ResourceManager.GetObject("closeIconLight", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -165,16 +175,6 @@ namespace BatteryNotifier.Properties {
         internal static System.Drawing.Bitmap Normal {
             get {
                 object obj = ResourceManager.GetObject("Normal", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap settings {
-            get {
-                object obj = ResourceManager.GetObject("settings", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

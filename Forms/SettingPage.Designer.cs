@@ -150,7 +150,7 @@ namespace BatteryNotifier.Forms
             // 
             this.CloseIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.CloseIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.CloseIcon;
+            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.closeIconLight;
             this.CloseIcon.Location = new System.Drawing.Point(372, 0);
             this.CloseIcon.Margin = new System.Windows.Forms.Padding(0);
             this.CloseIcon.Name = "CloseIcon";

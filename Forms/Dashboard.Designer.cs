@@ -299,12 +299,13 @@ namespace BatteryNotifier.Forms
             this.tableLayoutPanel11.Controls.Add(this.BatteryPercentage, 0, 0);
             this.tableLayoutPanel11.Controls.Add(this.BatteryStatus, 0, 1);
             this.tableLayoutPanel11.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tableLayoutPanel11.Location = new System.Drawing.Point(123, 3);
+            this.tableLayoutPanel11.Location = new System.Drawing.Point(120, 0);
+            this.tableLayoutPanel11.Margin = new System.Windows.Forms.Padding(0);
             this.tableLayoutPanel11.Name = "tableLayoutPanel11";
             this.tableLayoutPanel11.RowCount = 2;
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 59.57447F));
             this.tableLayoutPanel11.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 40.42553F));
-            this.tableLayoutPanel11.Size = new System.Drawing.Size(276, 94);
+            this.tableLayoutPanel11.Size = new System.Drawing.Size(282, 100);
             this.tableLayoutPanel11.TabIndex = 2;
             // 
             // BatteryPercentage
@@ -312,22 +313,25 @@ namespace BatteryNotifier.Forms
             this.BatteryPercentage.AutoSize = true;
             this.BatteryPercentage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.BatteryPercentage.Font = new System.Drawing.Font("Microsoft Sans Serif", 36F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
-            this.BatteryPercentage.Location = new System.Drawing.Point(3, 0);
+            this.BatteryPercentage.Location = new System.Drawing.Point(0, 0);
+            this.BatteryPercentage.Margin = new System.Windows.Forms.Padding(0);
             this.BatteryPercentage.Name = "BatteryPercentage";
-            this.BatteryPercentage.Size = new System.Drawing.Size(270, 56);
+            this.BatteryPercentage.Size = new System.Drawing.Size(282, 59);
             this.BatteryPercentage.TabIndex = 0;
             this.BatteryPercentage.Text = "0%";
             this.BatteryPercentage.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
             // BatteryStatus
             // 
+            this.BatteryStatus.AutoEllipsis = true;
             this.BatteryStatus.AutoSize = true;
             this.BatteryStatus.Dock = System.Windows.Forms.DockStyle.Fill;
             this.BatteryStatus.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryStatus.ForeColor = System.Drawing.Color.Gray;
-            this.BatteryStatus.Location = new System.Drawing.Point(3, 56);
+            this.BatteryStatus.Location = new System.Drawing.Point(0, 59);
+            this.BatteryStatus.Margin = new System.Windows.Forms.Padding(0);
             this.BatteryStatus.Name = "BatteryStatus";
-            this.BatteryStatus.Size = new System.Drawing.Size(270, 38);
+            this.BatteryStatus.Size = new System.Drawing.Size(282, 41);
             this.BatteryStatus.TabIndex = 2;
             this.BatteryStatus.Text = "Charging status";
             this.BatteryStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -353,6 +357,7 @@ namespace BatteryNotifier.Forms
             // 
             // RemainingTime
             // 
+            this.RemainingTime.AutoEllipsis = true;
             this.RemainingTime.AutoSize = true;
             this.RemainingTime.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.RemainingTime.Location = new System.Drawing.Point(143, 93);
@@ -363,6 +368,7 @@ namespace BatteryNotifier.Forms
             // 
             // RemainingTimeLabel
             // 
+            this.RemainingTimeLabel.AutoEllipsis = true;
             this.RemainingTimeLabel.AutoSize = true;
             this.RemainingTimeLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.RemainingTimeLabel.Location = new System.Drawing.Point(6, 93);
@@ -373,6 +379,7 @@ namespace BatteryNotifier.Forms
             // 
             // CurrentCapacityValue
             // 
+            this.CurrentCapacityValue.AutoEllipsis = true;
             this.CurrentCapacityValue.AutoSize = true;
             this.CurrentCapacityValue.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.CurrentCapacityValue.Location = new System.Drawing.Point(150, 60);
@@ -383,6 +390,7 @@ namespace BatteryNotifier.Forms
             // 
             // RemainingCapacityLabel
             // 
+            this.RemainingCapacityLabel.AutoEllipsis = true;
             this.RemainingCapacityLabel.AutoSize = true;
             this.RemainingCapacityLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.RemainingCapacityLabel.Location = new System.Drawing.Point(6, 60);
@@ -393,6 +401,7 @@ namespace BatteryNotifier.Forms
             // 
             // BatteryCapacity
             // 
+            this.BatteryCapacity.AutoEllipsis = true;
             this.BatteryCapacity.AutoSize = true;
             this.BatteryCapacity.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.BatteryCapacity.Location = new System.Drawing.Point(200, 25);
@@ -403,6 +412,7 @@ namespace BatteryNotifier.Forms
             // 
             // BatteryCapacityLabel
             // 
+            this.BatteryCapacityLabel.AutoEllipsis = true;
             this.BatteryCapacityLabel.AutoSize = true;
             this.BatteryCapacityLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.BatteryCapacityLabel.Location = new System.Drawing.Point(6, 25);
@@ -573,7 +583,7 @@ namespace BatteryNotifier.Forms
             this.CloseIcon.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Center;
             this.CloseIcon.Cursor = System.Windows.Forms.Cursors.Hand;
             this.CloseIcon.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.CloseIcon;
+            this.CloseIcon.Image = global::BatteryNotifier.Properties.Resources.closeIconLight;
             this.CloseIcon.Location = new System.Drawing.Point(372, 0);
             this.CloseIcon.Margin = new System.Windows.Forms.Padding(0);
             this.CloseIcon.Name = "CloseIcon";
@@ -865,7 +875,6 @@ namespace BatteryNotifier.Forms
             // 
             this.pictureBox6.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.pictureBox6.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pictureBox6.Image = global::BatteryNotifier.Properties.Resources.settings;
             this.pictureBox6.Location = new System.Drawing.Point(391, 3);
             this.pictureBox6.Name = "pictureBox6";
             this.pictureBox6.Size = new System.Drawing.Size(34, 36);
