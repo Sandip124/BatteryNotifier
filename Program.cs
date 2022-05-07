@@ -1,6 +1,4 @@
-using Microsoft.VisualBasic;
 using System;
-using System.Diagnostics;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
 using System.Threading.Tasks;
@@ -77,21 +75,32 @@ namespace BatteryNotifier
             {
                 var updateInfo = await UpdateManager.CheckForUpdate();
 
+                if (!IsUpdateInProgress) return;
+
                 if (updateInfo.ReleasesToApply.Count > 0)
                 {
                     var releaseEntry = await UpdateManager.UpdateApp();
 
                     if (releaseEntry != null)
                     {
-                        if (!IsUpdateInProgress) return;
                         IsUpdateInProgress = false;
                         (MainForm as Dashboard)?.UpdateStatus($"Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
                     }
+                }
+                else
+                {
+                   
+                    IsUpdateInProgress = false;
+                    (MainForm as Dashboard)?.UpdateStatus("No Update Available");
                 }
             }
             catch (Exception)
             {
                 MessageBox.Show("Could not update app!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                (MainForm as Dashboard)?.UpdateStatus(string.Empty);
             }
         }
 
