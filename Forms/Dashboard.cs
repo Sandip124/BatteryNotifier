@@ -498,11 +498,6 @@ namespace BatteryNotifier.Forms
             _soundPlayingTimer.Stop();
         }
 
-        private void Dashboard_Deactivate(object sender, EventArgs e)
-        {
-            BatteryStatusTimer.Stop();
-        }
-
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
 
@@ -512,15 +507,5 @@ namespace BatteryNotifier.Forms
             }
             return base.ProcessCmdKey(ref msg, keyData);
         }
-
-        private void Dashboard_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            BatteryStatusTimer.Stop();
-            _soundPlayingTimer.Stop();
-        }
-
-
-
-
     }
 }
