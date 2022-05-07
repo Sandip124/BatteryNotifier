@@ -958,8 +958,6 @@ namespace BatteryNotifier.Forms
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "Battery Notifier";
             this.Activated += new System.EventHandler(this.Dashboard_Activated);
-            this.Deactivate += new System.EventHandler(this.Dashboard_Deactivate);
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Dashboard_FormClosing);
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.tableLayoutPanel5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
