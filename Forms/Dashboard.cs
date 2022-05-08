@@ -204,24 +204,37 @@ namespace BatteryNotifier.Forms
                 BatteryStatus.Text = "🙄 Not Charging";
                 BatteryStatus.ForeColor = Color.Gray;
                 SetBatteryChargeStatus(status);
-            }else if(status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+
+                ResetIsChargingStatus();
+
+            }
+            else if(status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "💀 Are you running on main power !!";
                 BatteryImage.Image = Resources.Unknown;
-            }else if(status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
+                ResetIsChargingStatus();
+            }
+            else if(status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "😇 Only God knows about this battery !!";
                 this.BatteryImage.Image = Resources.Unknown;
+                ResetIsChargingStatus();
             }
 
             UpdateBatteryPercentage(status);
             UpdateBatteryChargeRemainingStatus(status);
         }
 
-        bool isRenderingChargingStatusForDarkMode = false;
-        bool isRenderingChargingStatusForLightMode = false;
+        private void ResetIsChargingStatus()
+        {
+            isRenderingChargingStatusForDarkMode = false;
+            isRenderingChargingStatusForLightMode = false;
+        }
+
+        bool isRenderingChargingStatusForDarkMode;
+        bool isRenderingChargingStatusForLightMode;
 
         private void UpdateChargingAnimation()
         {
@@ -267,6 +280,8 @@ namespace BatteryNotifier.Forms
 
         private void SetBatteryChargeStatus(PowerStatus powerStatus)
         {
+            if (_isCharging) return;
+            
             if (powerStatus.BatteryLifePercent >= .96)
             {
                 BatteryStatus.Text = "🔋 Full Battery";
