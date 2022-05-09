@@ -24,7 +24,7 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-            InitializeContextMenu();
+            ApplyTheme();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
         }
@@ -70,13 +70,14 @@ namespace BatteryNotifier.Forms
             this.SuspendLayout();
             RefreshBatteryStatus();
             LoadNotificationSetting();
-            ApplyTheme();
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
 
             _soundPlayingTimer.Enabled = true;
             _soundPlayingTimer.Interval = 1000;
             _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+
+            InitializeContextMenu();
             this.ResumeLayout();
         }
 
@@ -453,15 +454,17 @@ namespace BatteryNotifier.Forms
             RefreshBatteryStatus();
             LoadNotificationSetting();
             RenderFormArea();
-            ApplyTheme();
             UpdateChargingAnimation();
         }
 
+        bool isLightThemeRendered = false;
+        bool isDarkThemeRendered = false;
         private void ApplyTheme()
         {
             SuspendLayout();
             if (appSetting.Default.darkThemeApplied)
             {
+                 if (isDarkThemeRendered) return;
                 AppContainer.BackColor = Color.FromArgb(30, 30, 30);
                 AppHeader.BackColor = Color.Black;
                 AppHeaderTitle.ForeColor = Color.White;
@@ -473,9 +476,12 @@ namespace BatteryNotifier.Forms
                 VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 CloseIcon.Image = Resources.closeIconDark;
                 CheckingForUpdateLabel.ForeColor = Color.White;
+                isDarkThemeRendered = true;
+                isLightThemeRendered = false;
             }
             else
             {
+                if (isLightThemeRendered) return;
                 AppContainer.BackColor = Color.White;
                 AppHeader.BackColor = Color.AliceBlue;
                 AppHeaderTitle.ForeColor = Color.Black;
@@ -487,6 +493,8 @@ namespace BatteryNotifier.Forms
                 VersionLabel.ForeColor = Color.Black;
                 CloseIcon.Image = Resources.closeIconLight;
                 CheckingForUpdateLabel.ForeColor = Color.Black;
+                isDarkThemeRendered = false;
+                isLightThemeRendered = true;
             }
             ResumeLayout();
         }

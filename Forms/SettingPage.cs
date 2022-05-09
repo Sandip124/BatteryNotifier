@@ -18,6 +18,7 @@ namespace BatteryNotifier.Forms
         public SettingPage()
         {
             InitializeComponent();
+            ApplyTheme();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
         }
@@ -50,19 +51,17 @@ namespace BatteryNotifier.Forms
         private void CloseIcon_Click(object sender, EventArgs e)
         {
             Close();
+            Dispose();
         }
 
         private void SettingPage_Load(object sender, EventArgs e)
         {
             LoadSettings();
-            ApplyTheme();
-
             HandleStartup();
         }
 
         private void LoadSettings()
         {
-            SuspendLayout();
             ShowAsWindow.Checked = appSetting.Default.showAsModal;
             DarkModeCheckbox.Checked = appSetting.Default.darkThemeApplied;
             launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
@@ -76,8 +75,6 @@ namespace BatteryNotifier.Forms
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatteryPercentageValue.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatterySoundPath.Text = appSetting.Default.lowBatteryNotificationMusic;
-
-            ResumeLayout();
         }
 
         private void fullBatteryTrackbar_Scroll(object sender, EventArgs e)
@@ -156,9 +153,9 @@ namespace BatteryNotifier.Forms
 
         private void SettingPage_Activated(object sender, EventArgs e)
         {
+            ApplyTheme();
             LoadSettings();
             RenderFormArea();
-            ApplyTheme();
         }
 
         private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
@@ -205,15 +202,15 @@ namespace BatteryNotifier.Forms
             appSetting.Default.darkThemeApplied = DarkModeCheckbox.Checked;
             appSetting.Default.Save();
             ApplyTheme();
-
         }
 
+        bool isLightThemeRendered = false;
+        bool isDarkThemeRendered = false;
         private void ApplyTheme()
         {
-            SuspendLayout();
             if (appSetting.Default.darkThemeApplied)
             {
-                
+                if (isDarkThemeRendered) return;
                 ShowAsWindowPanel.BackColor = Color.FromArgb(20, 20, 20);
                 DarkModelPanel.BackColor = Color.FromArgb(20, 20, 20);
                 LaunchAtStartupPanel.BackColor = Color.FromArgb(20, 20, 20);
@@ -249,10 +246,13 @@ namespace BatteryNotifier.Forms
                 fullbatteryPercentageValue.ForeColor = Color.White;
 
                 CloseIcon.Image = Resources.closeIconDark;
+
+                isDarkThemeRendered = true;
+                isLightThemeRendered = false;
             }
             else
             {
-
+                if (isLightThemeRendered) return;
                 ShowAsWindowPanel.BackColor = Color.WhiteSmoke;
                 DarkModelPanel.BackColor = Color.WhiteSmoke;
                 LaunchAtStartupPanel.BackColor = Color.WhiteSmoke;
@@ -290,8 +290,10 @@ namespace BatteryNotifier.Forms
 
                 CloseIcon.Image = Resources.closeIconLight;
 
+                isDarkThemeRendered = false;
+                isLightThemeRendered = true;
+
             }
-            ResumeLayout();
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
