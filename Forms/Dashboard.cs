@@ -70,7 +70,6 @@ namespace BatteryNotifier.Forms
             this.SuspendLayout();
             RefreshBatteryStatus();
             LoadNotificationSetting();
-            RenderBatteryInfo();
             ApplyTheme();
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
@@ -79,13 +78,6 @@ namespace BatteryNotifier.Forms
             _soundPlayingTimer.Interval = 1000;
             _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
             this.ResumeLayout();
-        }
-
-        private void RenderBatteryInfo()
-        {
-            // the battery detail is hardcoded for now.
-            BatteryCapacity.Text = "4760 mWh";
-            CurrentCapacityValue.Text = "3680 mWh";
         }
 
         private readonly CustomTimer _timer = new();
@@ -466,7 +458,6 @@ namespace BatteryNotifier.Forms
                 AppHeader.BackColor = Color.Black;
                 AppHeaderTitle.ForeColor = Color.White;
                 BatteryPercentage.ForeColor = Color.White;
-                BatteryDetailGroupBox.ForeColor = Color.White;
                 NotificationSettingGroupBox.ForeColor = Color.White;
                 AppFooter.BackColor = Color.Black;
                 SettingLabel.ForeColor = Color.FromArgb(160,160,160);
@@ -481,7 +472,6 @@ namespace BatteryNotifier.Forms
                 AppHeader.BackColor = Color.AliceBlue;
                 AppHeaderTitle.ForeColor = Color.Black;
                 BatteryPercentage.ForeColor = Color.Black;
-                BatteryDetailGroupBox.ForeColor = Color.Black;
                 NotificationSettingGroupBox.ForeColor = Color.Black;
                 AppFooter.BackColor = Color.AliceBlue;
                 SettingLabel.ForeColor = Color.Black;

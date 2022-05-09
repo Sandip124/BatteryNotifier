@@ -565,7 +565,6 @@ namespace BatteryNotifier.Forms
         #endregion
 
         private TableLayoutPanel SettingContainer;
-        private TableLayoutPanel tableLayoutPanel2;
         private Panel panel1;
         private PictureBox CloseIcon;
         private Label AppHeaderTitle;
