@@ -353,8 +353,15 @@ namespace BatteryNotifier.Forms
 
         private void BatteryNotifierIcon_Click(object sender, EventArgs e)
         {
-            Show();
-            Activate();
+            if (this.Visible)
+            {
+                Hide();
+            }
+            else
+            {
+                Show();
+                Activate();
+            }
         }
 
         private void BatteryStatusTimer_Tick(object sender, EventArgs e)
@@ -379,6 +386,7 @@ namespace BatteryNotifier.Forms
 
         private void OpenSettingPage()
         {
+
             Hide();
             var settingPage = new SettingPage();
             settingPage.ShowDialog();
