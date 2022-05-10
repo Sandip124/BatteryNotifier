@@ -615,8 +615,6 @@ namespace BatteryNotifier.Forms
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        private static string version = UtilityHelper.AssemblyVersion;
-
         public void VersionLabel_Click(object? sender, EventArgs e)
         {
             TryUpdate();
@@ -624,13 +622,19 @@ namespace BatteryNotifier.Forms
 
         private void TryUpdate()
         {
+            try
+            {
 #if RELEASE
-            Task.Run(() => InitUpdateManager(this)).Wait();
-            Task.Run(() => CheckForUpdates(this));
-            version = UpdateManager.CurrentlyInstalledVersion().ToString();
-            UpdateStatus("Checking for update ...");
-            IsUpdateInProgress = true;
+                Task.Run(() => InitUpdateManager(this)).Wait();
+                Task.Run(() => CheckForUpdates(this));
+                UpdateStatus("Checking for update ...");
+                IsUpdateInProgress = true;
 #endif
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
         
 
@@ -678,9 +682,11 @@ namespace BatteryNotifier.Forms
             catch (Exception)
             {
                 dashboard?.UpdateStatus("💀 Could not update app!");
+                throw;
             }
             finally
             {
+                IsUpdateInProgress = false;
                 Thread.Sleep(5000);
                 dashboard.UpdateStatus(string.Empty);
             }
