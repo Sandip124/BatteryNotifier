@@ -24,7 +24,7 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-            InitializeContextMenu();
+            ApplyTheme();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
         }
@@ -70,22 +70,46 @@ namespace BatteryNotifier.Forms
             this.SuspendLayout();
             RefreshBatteryStatus();
             LoadNotificationSetting();
-            RenderBatteryInfo();
-            ApplyTheme();
             BatteryStatusTimer.Enabled = true;
             ShowNotificationTimer.Enabled = true;
 
-            _soundPlayingTimer.Enabled = true;
-            _soundPlayingTimer.Interval = 1000;
-            _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+            ConfigureTimer();
+            AttachEventListeners();
+
+            InitializeContextMenu();
             this.ResumeLayout();
         }
 
-        private void RenderBatteryInfo()
+        private void ConfigureTimer()
         {
-            // the battery detail is hardcoded for now.
-            BatteryCapacity.Text = "4760 mWh";
-            CurrentCapacityValue.Text = "3680 mWh";
+            _soundPlayingTimer.Enabled = true;
+            _soundPlayingTimer.Interval = 1000;
+
+            this.ShowNotificationTimer.Interval = 30000;
+
+        }
+
+        private void AttachEventListeners()
+        {
+
+            CloseIcon.Click += CloseIcon_Click;
+            CloseIcon.MouseEnter += CloseIcon_MouseEnter;
+            CloseIcon.MouseLeave += CloseIcon_MouseLeave;
+
+            ViewSourceLabel.Click += ViewSourceLabel_Click;
+            ViewSourceLabel.MouseEnter += ViewSourceLabel_MouseEnter;
+            ViewSourceLabel.MouseLeave += ViewSourceLabel_MouseLeave;
+
+            SettingLabel.Click += SettingLabel_Click;
+            SettingLabel.MouseEnter += SettingLabel_MouseEnter;
+            SettingLabel.MouseLeave += SettingLabel_MouseLeave;
+
+            BatteryStatusTimer.Tick += BatteryStatusTimer_Tick;
+            ShowNotificationTimer.Tick += ShowNotificationTimer_Tick;
+            _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
+
+            FullBatteryNotificationCheckbox.CheckedChanged += FullBatteryNotificationCheckbox_CheckStateChanged;
+            LowBatteryNotificationCheckbox.CheckedChanged += LowBatteryNotificationCheckbox_CheckStateChanged;
         }
 
         private readonly CustomTimer _timer = new();
@@ -268,14 +292,14 @@ namespace BatteryNotifier.Forms
             }
             else
             {
-                RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100,0)} % remaining";
+                RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100,0)}% remaining";
             }
         }
 
         private void UpdateBatteryPercentage(PowerStatus status)
         {
             var powerPercent = (int)(status.BatteryLifePercent * 100);
-            BatteryPercentage.Text = $@"{(powerPercent <= 100 ? powerPercent.ToString() : "0")} %";
+            BatteryPercentage.Text = $@"{(powerPercent <= 100 ? powerPercent.ToString() : "0")}%";
         }
 
         private void SetBatteryChargeStatus(PowerStatus powerStatus)
@@ -361,8 +385,15 @@ namespace BatteryNotifier.Forms
 
         private void BatteryNotifierIcon_Click(object sender, EventArgs e)
         {
-            Show();
-            Activate();
+            if (this.Visible)
+            {
+                Hide();
+            }
+            else
+            {
+                Show();
+                Activate();
+            }
         }
 
         private void BatteryStatusTimer_Tick(object sender, EventArgs e)
@@ -373,11 +404,15 @@ namespace BatteryNotifier.Forms
         private void FullBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
         {
             RenderCheckboxState(FullBatteryNotificationCheckbox, FullBatteryNotificationCheckbox.Checked);
+            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
+            appSetting.Default.Save();
         }
 
         private void LowBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
         {
             RenderCheckboxState(LowBatteryNotificationCheckbox, LowBatteryNotificationCheckbox.Checked);
+            appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
+            appSetting.Default.Save();
         }
 
         private void ShowNotificationTimer_Tick(object sender, EventArgs e)
@@ -387,9 +422,12 @@ namespace BatteryNotifier.Forms
 
         private void OpenSettingPage()
         {
+
             Hide();
             var settingPage = new SettingPage();
             settingPage.ShowDialog();
+            ResetRenderingState();
+            ApplyTheme();
             Show();
         }
 
@@ -435,38 +473,28 @@ namespace BatteryNotifier.Forms
             label.ForeColor = appSetting.Default.darkThemeApplied ? Color.FromArgb(160, 160, 160) : Color.FromArgb(50, 50, 50);
         }
 
-        private void FullBatteryNotificationCheckbox_CheckedChanged(object sender, EventArgs e)
-        {
-            appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
-            appSetting.Default.Save();
-        }
-
-        private void LowBatteryNotificationCheckbox_CheckedChanged(object sender, EventArgs e)
-        {
-            appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
-            appSetting.Default.Save();
-        }
-
         private void Dashboard_Activated(object sender, EventArgs e)
         {
             BatteryStatusTimer.Start();
             RefreshBatteryStatus();
             LoadNotificationSetting();
             RenderFormArea();
-            ApplyTheme();
             UpdateChargingAnimation();
         }
 
+        bool isLightThemeRendered = false;
+        bool isDarkThemeRendered = false;
         private void ApplyTheme()
         {
             SuspendLayout();
             if (appSetting.Default.darkThemeApplied)
             {
+                 if (isDarkThemeRendered) return;
                 AppContainer.BackColor = Color.FromArgb(30, 30, 30);
                 AppHeader.BackColor = Color.Black;
                 AppHeaderTitle.ForeColor = Color.White;
+                RemainingTime.ForeColor = Color.White;
                 BatteryPercentage.ForeColor = Color.White;
-                BatteryDetailGroupBox.ForeColor = Color.White;
                 NotificationSettingGroupBox.ForeColor = Color.White;
                 AppFooter.BackColor = Color.Black;
                 SettingLabel.ForeColor = Color.FromArgb(160,160,160);
@@ -474,14 +502,17 @@ namespace BatteryNotifier.Forms
                 VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 CloseIcon.Image = Resources.closeIconDark;
                 CheckingForUpdateLabel.ForeColor = Color.White;
+                isDarkThemeRendered = true;
+                isLightThemeRendered = false;
             }
             else
             {
+                if (isLightThemeRendered) return;
                 AppContainer.BackColor = Color.White;
                 AppHeader.BackColor = Color.AliceBlue;
                 AppHeaderTitle.ForeColor = Color.Black;
+                RemainingTime.ForeColor = Color.Black;
                 BatteryPercentage.ForeColor = Color.Black;
-                BatteryDetailGroupBox.ForeColor = Color.Black;
                 NotificationSettingGroupBox.ForeColor = Color.Black;
                 AppFooter.BackColor = Color.AliceBlue;
                 SettingLabel.ForeColor = Color.Black;
@@ -489,8 +520,16 @@ namespace BatteryNotifier.Forms
                 VersionLabel.ForeColor = Color.Black;
                 CloseIcon.Image = Resources.closeIconLight;
                 CheckingForUpdateLabel.ForeColor = Color.Black;
+                isDarkThemeRendered = false;
+                isLightThemeRendered = true;
             }
             ResumeLayout();
+        }
+
+        public void ResetRenderingState()
+        {
+            isDarkThemeRendered = false;
+            isLightThemeRendered = false;
         }
 
         private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)

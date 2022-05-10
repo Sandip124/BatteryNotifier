@@ -18,6 +18,7 @@ namespace BatteryNotifier.Forms
         public SettingPage()
         {
             InitializeComponent();
+            ApplyTheme();
             RenderFormArea();
             _debouncer = new Debouncer.Debouncer();
         }
@@ -27,13 +28,13 @@ namespace BatteryNotifier.Forms
             this.RenderFormPosition(appSetting.Default.showAsModal);
         }
 
-        private void pictureBox1_MouseEnter(object sender, EventArgs e)
+        private void CloseIcon_MouseEnter(object sender, EventArgs e)
         {
             CloseIcon.Image = Resources.closeIconHoverState;
             CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
-        private void pictureBox1_MouseLeave(object sender, EventArgs e)
+        private void CloseIcon_MouseLeave(object sender, EventArgs e)
         {
             CloseIcon.BackColor = Color.Transparent;
 
@@ -55,14 +56,39 @@ namespace BatteryNotifier.Forms
         private void SettingPage_Load(object sender, EventArgs e)
         {
             LoadSettings();
-            ApplyTheme();
-
             HandleStartup();
+
+            AttachEventListeners();
+        }
+
+        private void AttachEventListeners()
+        {
+            this.CloseIcon.Click += new EventHandler(this.CloseIcon_Click);
+            this.CloseIcon.MouseEnter += new EventHandler(this.CloseIcon_MouseEnter);
+            this.CloseIcon.MouseLeave += new EventHandler(this.CloseIcon_MouseLeave);
+
+            this.AppHeaderTitle.MouseDown += new MouseEventHandler(this.AppHeaderTitle_MouseDown);
+            this.AppHeaderTitle.MouseMove += new MouseEventHandler(this.AppHeaderTitle_MouseMove);
+            this.AppHeaderTitle.MouseUp += new MouseEventHandler(this.AppHeaderTitle_MouseUp);
+
+            this.browseFullBatterySoundButton.Click += new EventHandler(this.browseFullBatterySoundButton_Click);
+            this.lowBatteryTrackbar.Scroll += new EventHandler(this.lowBatteryTrackbar_Scroll);
+            this.lowBatteryTrackbar.ValueChanged += new EventHandler(this.lowBatteryTrackbar_ValueChanged);
+
+            this.showLowBatteryNotification.CheckedChanged += new EventHandler(this.showLowBatteryNotification_CheckedChanged);
+            this.showFullBatteryNotification.CheckedChanged += new EventHandler(this.showFullBatteryNotification_CheckedChanged);
+
+            this.fullBatteryTrackbar.Scroll += new EventHandler(this.fullBatteryTrackbar_Scroll);
+            this.fullBatteryTrackbar.ValueChanged += new EventHandler(this.fullBatteryTrackbar_ValueChanged);
+
+            this.DarkModeCheckbox.CheckedChanged += new EventHandler(this.DarkModeCheckbox_CheckedChanged);
+
+            this.ShowAsWindow.CheckedChanged += new EventHandler(this.ShowAsWindow_CheckedChanged);
+            
         }
 
         private void LoadSettings()
         {
-            SuspendLayout();
             ShowAsWindow.Checked = appSetting.Default.showAsModal;
             DarkModeCheckbox.Checked = appSetting.Default.darkThemeApplied;
             launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
@@ -76,8 +102,6 @@ namespace BatteryNotifier.Forms
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatteryPercentageValue.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatterySoundPath.Text = appSetting.Default.lowBatteryNotificationMusic;
-
-            ResumeLayout();
         }
 
         private void fullBatteryTrackbar_Scroll(object sender, EventArgs e)
@@ -156,9 +180,9 @@ namespace BatteryNotifier.Forms
 
         private void SettingPage_Activated(object sender, EventArgs e)
         {
+            ApplyTheme();
             LoadSettings();
             RenderFormArea();
-            ApplyTheme();
         }
 
         private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
@@ -205,15 +229,15 @@ namespace BatteryNotifier.Forms
             appSetting.Default.darkThemeApplied = DarkModeCheckbox.Checked;
             appSetting.Default.Save();
             ApplyTheme();
-
         }
 
+        bool isLightThemeRendered = false;
+        bool isDarkThemeRendered = false;
         private void ApplyTheme()
         {
-            SuspendLayout();
             if (appSetting.Default.darkThemeApplied)
             {
-                
+                if (isDarkThemeRendered) return;
                 ShowAsWindowPanel.BackColor = Color.FromArgb(20, 20, 20);
                 DarkModelPanel.BackColor = Color.FromArgb(20, 20, 20);
                 LaunchAtStartupPanel.BackColor = Color.FromArgb(20, 20, 20);
@@ -249,10 +273,13 @@ namespace BatteryNotifier.Forms
                 fullbatteryPercentageValue.ForeColor = Color.White;
 
                 CloseIcon.Image = Resources.closeIconDark;
+
+                isDarkThemeRendered = true;
+                isLightThemeRendered = false;
             }
             else
             {
-
+                if (isLightThemeRendered) return;
                 ShowAsWindowPanel.BackColor = Color.WhiteSmoke;
                 DarkModelPanel.BackColor = Color.WhiteSmoke;
                 LaunchAtStartupPanel.BackColor = Color.WhiteSmoke;
@@ -290,8 +317,10 @@ namespace BatteryNotifier.Forms
 
                 CloseIcon.Image = Resources.closeIconLight;
 
+                isDarkThemeRendered = false;
+                isLightThemeRendered = true;
+
             }
-            ResumeLayout();
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -299,6 +328,7 @@ namespace BatteryNotifier.Forms
 
             if (keyData == (Keys.Escape))
             {
+
                 this.Close();
             }
             return base.ProcessCmdKey(ref msg, keyData);
