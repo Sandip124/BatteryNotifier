@@ -2,11 +2,13 @@
 using System.Diagnostics;
 using System.Drawing;
 using System.Media;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
-using BatteryNotifier.Manager;
 using BatteryNotifier.Properties;
+using Squirrel;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Forms
@@ -14,7 +16,7 @@ namespace BatteryNotifier.Forms
     public partial class Dashboard : Form
     {
         private readonly Debouncer.Debouncer _debouncer;
-        private readonly Timer _soundPlayingTimer = new();
+        private readonly System.Windows.Forms.Timer _soundPlayingTimer = new();
         private readonly SoundPlayer _batteryNotification = new(Resources.BatteryFull);
 
         private Point _lastLocation;
@@ -68,6 +70,7 @@ namespace BatteryNotifier.Forms
 
         private void Dashboard_Load(object? sender, EventArgs e)
         {
+            TryUpdate();            
             this.SuspendLayout();
             RefreshBatteryStatus();
             LoadNotificationSetting();
@@ -606,14 +609,81 @@ namespace BatteryNotifier.Forms
 
             if (keyData == (Keys.Escape))
             {
-                this.Close();
+                Close();
+                UpdateManager?.Dispose();
             }
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        private static string version = UtilityHelper.AssemblyVersion;
+
         public void VersionLabel_Click(object? sender, EventArgs e)
         {
-            this.TryUpdate();
+            TryUpdate();
+        }
+
+        private void TryUpdate()
+        {
+#if RELEASE
+            Task.Run(() => InitUpdateManager(this)).Wait();
+            Task.Run(() => CheckForUpdates(this)).Start();
+            version = UpdateManager.CurrentlyInstalledVersion().ToString();
+            UpdateStatus("Checking for update ...");
+            IsUpdateInProgress = true;
+#endif
+        }
+        
+
+        private static UpdateManager UpdateManager;
+
+        private static bool IsUpdateInProgress = false;
+
+
+        private async Task InitUpdateManager(Dashboard dashboard)
+        {
+            try
+            {
+                UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceUrl}");
+            }
+            catch (Exception)
+            {
+                dashboard?.UpdateStatus("Could not initialize update manager!");
+            }
+        }
+
+        private async void CheckForUpdates(Dashboard dashboard)
+        {
+            try
+            {
+                var updateInfo = await UpdateManager.CheckForUpdate();
+
+                if (!IsUpdateInProgress) return;
+
+                if (updateInfo.ReleasesToApply.Count > 0)
+                {
+                    var releaseEntry = await UpdateManager.UpdateApp();
+
+                    if (releaseEntry != null)
+                    {
+                        IsUpdateInProgress = false;
+                        dashboard.UpdateStatus($"🔔 Battery Notifier {releaseEntry.Version} downloaded. Restart to apply.");
+                    }
+                }
+                else
+                {
+                    IsUpdateInProgress = false;
+                    dashboard.UpdateStatus("✅ No Update Available");
+                }
+            }
+            catch (Exception)
+            {
+                dashboard?.UpdateStatus("💀 Could not update app!");
+            }
+            finally
+            {
+                Thread.Sleep(5000);
+                dashboard.UpdateStatus(string.Empty);
+            }
         }
     }
 }
