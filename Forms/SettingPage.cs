@@ -28,13 +28,13 @@ namespace BatteryNotifier.Forms
             this.RenderFormPosition(appSetting.Default.showAsModal);
         }
 
-        private void pictureBox1_MouseEnter(object sender, EventArgs e)
+        private void CloseIcon_MouseEnter(object sender, EventArgs e)
         {
             CloseIcon.Image = Resources.closeIconHoverState;
             CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
-        private void pictureBox1_MouseLeave(object sender, EventArgs e)
+        private void CloseIcon_MouseLeave(object sender, EventArgs e)
         {
             CloseIcon.BackColor = Color.Transparent;
 
@@ -51,13 +51,40 @@ namespace BatteryNotifier.Forms
         private void CloseIcon_Click(object sender, EventArgs e)
         {
             Close();
-            Dispose();
         }
 
         private void SettingPage_Load(object sender, EventArgs e)
         {
             LoadSettings();
             HandleStartup();
+
+            AttachEventListeners();
+        }
+
+        private void AttachEventListeners()
+        {
+            this.CloseIcon.Click += new EventHandler(this.CloseIcon_Click);
+            this.CloseIcon.MouseEnter += new EventHandler(this.CloseIcon_MouseEnter);
+            this.CloseIcon.MouseLeave += new EventHandler(this.CloseIcon_MouseLeave);
+
+            this.AppHeaderTitle.MouseDown += new MouseEventHandler(this.AppHeaderTitle_MouseDown);
+            this.AppHeaderTitle.MouseMove += new MouseEventHandler(this.AppHeaderTitle_MouseMove);
+            this.AppHeaderTitle.MouseUp += new MouseEventHandler(this.AppHeaderTitle_MouseUp);
+
+            this.browseFullBatterySoundButton.Click += new EventHandler(this.browseFullBatterySoundButton_Click);
+            this.lowBatteryTrackbar.Scroll += new EventHandler(this.lowBatteryTrackbar_Scroll);
+            this.lowBatteryTrackbar.ValueChanged += new EventHandler(this.lowBatteryTrackbar_ValueChanged);
+
+            this.showLowBatteryNotification.CheckedChanged += new EventHandler(this.showLowBatteryNotification_CheckedChanged);
+            this.showFullBatteryNotification.CheckedChanged += new EventHandler(this.showFullBatteryNotification_CheckedChanged);
+
+            this.fullBatteryTrackbar.Scroll += new EventHandler(this.fullBatteryTrackbar_Scroll);
+            this.fullBatteryTrackbar.ValueChanged += new EventHandler(this.fullBatteryTrackbar_ValueChanged);
+
+            this.DarkModeCheckbox.CheckedChanged += new EventHandler(this.DarkModeCheckbox_CheckedChanged);
+
+            this.ShowAsWindow.CheckedChanged += new EventHandler(this.ShowAsWindow_CheckedChanged);
+            
         }
 
         private void LoadSettings()
@@ -301,6 +328,7 @@ namespace BatteryNotifier.Forms
 
             if (keyData == (Keys.Escape))
             {
+
                 this.Close();
             }
             return base.ProcessCmdKey(ref msg, keyData);

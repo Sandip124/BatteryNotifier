@@ -142,9 +142,6 @@ namespace BatteryNotifier.Forms
             this.AppHeaderTitle.TabIndex = 17;
             this.AppHeaderTitle.Text = " Setting";
             this.AppHeaderTitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.AppHeaderTitle.MouseDown += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseDown);
-            this.AppHeaderTitle.MouseMove += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseMove);
-            this.AppHeaderTitle.MouseUp += new System.Windows.Forms.MouseEventHandler(this.AppHeaderTitle_MouseUp);
             // 
             // CloseIcon
             // 
@@ -158,9 +155,6 @@ namespace BatteryNotifier.Forms
             this.CloseIcon.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.CloseIcon.TabIndex = 1;
             this.CloseIcon.TabStop = false;
-            this.CloseIcon.Click += new System.EventHandler(this.CloseIcon_Click);
-            this.CloseIcon.MouseEnter += new System.EventHandler(this.pictureBox1_MouseEnter);
-            this.CloseIcon.MouseLeave += new System.EventHandler(this.pictureBox1_MouseLeave);
             // 
             // panel2
             // 
@@ -297,7 +291,6 @@ namespace BatteryNotifier.Forms
             this.browseFullBatterySoundButton.TabIndex = 23;
             this.browseFullBatterySoundButton.Text = "Browse";
             this.browseFullBatterySoundButton.UseVisualStyleBackColor = false;
-            this.browseFullBatterySoundButton.Click += new System.EventHandler(this.browseFullBatterySoundButton_Click);
             // 
             // LowBatteryIcon
             // 
@@ -335,8 +328,7 @@ namespace BatteryNotifier.Forms
             this.lowBatteryTrackbar.Name = "lowBatteryTrackbar";
             this.lowBatteryTrackbar.Size = new System.Drawing.Size(183, 45);
             this.lowBatteryTrackbar.TabIndex = 20;
-            this.lowBatteryTrackbar.Scroll += new System.EventHandler(this.lowBatteryTrackbar_Scroll);
-            this.lowBatteryTrackbar.ValueChanged += new System.EventHandler(this.lowBatteryTrackbar_ValueChanged);
+
             // 
             // LowBatteryPercentageLabel
             // 
@@ -380,7 +372,6 @@ namespace BatteryNotifier.Forms
             this.showLowBatteryNotification.Size = new System.Drawing.Size(15, 14);
             this.showLowBatteryNotification.TabIndex = 18;
             this.showLowBatteryNotification.UseVisualStyleBackColor = true;
-            this.showLowBatteryNotification.CheckedChanged += new System.EventHandler(this.showLowBatteryNotification_CheckedChanged);
             // 
             // ShowFullBatteryNotificationLabel
             // 
@@ -410,7 +401,6 @@ namespace BatteryNotifier.Forms
             this.showFullBatteryNotification.Size = new System.Drawing.Size(15, 14);
             this.showFullBatteryNotification.TabIndex = 18;
             this.showFullBatteryNotification.UseVisualStyleBackColor = true;
-            this.showFullBatteryNotification.CheckedChanged += new System.EventHandler(this.showFullBatteryNotification_CheckedChanged);
             // 
             // fullBatteryTrackbar
             // 
@@ -420,8 +410,6 @@ namespace BatteryNotifier.Forms
             this.fullBatteryTrackbar.Name = "fullBatteryTrackbar";
             this.fullBatteryTrackbar.Size = new System.Drawing.Size(183, 45);
             this.fullBatteryTrackbar.TabIndex = 20;
-            this.fullBatteryTrackbar.Scroll += new System.EventHandler(this.fullBatteryTrackbar_Scroll);
-            this.fullBatteryTrackbar.ValueChanged += new System.EventHandler(this.fullBatteryTrackbar_ValueChanged);
             // 
             // BatteryPercentageLabel
             // 
@@ -475,7 +463,6 @@ namespace BatteryNotifier.Forms
             this.DarkModeCheckbox.Size = new System.Drawing.Size(15, 14);
             this.DarkModeCheckbox.TabIndex = 17;
             this.DarkModeCheckbox.UseVisualStyleBackColor = true;
-            this.DarkModeCheckbox.CheckedChanged += new System.EventHandler(this.DarkModeCheckbox_CheckedChanged);
             // 
             // ShowAsWindowPanel
             // 
@@ -519,7 +506,6 @@ namespace BatteryNotifier.Forms
             this.ShowAsWindow.Size = new System.Drawing.Size(15, 14);
             this.ShowAsWindow.TabIndex = 17;
             this.ShowAsWindow.UseVisualStyleBackColor = true;
-            this.ShowAsWindow.CheckedChanged += new System.EventHandler(this.ShowAsWindow_CheckedChanged);
             // 
             // SettingPage
             // 
