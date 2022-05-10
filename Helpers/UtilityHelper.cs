@@ -25,7 +25,7 @@ namespace BatteryNotifier.Helpers
             return str.Substring(0, str.IndexOf('\0'));
         }
 
-        public static string AssemblyVersion => Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        public static string AssemblyVersion => Assembly.GetExecutingAssembly().GetName().Version!.ToString();
 
     }
 }

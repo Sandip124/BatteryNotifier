@@ -1,10 +1,9 @@
 using System;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
-using System.Threading.Tasks;
-using Squirrel;
 using BatteryNotifier.Helpers;
 using System.Threading;
+using BatteryNotifier.Manager;
 
 namespace BatteryNotifier
 {
@@ -12,13 +11,7 @@ namespace BatteryNotifier
     {
         private static string appGuid = "D2ED1949-C00C-4F99-87DD-B5A6CE56A733";
 
-        private static Task UpdateTask = new(CheckForUpdates);
-
-        public static UpdateManager UpdateManager;
-
-        private static Form MainForm;
-
-        private static bool IsUpdateInProgress = false;
+        private static Form? MainForm;
 
         private static string version = UtilityHelper.AssemblyVersion;
 
@@ -40,15 +33,11 @@ namespace BatteryNotifier
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+
             MainForm = new Dashboard();
             var dashboard = MainForm as Dashboard;
 #if RELEASE
-
-            Task.Run(() => InitUpdateManager()).Wait();
-            UpdateTask.Start();
-            version = UpdateManager.CurrentlyInstalledVersion().ToString();
-            dashboard?.UpdateStatus("Checking for update ...");
-            IsUpdateInProgress = true;
+            dashboard.TryUpdate();
 #endif
 
             dashboard?.SetVersion(version);
@@ -57,57 +46,10 @@ namespace BatteryNotifier
 
         }
 
-        public static async Task InitUpdateManager()
+
+        private static void OnExit(object? sender, EventArgs e)
         {
-            try
-            {
-                UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceUrl}");
-            }
-            catch (Exception)
-            {
-                MessageBox.Show("Could not initialize update manager!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        static async void CheckForUpdates()
-        {
-            try
-            {
-                var updateInfo = await UpdateManager.CheckForUpdate();
-
-                if (!IsUpdateInProgress) return;
-
-                if (updateInfo.ReleasesToApply.Count > 0)
-                {
-                    var releaseEntry = await UpdateManager.UpdateApp();
-
-                    if (releaseEntry != null)
-                    {
-                        IsUpdateInProgress = false;
-                        (MainForm as Dashboard)?.UpdateStatus($"Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
-                    }
-                }
-                else
-                {
-                   
-                    IsUpdateInProgress = false;
-                    (MainForm as Dashboard)?.UpdateStatus("No Update Available");
-                }
-            }
-            catch (Exception)
-            {
-                MessageBox.Show("Could not update app!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-              Thread.Sleep(3000);
-              (MainForm as Dashboard)?.UpdateStatus(string.Empty);
-            }
-        }
-
-        private static void OnExit(object sender, EventArgs e)
-        {
-            UpdateManager?.Dispose();
+            UpdateHelper.UpdateManager?.Dispose();
         }
 
         static void OnUnhandledExpection(object sender, UnhandledExceptionEventArgs args)

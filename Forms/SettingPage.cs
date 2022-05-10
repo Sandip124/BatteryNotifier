@@ -28,13 +28,13 @@ namespace BatteryNotifier.Forms
             this.RenderFormPosition(appSetting.Default.showAsModal);
         }
 
-        private void CloseIcon_MouseEnter(object sender, EventArgs e)
+        private void CloseIcon_MouseEnter(object? sender, EventArgs e)
         {
             CloseIcon.Image = Resources.closeIconHoverState;
             CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
-        private void CloseIcon_MouseLeave(object sender, EventArgs e)
+        private void CloseIcon_MouseLeave(object? sender, EventArgs e)
         {
             CloseIcon.BackColor = Color.Transparent;
 
@@ -48,12 +48,12 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void CloseIcon_Click(object sender, EventArgs e)
+        private void CloseIcon_Click(object? sender, EventArgs e)
         {
             Close();
         }
 
-        private void SettingPage_Load(object sender, EventArgs e)
+        private void SettingPage_Load(object? sender, EventArgs e)
         {
             LoadSettings();
             HandleStartup();
@@ -63,27 +63,27 @@ namespace BatteryNotifier.Forms
 
         private void AttachEventListeners()
         {
-            this.CloseIcon.Click += new EventHandler(this.CloseIcon_Click);
-            this.CloseIcon.MouseEnter += new EventHandler(this.CloseIcon_MouseEnter);
-            this.CloseIcon.MouseLeave += new EventHandler(this.CloseIcon_MouseLeave);
+            CloseIcon.Click += new EventHandler(this.CloseIcon_Click);
+            CloseIcon.MouseEnter += new EventHandler(this.CloseIcon_MouseEnter);
+            CloseIcon.MouseLeave += new EventHandler(this.CloseIcon_MouseLeave);
 
-            this.AppHeaderTitle.MouseDown += new MouseEventHandler(this.AppHeaderTitle_MouseDown);
-            this.AppHeaderTitle.MouseMove += new MouseEventHandler(this.AppHeaderTitle_MouseMove);
-            this.AppHeaderTitle.MouseUp += new MouseEventHandler(this.AppHeaderTitle_MouseUp);
+            AppHeaderTitle.MouseDown += new MouseEventHandler(this.AppHeaderTitle_MouseDown);
+            AppHeaderTitle.MouseMove += new MouseEventHandler(this.AppHeaderTitle_MouseMove);
+            AppHeaderTitle.MouseUp += new MouseEventHandler(this.AppHeaderTitle_MouseUp);
 
-            this.browseFullBatterySoundButton.Click += new EventHandler(this.browseFullBatterySoundButton_Click);
-            this.lowBatteryTrackbar.Scroll += new EventHandler(this.lowBatteryTrackbar_Scroll);
-            this.lowBatteryTrackbar.ValueChanged += new EventHandler(this.lowBatteryTrackbar_ValueChanged);
+            browseFullBatterySoundButton.Click += new EventHandler(this.browseFullBatterySoundButton_Click);
+            lowBatteryTrackbar.Scroll += new EventHandler(this.lowBatteryTrackbar_Scroll);
+            lowBatteryTrackbar.ValueChanged += new EventHandler(this.lowBatteryTrackbar_ValueChanged);
 
-            this.showLowBatteryNotification.CheckedChanged += new EventHandler(this.showLowBatteryNotification_CheckedChanged);
-            this.showFullBatteryNotification.CheckedChanged += new EventHandler(this.showFullBatteryNotification_CheckedChanged);
+            showLowBatteryNotification.CheckedChanged += new EventHandler(this.showLowBatteryNotification_CheckedChanged);
+            showFullBatteryNotification.CheckedChanged += new EventHandler(this.showFullBatteryNotification_CheckedChanged);
 
-            this.fullBatteryTrackbar.Scroll += new EventHandler(this.fullBatteryTrackbar_Scroll);
-            this.fullBatteryTrackbar.ValueChanged += new EventHandler(this.fullBatteryTrackbar_ValueChanged);
+            fullBatteryTrackbar.Scroll += new EventHandler(this.fullBatteryTrackbar_Scroll);
+            fullBatteryTrackbar.ValueChanged += new EventHandler(this.fullBatteryTrackbar_ValueChanged);
 
-            this.DarkModeCheckbox.CheckedChanged += new EventHandler(this.DarkModeCheckbox_CheckedChanged);
+            DarkModeCheckbox.CheckedChanged += new EventHandler(this.DarkModeCheckbox_CheckedChanged);
 
-            this.ShowAsWindow.CheckedChanged += new EventHandler(this.ShowAsWindow_CheckedChanged);
+            ShowAsWindow.CheckedChanged += new EventHandler(this.ShowAsWindow_CheckedChanged);
             
         }
 
@@ -104,17 +104,17 @@ namespace BatteryNotifier.Forms
             lowBatterySoundPath.Text = appSetting.Default.lowBatteryNotificationMusic;
         }
 
-        private void fullBatteryTrackbar_Scroll(object sender, EventArgs e)
+        private void fullBatteryTrackbar_Scroll(object? sender, EventArgs e)
         {
             fullbatteryPercentageValue.Value = fullBatteryTrackbar.Value;
         }
 
-        private void lowBatteryTrackbar_Scroll(object sender, EventArgs e)
+        private void lowBatteryTrackbar_Scroll(object? sender, EventArgs e)
         {
             lowBatteryPercentageValue.Value = lowBatteryTrackbar.Value;
         }
 
-        private void browseFullBatterySoundButton_Click(object sender, EventArgs e)
+        private void browseFullBatterySoundButton_Click(object? sender, EventArgs e)
         {
             var fileBrowser = new OpenFileDialog();
             fileBrowser.ShowDialog();
@@ -126,7 +126,7 @@ namespace BatteryNotifier.Forms
             appSetting.Default.Save();
         }
 
-        private void browseLowBatterySoundButton_Click(object sender, EventArgs e)
+        private void browseLowBatterySoundButton_Click(object? sender, EventArgs e)
         {
             var fileBrowser = new OpenFileDialog();
             fileBrowser.ShowDialog();
@@ -138,25 +138,25 @@ namespace BatteryNotifier.Forms
 
         }
 
-        private void ShowAsWindow_CheckedChanged(object sender, EventArgs e)
+        private void ShowAsWindow_CheckedChanged(object? sender, EventArgs e)
         {
             appSetting.Default.showAsModal = ShowAsWindow.Checked;
             appSetting.Default.Save();
         }
 
-        private void showFullBatteryNotification_CheckedChanged(object sender, EventArgs e)
+        private void showFullBatteryNotification_CheckedChanged(object? sender, EventArgs e)
         {
             appSetting.Default.fullBatteryNotification = showFullBatteryNotification.Checked;
             appSetting.Default.Save();
         }
 
-        private void showLowBatteryNotification_CheckedChanged(object sender, EventArgs e)
+        private void showLowBatteryNotification_CheckedChanged(object? sender, EventArgs e)
         {
             appSetting.Default.lowBatteryNotification = showLowBatteryNotification.Checked;
             appSetting.Default.Save();
         }
 
-        private void fullBatteryTrackbar_ValueChanged(object sender, EventArgs e)
+        private void fullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
         {
             _debouncer.Debounce(SaveSetting, 500);
 
@@ -167,7 +167,7 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void lowBatteryTrackbar_ValueChanged(object sender, EventArgs e)
+        private void lowBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
         {
             _debouncer.Debounce(SaveSetting, 500);
             void SaveSetting()
@@ -178,14 +178,14 @@ namespace BatteryNotifier.Forms
            
         }
 
-        private void SettingPage_Activated(object sender, EventArgs e)
+        private void SettingPage_Activated(object? sender, EventArgs e)
         {
             ApplyTheme();
             LoadSettings();
             RenderFormArea();
         }
 
-        private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
+        private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)
         {
             if (!appSetting.Default.showAsModal) return;
             
@@ -193,7 +193,7 @@ namespace BatteryNotifier.Forms
             _lastLocation = e.Location;
         }
 
-        private void AppHeaderTitle_MouseMove(object sender, MouseEventArgs e)
+        private void AppHeaderTitle_MouseMove(object? sender, MouseEventArgs e)
         {
             if (!appSetting.Default.showAsModal) return;
             if (!_mouseDown) return;
@@ -216,7 +216,7 @@ namespace BatteryNotifier.Forms
            
         }
 
-        private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
+        private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
         {
             if (appSetting.Default.showAsModal)
             {
@@ -224,7 +224,7 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void DarkModeCheckbox_CheckedChanged(object sender, EventArgs e)
+        private void DarkModeCheckbox_CheckedChanged(object? sender, EventArgs e)
         {
             appSetting.Default.darkThemeApplied = DarkModeCheckbox.Checked;
             appSetting.Default.Save();
@@ -334,7 +334,7 @@ namespace BatteryNotifier.Forms
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
-        private void launchAtStartup_CheckedChanged(object sender, EventArgs e)
+        private void launchAtStartup_CheckedChanged(object? sender, EventArgs e)
         {
             HandleStartup();
         }
@@ -369,7 +369,7 @@ namespace BatteryNotifier.Forms
         {
             var currentUserRegKey = Registry.CurrentUser;
 
-            return currentUserRegKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+            return currentUserRegKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true)!;
         }
 
     }

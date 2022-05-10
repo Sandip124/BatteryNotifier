@@ -5,6 +5,7 @@ using System.Media;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Helpers;
+using BatteryNotifier.Manager;
 using BatteryNotifier.Properties;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
@@ -39,18 +40,18 @@ namespace BatteryNotifier.Forms
             CheckingForUpdateLabel.Text = status;
         }
 
-        private void CloseIcon_Click(object sender, EventArgs e)
+        private void CloseIcon_Click(object? sender, EventArgs e)
         {
-            Hide(); 
+            Hide();
         }
 
-        private void CloseIcon_MouseEnter(object sender, EventArgs e)
+        private void CloseIcon_MouseEnter(object? sender, EventArgs e)
         {
             CloseIcon.Image = Resources.closeIconHoverState;
             CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
-        private void CloseIcon_MouseLeave(object sender, EventArgs e)
+        private void CloseIcon_MouseLeave(object? sender, EventArgs e)
         {
             CloseIcon.BackColor = Color.Transparent;
 
@@ -62,10 +63,10 @@ namespace BatteryNotifier.Forms
             {
                 CloseIcon.Image = Resources.closeIconLight;
             }
-           
+
         }
 
-        private void Dashboard_Load(object sender, EventArgs e)
+        private void Dashboard_Load(object? sender, EventArgs e)
         {
             this.SuspendLayout();
             RefreshBatteryStatus();
@@ -110,6 +111,8 @@ namespace BatteryNotifier.Forms
 
             FullBatteryNotificationCheckbox.CheckedChanged += FullBatteryNotificationCheckbox_CheckStateChanged;
             LowBatteryNotificationCheckbox.CheckedChanged += LowBatteryNotificationCheckbox_CheckStateChanged;
+
+            VersionLabel.Click += VersionLabel_Click;
         }
 
         private readonly CustomTimer _timer = new();
@@ -187,7 +190,7 @@ namespace BatteryNotifier.Forms
             _soundPlayingTimer.Start();
 
             var notificationSoundAvailable = !string.IsNullOrEmpty(soundLocation);
-            
+
             if (notificationSoundAvailable)
             {
                 _batteryNotification.SoundLocation = soundLocation;
@@ -232,14 +235,14 @@ namespace BatteryNotifier.Forms
                 ResetIsChargingStatus();
 
             }
-            else if(status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "💀 Are you running on main power !!";
                 BatteryImage.Image = Resources.Unknown;
                 ResetIsChargingStatus();
             }
-            else if(status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
+            else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "😇 Only God knows about this battery !!";
@@ -266,7 +269,7 @@ namespace BatteryNotifier.Forms
 
             if (appSetting.Default.darkThemeApplied)
             {
-                if(!isRenderingChargingStatusForDarkMode)
+                if (!isRenderingChargingStatusForDarkMode)
                 {
                     BatteryImage.Image = Resources.ChargingBatteryAnimatedDark;
                     isRenderingChargingStatusForDarkMode = true;
@@ -274,7 +277,7 @@ namespace BatteryNotifier.Forms
             }
             else
             {
-                if(!isRenderingChargingStatusForLightMode)
+                if (!isRenderingChargingStatusForLightMode)
                 {
                     BatteryImage.Image = Resources.ChargingBatteryAnimated;
                     isRenderingChargingStatusForLightMode = true;
@@ -292,7 +295,7 @@ namespace BatteryNotifier.Forms
             }
             else
             {
-                RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100,0)}% remaining";
+                RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100, 0)}% remaining";
             }
         }
 
@@ -305,7 +308,7 @@ namespace BatteryNotifier.Forms
         private void SetBatteryChargeStatus(PowerStatus powerStatus)
         {
             if (_isCharging) return;
-            
+
             if (powerStatus.BatteryLifePercent >= .96)
             {
                 BatteryStatus.Text = "🔋 Full Battery";
@@ -347,6 +350,15 @@ namespace BatteryNotifier.Forms
             };
             exitAppToolStripItem.Click += ExitApp_Click!;
 
+            ToolStripMenuItem restartAppToolStripItem = new("RestartApplication")
+            {
+                Text = "Restart Application",
+                Name = "RestartApp",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Microsoft Sans Serif", 10.2F)
+            };
+            restartAppToolStripItem.Click += RestartApp_Click!;
+
             ToolStripMenuItem viewSourceToolStripItem = new("ViewSource")
             {
                 Text = "View Source",
@@ -357,6 +369,7 @@ namespace BatteryNotifier.Forms
             viewSourceToolStripItem.Click += ViewSource_Click!;
 
             contextMenu.Items.Add(viewSourceToolStripItem);
+            contextMenu.Items.Add(restartAppToolStripItem);
             contextMenu.Items.Add(exitAppToolStripItem);
 
             BatteryNotifierIcon.ContextMenuStrip = contextMenu;
@@ -367,6 +380,13 @@ namespace BatteryNotifier.Forms
         private void ExitApp_Click(object sender, EventArgs e)
         {
             Close();
+            Dispose();
+        }
+
+        private void RestartApp_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
+            Process.Start(Application.ExecutablePath, $"/restart{Process.GetCurrentProcess().Id}");
         }
 
         private void ViewSource_Click(object sender, EventArgs e)
@@ -383,7 +403,7 @@ namespace BatteryNotifier.Forms
             Process.Start(sInfo);
         }
 
-        private void BatteryNotifierIcon_Click(object sender, EventArgs e)
+        private void BatteryNotifierIcon_Click(object? sender, EventArgs e)
         {
             if (this.Visible)
             {
@@ -396,26 +416,26 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void BatteryStatusTimer_Tick(object sender, EventArgs e)
+        private void BatteryStatusTimer_Tick(object? sender, EventArgs e)
         {
             RefreshBatteryStatus();
         }
 
-        private void FullBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
+        private void FullBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
         {
             RenderCheckboxState(FullBatteryNotificationCheckbox, FullBatteryNotificationCheckbox.Checked);
             appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
         }
 
-        private void LowBatteryNotificationCheckbox_CheckStateChanged(object sender, EventArgs e)
+        private void LowBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
         {
             RenderCheckboxState(LowBatteryNotificationCheckbox, LowBatteryNotificationCheckbox.Checked);
             appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
         }
 
-        private void ShowNotificationTimer_Tick(object sender, EventArgs e)
+        private void ShowNotificationTimer_Tick(object? sender, EventArgs e)
         {
             CheckNotification();
         }
@@ -431,32 +451,32 @@ namespace BatteryNotifier.Forms
             Show();
         }
 
-        private void SettingLabel_Click(object sender, EventArgs e)
+        private void SettingLabel_Click(object? sender, EventArgs e)
         {
             OpenSettingPage();
         }
 
-        private void ViewSourceLabel_Click(object sender, EventArgs e)
+        private void ViewSourceLabel_Click(object? sender, EventArgs e)
         {
             ViewDeveloperUrl();
         }
 
-        private void SettingLabel_MouseEnter(object sender, EventArgs e)
+        private void SettingLabel_MouseEnter(object? sender, EventArgs e)
         {
-            ApplyThemeForFooterMouseEnter(SettingLabel);            
+            ApplyThemeForFooterMouseEnter(SettingLabel);
         }
 
-        private void SettingLabel_MouseLeave(object sender, EventArgs e)
+        private void SettingLabel_MouseLeave(object? sender, EventArgs e)
         {
             ApplyThemeForFooterMouseLeave(SettingLabel);
         }
 
-        private void ViewSourceLabel_MouseEnter(object sender, EventArgs e)
+        private void ViewSourceLabel_MouseEnter(object? sender, EventArgs e)
         {
             ApplyThemeForFooterMouseEnter(ViewSourceLabel);
         }
 
-        private void ViewSourceLabel_MouseLeave(object sender, EventArgs e)
+        private void ViewSourceLabel_MouseLeave(object? sender, EventArgs e)
         {
             ApplyThemeForFooterMouseLeave(ViewSourceLabel);
         }
@@ -473,7 +493,7 @@ namespace BatteryNotifier.Forms
             label.ForeColor = appSetting.Default.darkThemeApplied ? Color.FromArgb(160, 160, 160) : Color.FromArgb(50, 50, 50);
         }
 
-        private void Dashboard_Activated(object sender, EventArgs e)
+        private void Dashboard_Activated(object? sender, EventArgs e)
         {
             BatteryStatusTimer.Start();
             RefreshBatteryStatus();
@@ -489,7 +509,7 @@ namespace BatteryNotifier.Forms
             SuspendLayout();
             if (appSetting.Default.darkThemeApplied)
             {
-                 if (isDarkThemeRendered) return;
+                if (isDarkThemeRendered) return;
                 AppContainer.BackColor = Color.FromArgb(30, 30, 30);
                 AppHeader.BackColor = Color.Black;
                 AppHeaderTitle.ForeColor = Color.White;
@@ -497,7 +517,7 @@ namespace BatteryNotifier.Forms
                 BatteryPercentage.ForeColor = Color.White;
                 NotificationSettingGroupBox.ForeColor = Color.White;
                 AppFooter.BackColor = Color.Black;
-                SettingLabel.ForeColor = Color.FromArgb(160,160,160);
+                SettingLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 ViewSourceLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
                 CloseIcon.Image = Resources.closeIconDark;
@@ -532,15 +552,15 @@ namespace BatteryNotifier.Forms
             isLightThemeRendered = false;
         }
 
-        private void AppHeaderTitle_MouseDown(object sender, MouseEventArgs e)
+        private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)
         {
             if (!appSetting.Default.showAsModal) return;
-            
+
             _mouseDown = true;
             _lastLocation = e.Location;
         }
 
-        private void AppHeaderTitle_MouseMove(object sender, MouseEventArgs e)
+        private void AppHeaderTitle_MouseMove(object? sender, MouseEventArgs e)
         {
             if (!appSetting.Default.showAsModal) return;
             if (!_mouseDown) return;
@@ -561,7 +581,7 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void AppHeaderTitle_MouseUp(object sender, MouseEventArgs e)
+        private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
         {
             if (appSetting.Default.showAsModal)
             {
@@ -569,13 +589,13 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void BatteryNotifierIcon_BalloonTipClicked(object sender, EventArgs e)
+        private void BatteryNotifierIcon_BalloonTipClicked(object? sender, EventArgs e)
         {
             Show();
             Activate();
         }
 
-        private void BatteryNotifierIcon_BalloonTipClosed(object sender, EventArgs e)
+        private void BatteryNotifierIcon_BalloonTipClosed(object? sender, EventArgs e)
         {
             _batteryNotification.Stop();
             _soundPlayingTimer.Stop();
@@ -589,6 +609,11 @@ namespace BatteryNotifier.Forms
                 this.Close();
             }
             return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        public void VersionLabel_Click(object? sender, EventArgs e)
+        {
+            this.TryUpdate();
         }
     }
 }
