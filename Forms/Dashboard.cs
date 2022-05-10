@@ -626,7 +626,7 @@ namespace BatteryNotifier.Forms
         {
 #if RELEASE
             Task.Run(() => InitUpdateManager(this)).Wait();
-            Task.Run(() => CheckForUpdates(this)).Start();
+            Task.Run(() => CheckForUpdates(this));
             version = UpdateManager.CurrentlyInstalledVersion().ToString();
             UpdateStatus("Checking for update ...");
             IsUpdateInProgress = true;
