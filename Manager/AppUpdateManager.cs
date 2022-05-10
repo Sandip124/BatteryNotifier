@@ -3,7 +3,6 @@ using BatteryNotifier.Helpers;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace BatteryNotifier.Manager
 {
@@ -27,14 +26,16 @@ namespace BatteryNotifier.Manager
                     dashboard?.UpdateStatus("No update available");
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                MessageBox.Show("Update failed");
+                Logger.Logger.LogThisLine(ex.Message);                
+                dashboard?.UpdateStatus("Update failed.");
             }
             finally
             {
                 Thread.Sleep(5000);
                 UpdateHelper.IsUpdateInProgress = false;
+                dashboard?.UpdateStatus("");
             }
         }
     }

@@ -23,8 +23,9 @@ namespace BatteryNotifier.Helpers
             {
                 UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceUrl}");
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.Logger.LogThisLine(ex.Message);                
                 throw;
             }
         }
@@ -57,8 +58,9 @@ namespace BatteryNotifier.Helpers
                     ReleaseEntry = null;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.Logger.LogThisLine(ex.Message);
                 throw new Exception("Could not update app!");
             }
         }
