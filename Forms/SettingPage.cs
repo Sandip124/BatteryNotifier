@@ -15,6 +15,15 @@ namespace BatteryNotifier.Forms
         private Point _lastLocation;
         private bool _mouseDown;
 
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000;   // WS_EX_COMPOSITED
+                return cp;
+            }
+        } 
         public SettingPage()
         {
             InitializeComponent();
