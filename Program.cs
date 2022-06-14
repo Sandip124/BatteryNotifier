@@ -44,13 +44,15 @@ namespace BatteryNotifier
             var dashboard = MainForm as Dashboard;
 #if RELEASE
 
-            Task.Run(() => InitUpdateManager()).Wait();
-            UpdateTask.Start();
-            version = UpdateManager.CurrentlyInstalledVersion().ToString();
-            dashboard?.UpdateStatus("Checking for update ...");
-            IsUpdateInProgress = true;
-#endif
-
+            if (InternetConnectivityHelper.CheckForInternetConnection())
+            {
+                Task.Run(() => InitUpdateManager()).Wait();
+                UpdateTask.Start();
+                version = UpdateManager.CurrentlyInstalledVersion().ToString();
+                dashboard?.UpdateStatus("Checking for update ...");
+                IsUpdateInProgress = true;
+            }
+#endif               
             dashboard?.SetVersion(version);
 
             Application.Run(dashboard);
