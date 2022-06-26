@@ -12,15 +12,13 @@ namespace BatteryNotifier
     {
         private static string appGuid = "D2ED1949-C00C-4F99-87DD-B5A6CE56A733";
 
-        private static Task UpdateTask = new(CheckForUpdates);
+        public static UpdateManager? UpdateManager;
 
-        public static UpdateManager UpdateManager;
-
-        private static Form MainForm;
+        private static Form? MainForm;
 
         private static bool IsUpdateInProgress = false;
 
-        private static string version = UtilityHelper.AssemblyVersion;
+        private static string? version = UtilityHelper.AssemblyVersion;
 
         /// <summary>
         ///  The main entry point for the application.
@@ -47,8 +45,9 @@ namespace BatteryNotifier
             if (InternetConnectivityHelper.CheckForInternetConnection())
             {
                 Task.Run(() => InitUpdateManager()).Wait();
+                Task UpdateTask = new(CheckForUpdates);
                 UpdateTask.Start();
-                version = UpdateManager.CurrentlyInstalledVersion().ToString();
+                version = UpdateManager!.CurrentlyInstalledVersion().ToString();
                 dashboard?.UpdateStatus("Checking for update ...");
                 IsUpdateInProgress = true;
             }
@@ -67,7 +66,7 @@ namespace BatteryNotifier
             }
             catch (Exception)
             {
-                MessageBox.Show("Could not initialize update manager!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                (MainForm as Dashboard)?.UpdateStatus("Could not initialize update manager!");
             }
         }
 
@@ -75,7 +74,7 @@ namespace BatteryNotifier
         {
             try
             {
-                var updateInfo = await UpdateManager.CheckForUpdate();
+                var updateInfo = await UpdateManager!.CheckForUpdate();
 
                 if (!IsUpdateInProgress) return;
 
@@ -107,12 +106,12 @@ namespace BatteryNotifier
             }
         }
 
-        private static void OnExit(object sender, EventArgs e)
+        private static void OnExit(object? sender, EventArgs e)
         {
             UpdateManager?.Dispose();
         }
 
-        static void OnUnhandledExpection(object sender, UnhandledExceptionEventArgs args)
+        static void OnUnhandledExpection(object? sender, UnhandledExceptionEventArgs args)
         {
             MessageBox.Show(args.ExceptionObject.ToString(), "Battery Notifier error!");
         }
