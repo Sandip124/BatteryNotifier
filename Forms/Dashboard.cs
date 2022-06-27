@@ -121,6 +121,12 @@ namespace BatteryNotifier.Forms
             LowBatteryNotificationCheckbox.CheckedChanged += LowBatteryNotificationCheckbox_CheckStateChanged;
         }
 
+        protected override void OnDeactivate(EventArgs e)
+        {
+            base.OnDeactivate(e);
+            Hide();
+        }
+
         private readonly CustomTimer _timer = new();
 
         private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
