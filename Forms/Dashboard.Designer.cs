@@ -361,10 +361,13 @@ namespace BatteryNotifier.Forms
             this.AppTabControl.Controls.Add(this.SettingTab);
             this.AppTabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.AppTabControl.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.AppTabControl.HotTrack = true;
             this.AppTabControl.Location = new System.Drawing.Point(0, 47);
             this.AppTabControl.Margin = new System.Windows.Forms.Padding(0);
+            this.AppTabControl.Multiline = true;
             this.AppTabControl.Name = "AppTabControl";
             this.AppTabControl.SelectedIndex = 0;
+            this.AppTabControl.ShowToolTips = true;
             this.AppTabControl.Size = new System.Drawing.Size(408, 421);
             this.AppTabControl.TabIndex = 9;
             // 
@@ -376,7 +379,7 @@ namespace BatteryNotifier.Forms
             this.DashboardTab.Name = "DashboardTab";
             this.DashboardTab.Size = new System.Drawing.Size(400, 388);
             this.DashboardTab.TabIndex = 0;
-            this.DashboardTab.Text = "🏠 Dashboard";
+            this.DashboardTab.Text = "Dashboard";
             this.DashboardTab.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel9
@@ -575,6 +578,7 @@ namespace BatteryNotifier.Forms
             // 
             // SettingTab
             // 
+            this.SettingTab.BackColor = System.Drawing.Color.Transparent;
             this.SettingTab.Controls.Add(this.NotificationGroupBox);
             this.SettingTab.Controls.Add(this.flowLayoutPanel2);
             this.SettingTab.Location = new System.Drawing.Point(4, 29);
@@ -582,8 +586,7 @@ namespace BatteryNotifier.Forms
             this.SettingTab.Name = "SettingTab";
             this.SettingTab.Size = new System.Drawing.Size(400, 388);
             this.SettingTab.TabIndex = 1;
-            this.SettingTab.Text = "⚙ Setting";
-            this.SettingTab.UseVisualStyleBackColor = true;
+            this.SettingTab.Text = "Setting";
             // 
             // NotificationGroupBox
             // 
@@ -1270,7 +1273,6 @@ namespace BatteryNotifier.Forms
         private Label VersionLabel;
         private Label NotificationText;
         private PictureBox CloseIcon;
-        private TabControl AppTabControl;
         private TabPage DashboardTab;
         private TableLayoutPanel tableLayoutPanel9;
         private GroupBox NotificationSettingGroupBox;
@@ -1315,5 +1317,6 @@ namespace BatteryNotifier.Forms
         private Label LowBatteryNotificationLabel;
         private TrackBar fullBatteryTrackbar;
         private Label FullBatteryPercentageLabel;
+        public TabControl AppTabControl;
     }
 }
