@@ -20,8 +20,8 @@
     <Setting Name="lowBatteryNotificationMusic" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="showAsModal" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
+    <Setting Name="PinToNotificationArea" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="darkThemeApplied" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
@@ -34,6 +34,9 @@
     </Setting>
     <Setting Name="LaunchAtStartup" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
+    </Setting>
+    <Setting Name="AppId" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
     </Setting>
   </Settings>
 </SettingsFile>

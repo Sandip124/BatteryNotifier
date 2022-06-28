@@ -15,6 +15,10 @@
 
   <ItemGroup>
     <None Remove="appSetting.settings" />
+    <None Remove="Assets\Fonts\SpaceMono-Bold.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-BoldItalic.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-Italic.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-Regular.ttf" />
     <None Remove="battery-icon.ico" />
   </ItemGroup>
 

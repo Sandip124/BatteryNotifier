@@ -97,13 +97,13 @@ namespace BatteryNotifier.Setting {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool showAsModal {
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool PinToNotificationArea {
             get {
-                return ((bool)(this["showAsModal"]));
+                return ((bool)(this["PinToNotificationArea"]));
             }
             set {
-                this["showAsModal"] = value;
+                this["PinToNotificationArea"] = value;
             }
         }
         
@@ -152,6 +152,18 @@ namespace BatteryNotifier.Setting {
             }
             set {
                 this["LaunchAtStartup"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string AppId {
+            get {
+                return ((string)(this["AppId"]));
+            }
+            set {
+                this["AppId"] = value;
             }
         }
     }
