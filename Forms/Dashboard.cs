@@ -34,6 +34,7 @@ namespace BatteryNotifier.Forms
         {
             InitializeComponent();
             ApplyTheme();
+            ApplyFontStyle();
             this.RenderFormPosition();
             _debouncer = new Debouncer.Debouncer();
         }
@@ -45,7 +46,7 @@ namespace BatteryNotifier.Forms
 
         public void UpdateStatus(string status, int timeout = 3000)
         {
-            NotificationText.Text = status; 
+            NotificationText.Text = status;
             _debouncer.Debounce(() =>
             {
                 NotificationText.Text = string.Empty;
@@ -66,16 +67,7 @@ namespace BatteryNotifier.Forms
         private void CloseIcon_MouseLeave(object? sender, EventArgs e)
         {
             CloseIcon.BackColor = Color.Transparent;
-
-            if (appSetting.Default.darkThemeApplied)
-            {
-                CloseIcon.Image = Resources.closeIconDark;
-            }
-            else
-            {
-                CloseIcon.Image = Resources.closeIconLight;
-            }
-
+            CloseIcon.Image = Resources.closeIconDark;
         }
 
         private void Dashboard_Load(object? sender, EventArgs e)
@@ -107,6 +99,10 @@ namespace BatteryNotifier.Forms
 
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
             lowBatteryPercentageValue.Value = appSetting.Default.lowBatteryNotificationValue;
+
+            SystemThemeLabel.Checked = appSetting.Default.SystemThemeApplied;
+            DarkThemeLabel.Checked = appSetting.Default.darkThemeApplied;
+            LightThemeLabel.Checked = !appSetting.Default.darkThemeApplied && (appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme());
         }
 
         private void HandleLaunchAtStartup()
@@ -178,14 +174,40 @@ namespace BatteryNotifier.Forms
             fullBatteryTrackbar.Scroll += new EventHandler(FullBatteryTrackbar_Scroll);
             fullBatteryTrackbar.ValueChanged += new EventHandler(FullBatteryTrackbar_ValueChanged);
 
-            //this.DarkModeCheckbox.CheckedChanged += new EventHandler(DarkModeCheckbox_CheckedChanged);
-
             PinToNotificationArea.CheckedChanged += new EventHandler(PinToNotificationArea_CheckedChanged);
 
             launchAtStartup.CheckedChanged += new System.EventHandler(LaunchAtStartup_CheckedChanged);
 
-            GithubIcon.Click += new EventHandler(GithubIcon_Click);
+            SystemThemeLabel.CheckedChanged += new EventHandler(SystemThemeLabel_CheckedChanged);
+            DarkThemeLabel.CheckedChanged += new EventHandler(DarkThemeLabel_CheckedChanged);
+            LightThemeLabel.CheckedChanged += new EventHandler(LightThemeLabel_CheckedChanged);
+        }
 
+        private void LightThemeLabel_CheckedChanged(object? sender, EventArgs e)
+        {
+            appSetting.Default.darkThemeApplied = false;
+            appSetting.Default.SystemThemeApplied = false;
+            appSetting.Default.Save();
+            UpdateChargingAnimation();
+            ApplyTheme();
+        }
+
+        private void DarkThemeLabel_CheckedChanged(object? sender, EventArgs e)
+        {
+            appSetting.Default.darkThemeApplied = true;
+            appSetting.Default.SystemThemeApplied = false;
+            appSetting.Default.Save();
+            UpdateChargingAnimation();
+            ApplyTheme();
+        }
+
+        private void SystemThemeLabel_CheckedChanged(object? sender, EventArgs e)
+        {
+            appSetting.Default.darkThemeApplied = false;
+            appSetting.Default.SystemThemeApplied = true;
+            appSetting.Default.Save();
+            UpdateChargingAnimation();
+            ApplyTheme();
         }
 
         private void GithubIcon_Click(object? sender, EventArgs e)
@@ -378,57 +400,38 @@ namespace BatteryNotifier.Forms
                 BatteryStatus.Text = "🙄 Not Charging";
                 BatteryStatus.ForeColor = Color.Gray;
                 SetBatteryChargeStatus(status);
-
-                ResetIsChargingStatus();
-
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "💀 Are you running on main power !!";
                 BatteryImage.Image = Resources.Unknown;
-                ResetIsChargingStatus();
             }
             else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "😇 Only God knows about this battery !!";
                 BatteryImage.Image = Resources.Unknown;
-                ResetIsChargingStatus();
             }
 
             UpdateBatteryPercentage(status);
             UpdateBatteryChargeRemainingStatus(status);
         }
 
-        private void ResetIsChargingStatus()
-        {
-            isRenderingChargingStatusForDarkMode = false;
-            isRenderingChargingStatusForLightMode = false;
-        }
 
-        bool isRenderingChargingStatusForDarkMode;
-        bool isRenderingChargingStatusForLightMode;
+
 
         private void UpdateChargingAnimation()
         {
             if (!_isCharging) return;
 
-            if (appSetting.Default.darkThemeApplied)
+            if (ThemeProvider.IsDarkTheme)
             {
-                if (!isRenderingChargingStatusForDarkMode)
-                {
-                    BatteryImage.Image = Resources.ChargingBatteryAnimatedDark;
-                    isRenderingChargingStatusForDarkMode = true;
-                }
+                BatteryImage.Image = Resources.ChargingBatteryAnimatedDark;
             }
             else
             {
-                if (!isRenderingChargingStatusForLightMode)
-                {
-                    BatteryImage.Image = Resources.ChargingBatteryAnimated;
-                    isRenderingChargingStatusForLightMode = true;
-                }
+                BatteryImage.Image = Resources.ChargingBatteryAnimated;
             }
         }
 
@@ -553,7 +556,7 @@ namespace BatteryNotifier.Forms
             appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
 
-            UpdateStatus("🔔 Low Battery Notification " + (FullBatteryNotificationCheckbox.Checked ? "Enabled" : "Disabled"));
+            UpdateStatus("🔔 Low Battery Notification " + (LowBatteryNotificationCheckbox.Checked ? "Enabled" : "Disabled"));
         }
 
         private void ShowNotificationTimer_Tick(object? sender, EventArgs e)
@@ -563,7 +566,7 @@ namespace BatteryNotifier.Forms
 
         private void VersionLabel_Click(object? sender, EventArgs e)
         {
-            UtilityHelper.StartExternalUrlProcess(Constant.SourceRepositoryUrl);
+            UtilityHelper.StartExternalUrlProcess(Constant.ReleaseUrl);
         }
 
         private void Dashboard_Activated(object? sender, EventArgs e)
@@ -576,9 +579,7 @@ namespace BatteryNotifier.Forms
             UpdateChargingAnimation();
         }
 
-        bool isLightThemeRendered = false;
-        bool isDarkThemeRendered = false;
-        private void ApplyTheme()
+        private void ApplyFontStyle()
         {
             AppHeaderTitle.Font = FontProvider.GetBoldFont(12);
             BatteryPercentage.Font = FontProvider.GetBoldFont(BatteryPercentage.Font.Size);
@@ -597,102 +598,66 @@ namespace BatteryNotifier.Forms
             LightThemeLabel.Font = FontProvider.GetRegularFont(LightThemeLabel.Font.Size);
             DarkThemeLabel.Font = FontProvider.GetRegularFont(DarkThemeLabel.Font.Size);
             NotificationGroupBox.Font = FontProvider.GetRegularFont(NotificationGroupBox.Font.Size);
-
-            SuspendLayout();
-            if (appSetting.Default.darkThemeApplied)
-            {
-                if (isDarkThemeRendered) return;
-                AppContainer.BackColor = Color.FromArgb(30, 30, 30);
-                AppHeader.BackColor = Color.Black;
-                AppHeaderTitle.ForeColor = Color.White;
-                RemainingTime.ForeColor = Color.White;
-                BatteryPercentage.ForeColor = Color.White;
-                NotificationSettingGroupBox.ForeColor = Color.White;
-                AppFooter.BackColor = Color.Black;
-                VersionLabel.ForeColor = Color.FromArgb(160, 160, 160);
-                CloseIcon.Image = Resources.closeIconDark;
-                NotificationText.ForeColor = Color.White;
-
-                ShowAsWindowPanel.BackColor = Color.FromArgb(20, 20, 20);
-                //DarkModelPanel.BackColor = Color.FromArgb(20, 20, 20);
-                LaunchAtStartupPanel.BackColor = Color.FromArgb(20, 20, 20);
-                AppHeaderTitle.ForeColor = Color.White;
-                NotificationGroupBox.ForeColor = Color.White;
-                ShowFullBatteryNotificationLabel.ForeColor = Color.White;
-
-                PinToNotificationAreaLabel.ForeColor = Color.White;
-                //DarkModeLabel.ForeColor = Color.White;
-                LaunchAtStartUpLabel.ForeColor = Color.White;
-
-                fullBatteryTrackbar.BackColor = Color.FromArgb(30, 30, 30);
-                lowBatteryTrackbar.BackColor = Color.FromArgb(30, 30, 30);
-
-                BatteryPercentageLabel.ForeColor = Color.White;
-
-                LowBatteryNotificationLabel.ForeColor = Color.White;
-                LowBatteryPercentageLabel.ForeColor = Color.White;
-
-                lowBatteryPercentageValue.BackColor = Color.FromArgb(20, 20, 20);
-                lowBatteryPercentageValue.ForeColor = Color.White;
-                fullbatteryPercentageValue.BackColor = Color.FromArgb(20, 20, 20);
-                fullbatteryPercentageValue.ForeColor = Color.White;
-
-                CloseIcon.Image = Resources.closeIconDark;
-
-                isDarkThemeRendered = true;
-                isLightThemeRendered = false;
-            }
-            else
-            {
-                if (isLightThemeRendered) return;
-                AppContainer.BackColor = Color.White;
-                AppHeader.BackColor = Color.AliceBlue;
-                AppHeaderTitle.ForeColor = Color.Black;
-                RemainingTime.ForeColor = Color.Black;
-                BatteryPercentage.ForeColor = Color.Black;
-                NotificationSettingGroupBox.ForeColor = Color.Black;
-                AppFooter.BackColor = Color.AliceBlue;
-                VersionLabel.ForeColor = Color.Black;
-                CloseIcon.Image = Resources.closeIconLight;
-                NotificationText.ForeColor = Color.Black;
-
-                ShowAsWindowPanel.BackColor = Color.WhiteSmoke;
-                //DarkModelPanel.BackColor = Color.WhiteSmoke;
-                LaunchAtStartupPanel.BackColor = Color.WhiteSmoke;
-                AppHeaderTitle.ForeColor = Color.Black;
-
-                NotificationGroupBox.ForeColor = Color.Black;
-                ShowFullBatteryNotificationLabel.ForeColor = Color.Black;
-
-                fullBatteryTrackbar.BackColor = Color.White;
-                lowBatteryTrackbar.BackColor = Color.White;
-
-                PinToNotificationAreaLabel.ForeColor = Color.Black;
-                //DarkModeLabel.ForeColor = Color.Black;
-                LaunchAtStartUpLabel.ForeColor = Color.Black;
-
-                BatteryPercentageLabel.ForeColor = Color.Black;
-
-                LowBatteryNotificationLabel.ForeColor = Color.Black;
-                LowBatteryPercentageLabel.ForeColor = Color.Black;
-
-                lowBatteryPercentageValue.BackColor = Color.LightGray;
-                lowBatteryPercentageValue.ForeColor = Color.Black;
-                fullbatteryPercentageValue.BackColor = Color.LightGray;
-                fullbatteryPercentageValue.ForeColor = Color.Black;
-
-                CloseIcon.Image = Resources.closeIconLight;
-
-                isDarkThemeRendered = false;
-                isLightThemeRendered = true;
-            }
-            ResumeLayout();
         }
 
-        public void ResetRenderingState()
+        private void ApplyTheme()
         {
-            isDarkThemeRendered = false;
-            isLightThemeRendered = false;
+
+            SuspendLayout();
+
+            var theme = ThemeProvider.GetTheme();
+
+            AppContainer.BackColor = theme.AccentColor;
+            AppTabControl.BackColor = theme.AccentColor;
+            DashboardTab.BackColor = theme.AccentColor;
+            SettingTab.BackColor = theme.AccentColor;
+            NotificationGroupBox.BackColor = theme.AccentColor;
+
+            RemainingTime.ForeColor = theme.ForegroundColor;
+            BatteryPercentage.ForeColor = theme.ForegroundColor;
+            NotificationSettingGroupBox.ForeColor = theme.ForegroundColor;
+            FullBatteryLabel.ForeColor = theme.ForegroundColor;
+            LowBatteryLabel.ForeColor = theme.ForegroundColor;
+
+            AppFooter.BackColor = theme.AccentColor;
+            VersionLabel.ForeColor = theme.ForegroundColor;
+
+            NotificationText.ForeColor = theme.ForegroundColor;
+
+            ShowAsWindowPanel.BackColor = theme.Accent2Color;
+            LaunchAtStartupPanel.BackColor = theme.Accent2Color;
+            ThemeConfigurationPanel.BackColor = theme.Accent2Color;
+
+            ThemePanel.BackColor = theme.Accent2Color;
+            ThemePanel.ForeColor = theme.ForegroundColor;
+
+            SystemThemeLabel.ForeColor = theme.ForegroundColor;
+            LightThemeLabel.ForeColor = theme.ForegroundColor;
+            DarkThemeLabel.ForeColor = theme.ForegroundColor;
+
+            NotificationGroupBox.ForeColor = theme.ForegroundColor;
+            ShowFullBatteryNotificationLabel.ForeColor = theme.ForegroundColor;
+
+            PinToNotificationAreaLabel.ForeColor = theme.ForegroundColor;
+            LaunchAtStartUpLabel.ForeColor = theme.ForegroundColor;
+
+            fullBatteryTrackbar.BackColor = theme.AccentColor;
+            lowBatteryTrackbar.BackColor = theme.AccentColor;
+
+            BatteryPercentageLabel.ForeColor = theme.ForegroundColor;
+
+            LowBatteryNotificationLabel.ForeColor = theme.ForegroundColor;
+            LowBatteryPercentageLabel.ForeColor = theme.ForegroundColor;
+
+            lowBatteryPercentageValue.BackColor = theme.AccentColor;
+            lowBatteryPercentageValue.ForeColor = theme.ForegroundColor;
+            fullbatteryPercentageValue.BackColor = theme.AccentColor;
+            fullbatteryPercentageValue.ForeColor = theme.ForegroundColor;
+
+            CloseIcon.Image = Resources.closeIconDark;
+
+
+            ResumeLayout();
         }
 
         private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)

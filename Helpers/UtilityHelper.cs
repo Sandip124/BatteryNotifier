@@ -21,8 +21,8 @@ namespace BatteryNotifier.Helpers
             return str.Substring(0, str.IndexOf('\0'));
         }
 
-        public static string AssemblyVersion => Assembly.GetExecutingAssembly().GetName().Version.ToString();
-        public static string AppName => Assembly.GetExecutingAssembly().GetName().Name.ToString();
+        public static string AssemblyVersion => Assembly.GetExecutingAssembly().GetName().Version!.ToString();
+        public static string AppName => Assembly.GetExecutingAssembly().GetName().Name!.ToString();
 
         public static void StartExternalUrlProcess(string url)
         {
@@ -41,6 +41,18 @@ namespace BatteryNotifier.Helpers
             var currentUserRegKey = Registry.CurrentUser;
 
             return currentUserRegKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+        }
+
+        /// <summary>
+        ///     Determine whether it is a light theme
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static bool IsLightTheme()
+        {
+            using var personalizeKey =
+                   Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false);
+            return (int)(personalizeKey?.GetValue("SystemUsesLightTheme", 0) ?? 0) == 1;
         }
 
     }

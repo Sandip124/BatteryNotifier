@@ -166,5 +166,17 @@ namespace BatteryNotifier.Setting {
                 this["AppId"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool SystemThemeApplied {
+            get {
+                return ((bool)(this["SystemThemeApplied"]));
+            }
+            set {
+                this["SystemThemeApplied"] = value;
+            }
+        }
     }
 }
