@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
 using System.Threading.Tasks;
@@ -10,8 +10,6 @@ namespace BatteryNotifier
 {
     internal static class Program
     {
-        private static string appGuid = "D2ED1949-C00C-4F99-87DD-B5A6CE56A733";
-
         public static UpdateManager? UpdateManager;
 
         private static Form? MainForm;
@@ -26,10 +24,17 @@ namespace BatteryNotifier
         [STAThread]
         static void Main()
         {
+            var appId = Setting.appSetting.Default.AppId;
+            if (string.IsNullOrEmpty(appId))
+            {
+                appId = Setting.appSetting.Default.AppId = Guid.NewGuid().ToString();
+                Setting.appSetting.Default.Save();
+            }
+                        
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledExpection);
             AppDomain.CurrentDomain.ProcessExit += OnExit;
 
-            using Mutex mutex = new Mutex(false, "Global\\" + appGuid);
+            using Mutex mutex = new(false, "Global\\" + appId);
             if (!mutex.WaitOne(0, false))
             {
                 return;
@@ -48,7 +53,7 @@ namespace BatteryNotifier
                 Task UpdateTask = new(CheckForUpdates);
                 UpdateTask.Start();
                 version = UpdateManager!.CurrentlyInstalledVersion().ToString();
-                dashboard?.UpdateStatus("Checking for update ...");
+                dashboard?.UpdateStatus("🤿 Checking for update ...");
                 IsUpdateInProgress = true;
             }
 #endif               
@@ -62,11 +67,11 @@ namespace BatteryNotifier
         {
             try
             {
-                UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceUrl}");
+                UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceRepositoryUrl}");
             }
             catch (Exception)
             {
-                (MainForm as Dashboard)?.UpdateStatus("Could not initialize update manager!");
+                (MainForm as Dashboard)?.UpdateStatus("🕹 Could not initialize update manager!");
             }
         }
 
@@ -85,24 +90,19 @@ namespace BatteryNotifier
                     if (releaseEntry != null)
                     {
                         IsUpdateInProgress = false;
-                        (MainForm as Dashboard)?.UpdateStatus($"Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
+                        (MainForm as Dashboard)?.UpdateStatus($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
                     }
                 }
                 else
                 {
                    
                     IsUpdateInProgress = false;
-                    (MainForm as Dashboard)?.UpdateStatus("No Update Available");
+                    (MainForm as Dashboard)?.UpdateStatus("✌ No Update Available");
                 }
             }
             catch (Exception)
             {
-                MessageBox.Show("Could not update app!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-              Thread.Sleep(3000);
-              (MainForm as Dashboard)?.UpdateStatus(string.Empty);
+                MessageBox.Show("💀 Could not update app!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -113,7 +113,7 @@ namespace BatteryNotifier
 
         static void OnUnhandledExpection(object? sender, UnhandledExceptionEventArgs args)
         {
-            MessageBox.Show(args.ExceptionObject.ToString(), "Battery Notifier error!");
+            MessageBox.Show(args.ExceptionObject.ToString(),"Battery Notifier error!");
         }
 
     }
