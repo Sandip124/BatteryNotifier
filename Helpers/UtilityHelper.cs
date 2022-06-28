@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.Win32;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BatteryNotifier.Helpers
 {
@@ -26,6 +22,26 @@ namespace BatteryNotifier.Helpers
         }
 
         public static string AssemblyVersion => Assembly.GetExecutingAssembly().GetName().Version.ToString();
+        public static string AppName => Assembly.GetExecutingAssembly().GetName().Name.ToString();
+
+        public static void StartExternalUrlProcess(string url)
+        {
+            ProcessStartInfo sInfo = new(url)
+            {
+                UseShellExecute = true
+            };
+            Process.Start(sInfo);
+        }
+
+        /// <summary>
+        /// Opens and returns a key where Windows stores paths to executables that load on startup
+        /// </summary>
+        public static RegistryKey GetWindowsStartupAppsKey()
+        {
+            var currentUserRegKey = Registry.CurrentUser;
+
+            return currentUserRegKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows\CurrentVersion\Run", true);
+        }
 
     }
 }

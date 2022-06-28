@@ -15,6 +15,19 @@
 
   <ItemGroup>
     <None Remove="appSetting.settings" />
+    <None Remove="Assets\Fonts\Inter-Black.ttf" />
+    <None Remove="Assets\Fonts\Inter-Bold.ttf" />
+    <None Remove="Assets\Fonts\Inter-ExtraBold.ttf" />
+    <None Remove="Assets\Fonts\Inter-ExtraLight.ttf" />
+    <None Remove="Assets\Fonts\Inter-Light.ttf" />
+    <None Remove="Assets\Fonts\Inter-Medium.ttf" />
+    <None Remove="Assets\Fonts\Inter-Regular.ttf" />
+    <None Remove="Assets\Fonts\Inter-SemiBold.ttf" />
+    <None Remove="Assets\Fonts\Inter-Thin.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-Bold.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-BoldItalic.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-Italic.ttf" />
+    <None Remove="Assets\Fonts\SpaceMono-Regular.ttf" />
     <None Remove="battery-icon.ico" />
   </ItemGroup>
 
@@ -23,6 +36,33 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Assets\Fonts\Inter-Black.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-Bold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-ExtraBold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-ExtraLight.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-Light.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-Medium.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-Regular.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-SemiBold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Assets\Fonts\Inter-Thin.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <EmbeddedResource Include="Setting\appSetting.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>appSetting.Designer.cs</LastGenOutput>

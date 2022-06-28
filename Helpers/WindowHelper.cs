@@ -6,7 +6,7 @@ namespace BatteryNotifier.Helpers
 {
     public static class WindowHelper
     {
-        public static void RenderFormPosition(this Form form,bool showAsModal)
+        public static void RenderFormPosition(this Form form)
         {
             Rectangle workingArea = Screen.GetWorkingArea(form);
 
@@ -14,7 +14,8 @@ namespace BatteryNotifier.Helpers
             var yPosition = Setting.appSetting.Default.WindowPositionY;
 
             form.SuspendLayout();
-            if (!showAsModal)
+            var pinToNotificationArea = Setting.appSetting.Default.PinToNotificationArea;
+            if(pinToNotificationArea)
             {
                 form.Location = new Point(workingArea.Right - form.Size.Width,
                                           workingArea.Bottom - form.Size.Height);
