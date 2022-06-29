@@ -46,7 +46,7 @@ namespace BatteryNotifier.Forms
             this.AppHeader = new System.Windows.Forms.TableLayoutPanel();
             this.AppHeaderTitle = new System.Windows.Forms.Label();
             this.CloseIcon = new System.Windows.Forms.PictureBox();
-            this.AppTabControl = new System.Windows.Forms.TabControl();
+            this.AppTabControl = new BatteryNotifier.CustomControls.FlatTabControl.FlatTabControl();
             this.DashboardTab = new System.Windows.Forms.TabPage();
             this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
             this.NotificationSettingGroupBox = new System.Windows.Forms.GroupBox();
@@ -255,7 +255,7 @@ namespace BatteryNotifier.Forms
             // 
             // AppContainer
             // 
-            this.AppContainer.BackColor = System.Drawing.Color.White;
+            this.AppContainer.BackColor = System.Drawing.Color.Transparent;
             this.AppContainer.ColumnCount = 1;
             this.AppContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.AppContainer.Controls.Add(this.AppFooter, 0, 2);
@@ -361,10 +361,10 @@ namespace BatteryNotifier.Forms
             this.AppTabControl.Controls.Add(this.SettingTab);
             this.AppTabControl.Dock = System.Windows.Forms.DockStyle.Fill;
             this.AppTabControl.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.AppTabControl.HotTrack = true;
             this.AppTabControl.Location = new System.Drawing.Point(0, 47);
             this.AppTabControl.Margin = new System.Windows.Forms.Padding(0);
-            this.AppTabControl.Multiline = true;
+            this.AppTabControl.MyBackColor = System.Drawing.Color.Transparent;
+            this.AppTabControl.MyBorderColor = System.Drawing.SystemColors.ControlText;
             this.AppTabControl.Name = "AppTabControl";
             this.AppTabControl.SelectedIndex = 0;
             this.AppTabControl.ShowToolTips = true;
@@ -373,6 +373,7 @@ namespace BatteryNotifier.Forms
             // 
             // DashboardTab
             // 
+            this.DashboardTab.BackColor = System.Drawing.Color.Transparent;
             this.DashboardTab.Controls.Add(this.tableLayoutPanel9);
             this.DashboardTab.Location = new System.Drawing.Point(4, 29);
             this.DashboardTab.Margin = new System.Windows.Forms.Padding(0);
@@ -380,7 +381,6 @@ namespace BatteryNotifier.Forms
             this.DashboardTab.Size = new System.Drawing.Size(400, 388);
             this.DashboardTab.TabIndex = 0;
             this.DashboardTab.Text = "Dashboard";
-            this.DashboardTab.UseVisualStyleBackColor = true;
             // 
             // tableLayoutPanel9
             // 
@@ -1317,6 +1317,6 @@ namespace BatteryNotifier.Forms
         private Label LowBatteryNotificationLabel;
         private TrackBar fullBatteryTrackbar;
         private Label FullBatteryPercentageLabel;
-        public TabControl AppTabControl;
+        public CustomControls.FlatTabControl.FlatTabControl AppTabControl;
     }
 }

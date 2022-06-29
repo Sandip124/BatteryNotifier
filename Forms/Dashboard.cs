@@ -37,6 +37,12 @@ namespace BatteryNotifier.Forms
             ApplyFontStyle();
             this.RenderFormPosition();
             _debouncer = new Debouncer.Debouncer();
+
+            SetStyle(ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
+            SetStyle(ControlStyles.DoubleBuffer, true);
+            SetStyle(ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.SupportsTransparentBackColor, true);
         }
 
         public void SetVersion(string? ver)
@@ -608,9 +614,12 @@ namespace BatteryNotifier.Forms
             var theme = ThemeProvider.GetTheme();
 
             AppContainer.BackColor = theme.AccentColor;
-            AppTabControl.BackColor = theme.AccentColor;
+            AppTabControl.MyBackColor = theme.AccentColor;
+            AppTabControl.MyBorderColor = theme.Accent2Color;
             DashboardTab.BackColor = theme.AccentColor;
             SettingTab.BackColor = theme.AccentColor;
+            DashboardTab.ForeColor = theme.ForegroundColor;
+            SettingTab.ForeColor = theme.ForegroundColor;
             NotificationGroupBox.BackColor = theme.AccentColor;
 
             RemainingTime.ForeColor = theme.ForegroundColor;
