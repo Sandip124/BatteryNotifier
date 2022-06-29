@@ -13,5 +13,7 @@ namespace BatteryNotifier.Theming
         public override Color ForegroundColor => Color.Black;
 
         public override Color Accent2Color => Color.AliceBlue;
+
+        public override Color Accent3Color => Color.LightCyan;
     }
 }

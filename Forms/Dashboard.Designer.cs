@@ -77,17 +77,17 @@ namespace BatteryNotifier.Forms
             this.FullBatteryPercentageLabel = new System.Windows.Forms.Label();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
             this.ShowAsWindowPanel = new System.Windows.Forms.Panel();
-            this.pictureBox10 = new System.Windows.Forms.PictureBox();
+            this.PinToNotificationAreaPictureBox = new System.Windows.Forms.PictureBox();
             this.PinToNotificationAreaLabel = new System.Windows.Forms.Label();
             this.PinToNotificationArea = new System.Windows.Forms.CheckBox();
             this.LaunchAtStartupPanel = new System.Windows.Forms.Panel();
-            this.pictureBox3 = new System.Windows.Forms.PictureBox();
+            this.LaunchAtStartUpPictureBox = new System.Windows.Forms.PictureBox();
             this.LaunchAtStartUpLabel = new System.Windows.Forms.Label();
             this.launchAtStartup = new System.Windows.Forms.CheckBox();
             this.ThemeConfigurationPanel = new System.Windows.Forms.TableLayoutPanel();
             this.DarkThemeLabel = new System.Windows.Forms.RadioButton();
             this.ThemePanel = new System.Windows.Forms.Panel();
-            this.pictureBox7 = new System.Windows.Forms.PictureBox();
+            this.ThemePictureBox = new System.Windows.Forms.PictureBox();
             this.ThemeLabel = new System.Windows.Forms.Label();
             this.SystemThemeLabel = new System.Windows.Forms.RadioButton();
             this.LightThemeLabel = new System.Windows.Forms.RadioButton();
@@ -144,12 +144,12 @@ namespace BatteryNotifier.Forms
             ((System.ComponentModel.ISupportInitialize)(this.fullBatteryTrackbar)).BeginInit();
             this.flowLayoutPanel2.SuspendLayout();
             this.ShowAsWindowPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.PinToNotificationAreaPictureBox)).BeginInit();
             this.LaunchAtStartupPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.LaunchAtStartUpPictureBox)).BeginInit();
             this.ThemeConfigurationPanel.SuspendLayout();
             this.ThemePanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox7)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ThemePictureBox)).BeginInit();
             this.tableLayoutPanel1.SuspendLayout();
             this.panel1.SuspendLayout();
             this.tableLayoutPanel2.SuspendLayout();
@@ -584,6 +584,7 @@ namespace BatteryNotifier.Forms
             this.SettingTab.Location = new System.Drawing.Point(4, 29);
             this.SettingTab.Margin = new System.Windows.Forms.Padding(0);
             this.SettingTab.Name = "SettingTab";
+            this.SettingTab.Padding = new System.Windows.Forms.Padding(8);
             this.SettingTab.Size = new System.Drawing.Size(400, 388);
             this.SettingTab.TabIndex = 1;
             this.SettingTab.Text = "Setting";
@@ -601,9 +602,11 @@ namespace BatteryNotifier.Forms
             this.NotificationGroupBox.Controls.Add(this.LowBatteryNotificationLabel);
             this.NotificationGroupBox.Controls.Add(this.fullBatteryTrackbar);
             this.NotificationGroupBox.Controls.Add(this.FullBatteryPercentageLabel);
-            this.NotificationGroupBox.Location = new System.Drawing.Point(3, 157);
+            this.NotificationGroupBox.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.NotificationGroupBox.Location = new System.Drawing.Point(8, 152);
+            this.NotificationGroupBox.Margin = new System.Windows.Forms.Padding(0);
             this.NotificationGroupBox.Name = "NotificationGroupBox";
-            this.NotificationGroupBox.Size = new System.Drawing.Size(383, 222);
+            this.NotificationGroupBox.Size = new System.Drawing.Size(384, 228);
             this.NotificationGroupBox.TabIndex = 35;
             this.NotificationGroupBox.TabStop = false;
             this.NotificationGroupBox.Text = "Notification Setting for";
@@ -718,36 +721,35 @@ namespace BatteryNotifier.Forms
             this.flowLayoutPanel2.Controls.Add(this.LaunchAtStartupPanel);
             this.flowLayoutPanel2.Controls.Add(this.ThemeConfigurationPanel);
             this.flowLayoutPanel2.Dock = System.Windows.Forms.DockStyle.Top;
-            this.flowLayoutPanel2.Location = new System.Drawing.Point(0, 0);
+            this.flowLayoutPanel2.Location = new System.Drawing.Point(8, 8);
             this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-            this.flowLayoutPanel2.Padding = new System.Windows.Forms.Padding(0, 5, 0, 10);
-            this.flowLayoutPanel2.Size = new System.Drawing.Size(400, 154);
+            this.flowLayoutPanel2.Size = new System.Drawing.Size(384, 135);
             this.flowLayoutPanel2.TabIndex = 34;
             // 
             // ShowAsWindowPanel
             // 
             this.ShowAsWindowPanel.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ShowAsWindowPanel.Controls.Add(this.pictureBox10);
+            this.ShowAsWindowPanel.Controls.Add(this.PinToNotificationAreaPictureBox);
             this.ShowAsWindowPanel.Controls.Add(this.PinToNotificationAreaLabel);
             this.ShowAsWindowPanel.Controls.Add(this.PinToNotificationArea);
-            this.ShowAsWindowPanel.Location = new System.Drawing.Point(4, 9);
+            this.ShowAsWindowPanel.Location = new System.Drawing.Point(4, 4);
             this.ShowAsWindowPanel.Margin = new System.Windows.Forms.Padding(4);
             this.ShowAsWindowPanel.Name = "ShowAsWindowPanel";
-            this.ShowAsWindowPanel.Size = new System.Drawing.Size(383, 36);
+            this.ShowAsWindowPanel.Size = new System.Drawing.Size(376, 36);
             this.ShowAsWindowPanel.TabIndex = 30;
             // 
-            // pictureBox10
+            // PinToNotificationAreaPictureBox
             // 
-            this.pictureBox10.BackColor = System.Drawing.Color.Transparent;
-            this.pictureBox10.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.pictureBox10.Image = global::BatteryNotifier.Properties.Resources.Window;
-            this.pictureBox10.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox10.Name = "pictureBox10";
-            this.pictureBox10.Size = new System.Drawing.Size(35, 36);
-            this.pictureBox10.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox10.TabIndex = 27;
-            this.pictureBox10.TabStop = false;
+            this.PinToNotificationAreaPictureBox.BackColor = System.Drawing.Color.Transparent;
+            this.PinToNotificationAreaPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.PinToNotificationAreaPictureBox.Image = global::BatteryNotifier.Properties.Resources.Window;
+            this.PinToNotificationAreaPictureBox.Location = new System.Drawing.Point(0, 0);
+            this.PinToNotificationAreaPictureBox.Name = "PinToNotificationAreaPictureBox";
+            this.PinToNotificationAreaPictureBox.Size = new System.Drawing.Size(35, 36);
+            this.PinToNotificationAreaPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.PinToNotificationAreaPictureBox.TabIndex = 27;
+            this.PinToNotificationAreaPictureBox.TabStop = false;
             // 
             // PinToNotificationAreaLabel
             // 
@@ -763,7 +765,7 @@ namespace BatteryNotifier.Forms
             // PinToNotificationArea
             // 
             this.PinToNotificationArea.AutoSize = true;
-            this.PinToNotificationArea.Location = new System.Drawing.Point(357, 12);
+            this.PinToNotificationArea.Location = new System.Drawing.Point(351, 12);
             this.PinToNotificationArea.Name = "PinToNotificationArea";
             this.PinToNotificationArea.Size = new System.Drawing.Size(15, 14);
             this.PinToNotificationArea.TabIndex = 17;
@@ -772,26 +774,26 @@ namespace BatteryNotifier.Forms
             // LaunchAtStartupPanel
             // 
             this.LaunchAtStartupPanel.BackColor = System.Drawing.SystemColors.Menu;
-            this.LaunchAtStartupPanel.Controls.Add(this.pictureBox3);
+            this.LaunchAtStartupPanel.Controls.Add(this.LaunchAtStartUpPictureBox);
             this.LaunchAtStartupPanel.Controls.Add(this.LaunchAtStartUpLabel);
             this.LaunchAtStartupPanel.Controls.Add(this.launchAtStartup);
-            this.LaunchAtStartupPanel.Location = new System.Drawing.Point(4, 53);
+            this.LaunchAtStartupPanel.Location = new System.Drawing.Point(4, 48);
             this.LaunchAtStartupPanel.Margin = new System.Windows.Forms.Padding(4);
             this.LaunchAtStartupPanel.Name = "LaunchAtStartupPanel";
-            this.LaunchAtStartupPanel.Size = new System.Drawing.Size(383, 36);
+            this.LaunchAtStartupPanel.Size = new System.Drawing.Size(376, 36);
             this.LaunchAtStartupPanel.TabIndex = 33;
             // 
-            // pictureBox3
+            // LaunchAtStartUpPictureBox
             // 
-            this.pictureBox3.BackColor = System.Drawing.Color.Transparent;
-            this.pictureBox3.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.pictureBox3.Image = global::BatteryNotifier.Properties.Resources.launchatstartup;
-            this.pictureBox3.Location = new System.Drawing.Point(1, -2);
-            this.pictureBox3.Name = "pictureBox3";
-            this.pictureBox3.Size = new System.Drawing.Size(34, 38);
-            this.pictureBox3.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox3.TabIndex = 28;
-            this.pictureBox3.TabStop = false;
+            this.LaunchAtStartUpPictureBox.BackColor = System.Drawing.Color.Transparent;
+            this.LaunchAtStartUpPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.LaunchAtStartUpPictureBox.Image = global::BatteryNotifier.Properties.Resources.launchatstartup;
+            this.LaunchAtStartUpPictureBox.Location = new System.Drawing.Point(1, -2);
+            this.LaunchAtStartUpPictureBox.Name = "LaunchAtStartUpPictureBox";
+            this.LaunchAtStartUpPictureBox.Size = new System.Drawing.Size(34, 38);
+            this.LaunchAtStartUpPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.LaunchAtStartUpPictureBox.TabIndex = 28;
+            this.LaunchAtStartUpPictureBox.TabStop = false;
             // 
             // LaunchAtStartUpLabel
             // 
@@ -806,7 +808,7 @@ namespace BatteryNotifier.Forms
             // launchAtStartup
             // 
             this.launchAtStartup.AutoSize = true;
-            this.launchAtStartup.Location = new System.Drawing.Point(357, 13);
+            this.launchAtStartup.Location = new System.Drawing.Point(351, 11);
             this.launchAtStartup.Name = "launchAtStartup";
             this.launchAtStartup.Size = new System.Drawing.Size(15, 14);
             this.launchAtStartup.TabIndex = 17;
@@ -816,7 +818,7 @@ namespace BatteryNotifier.Forms
             // 
             this.ThemeConfigurationPanel.BackColor = System.Drawing.SystemColors.Menu;
             this.ThemeConfigurationPanel.ColumnCount = 4;
-            this.ThemeConfigurationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 122F));
+            this.ThemeConfigurationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 103F));
             this.ThemeConfigurationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
             this.ThemeConfigurationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
             this.ThemeConfigurationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
@@ -824,19 +826,19 @@ namespace BatteryNotifier.Forms
             this.ThemeConfigurationPanel.Controls.Add(this.ThemePanel, 0, 0);
             this.ThemeConfigurationPanel.Controls.Add(this.SystemThemeLabel, 1, 0);
             this.ThemeConfigurationPanel.Controls.Add(this.LightThemeLabel, 1, 0);
-            this.ThemeConfigurationPanel.Location = new System.Drawing.Point(4, 97);
+            this.ThemeConfigurationPanel.Location = new System.Drawing.Point(4, 92);
             this.ThemeConfigurationPanel.Margin = new System.Windows.Forms.Padding(4);
             this.ThemeConfigurationPanel.Name = "ThemeConfigurationPanel";
             this.ThemeConfigurationPanel.RowCount = 1;
             this.ThemeConfigurationPanel.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.ThemeConfigurationPanel.Size = new System.Drawing.Size(383, 36);
+            this.ThemeConfigurationPanel.Size = new System.Drawing.Size(376, 36);
             this.ThemeConfigurationPanel.TabIndex = 35;
             // 
             // DarkThemeLabel
             // 
             this.DarkThemeLabel.BackColor = System.Drawing.Color.Transparent;
             this.DarkThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
-            this.DarkThemeLabel.Location = new System.Drawing.Point(308, 3);
+            this.DarkThemeLabel.Location = new System.Drawing.Point(301, 3);
             this.DarkThemeLabel.Name = "DarkThemeLabel";
             this.DarkThemeLabel.Size = new System.Drawing.Size(72, 30);
             this.DarkThemeLabel.TabIndex = 38;
@@ -847,45 +849,46 @@ namespace BatteryNotifier.Forms
             // ThemePanel
             // 
             this.ThemePanel.BackColor = System.Drawing.SystemColors.Menu;
-            this.ThemePanel.Controls.Add(this.pictureBox7);
+            this.ThemePanel.Controls.Add(this.ThemePictureBox);
             this.ThemePanel.Controls.Add(this.ThemeLabel);
             this.ThemePanel.Dock = System.Windows.Forms.DockStyle.Fill;
             this.ThemePanel.Location = new System.Drawing.Point(0, 0);
             this.ThemePanel.Margin = new System.Windows.Forms.Padding(0);
             this.ThemePanel.Name = "ThemePanel";
-            this.ThemePanel.Size = new System.Drawing.Size(122, 36);
+            this.ThemePanel.Size = new System.Drawing.Size(103, 36);
             this.ThemePanel.TabIndex = 33;
             // 
-            // pictureBox7
+            // ThemePictureBox
             // 
-            this.pictureBox7.BackColor = System.Drawing.Color.Transparent;
-            this.pictureBox7.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.pictureBox7.Dock = System.Windows.Forms.DockStyle.Left;
-            this.pictureBox7.Image = global::BatteryNotifier.Properties.Resources.DarkMode;
-            this.pictureBox7.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox7.Name = "pictureBox7";
-            this.pictureBox7.Size = new System.Drawing.Size(37, 36);
-            this.pictureBox7.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureBox7.TabIndex = 28;
-            this.pictureBox7.TabStop = false;
+            this.ThemePictureBox.BackColor = System.Drawing.Color.Transparent;
+            this.ThemePictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.ThemePictureBox.Dock = System.Windows.Forms.DockStyle.Left;
+            this.ThemePictureBox.Image = global::BatteryNotifier.Properties.Resources.DarkMode;
+            this.ThemePictureBox.Location = new System.Drawing.Point(0, 0);
+            this.ThemePictureBox.Name = "ThemePictureBox";
+            this.ThemePictureBox.Size = new System.Drawing.Size(37, 36);
+            this.ThemePictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.ThemePictureBox.TabIndex = 28;
+            this.ThemePictureBox.TabStop = false;
             // 
             // ThemeLabel
             // 
             this.ThemeLabel.BackColor = System.Drawing.Color.Transparent;
             this.ThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
             this.ThemeLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
-            this.ThemeLabel.Location = new System.Drawing.Point(43, 0);
+            this.ThemeLabel.Location = new System.Drawing.Point(24, 0);
+            this.ThemeLabel.Margin = new System.Windows.Forms.Padding(0);
             this.ThemeLabel.Name = "ThemeLabel";
             this.ThemeLabel.Size = new System.Drawing.Size(79, 36);
             this.ThemeLabel.TabIndex = 16;
-            this.ThemeLabel.Text = "Theme : ";
-            this.ThemeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.ThemeLabel.Text = "Theme :";
+            this.ThemeLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // SystemThemeLabel
             // 
             this.SystemThemeLabel.BackColor = System.Drawing.Color.Transparent;
             this.SystemThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
-            this.SystemThemeLabel.Location = new System.Drawing.Point(125, 3);
+            this.SystemThemeLabel.Location = new System.Drawing.Point(110, 3);
             this.SystemThemeLabel.Name = "SystemThemeLabel";
             this.SystemThemeLabel.Size = new System.Drawing.Size(81, 30);
             this.SystemThemeLabel.TabIndex = 37;
@@ -897,7 +900,7 @@ namespace BatteryNotifier.Forms
             // 
             this.LightThemeLabel.BackColor = System.Drawing.Color.Transparent;
             this.LightThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
-            this.LightThemeLabel.Location = new System.Drawing.Point(222, 3);
+            this.LightThemeLabel.Location = new System.Drawing.Point(211, 3);
             this.LightThemeLabel.Name = "LightThemeLabel";
             this.LightThemeLabel.Size = new System.Drawing.Size(71, 30);
             this.LightThemeLabel.TabIndex = 36;
@@ -1208,13 +1211,13 @@ namespace BatteryNotifier.Forms
             this.flowLayoutPanel2.ResumeLayout(false);
             this.ShowAsWindowPanel.ResumeLayout(false);
             this.ShowAsWindowPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox10)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.PinToNotificationAreaPictureBox)).EndInit();
             this.LaunchAtStartupPanel.ResumeLayout(false);
             this.LaunchAtStartupPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.LaunchAtStartUpPictureBox)).EndInit();
             this.ThemeConfigurationPanel.ResumeLayout(false);
             this.ThemePanel.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.pictureBox7)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.ThemePictureBox)).EndInit();
             this.tableLayoutPanel1.ResumeLayout(false);
             this.panel1.ResumeLayout(false);
             this.tableLayoutPanel2.ResumeLayout(false);
@@ -1292,17 +1295,17 @@ namespace BatteryNotifier.Forms
         private TabPage SettingTab;
         private FlowLayoutPanel flowLayoutPanel2;
         private Panel ShowAsWindowPanel;
-        private PictureBox pictureBox10;
+        private PictureBox PinToNotificationAreaPictureBox;
         private Label PinToNotificationAreaLabel;
         private CheckBox PinToNotificationArea;
         private Panel LaunchAtStartupPanel;
-        private PictureBox pictureBox3;
+        private PictureBox LaunchAtStartUpPictureBox;
         private Label LaunchAtStartUpLabel;
         private CheckBox launchAtStartup;
         private TableLayoutPanel ThemeConfigurationPanel;
         private RadioButton DarkThemeLabel;
         private Panel ThemePanel;
-        private PictureBox pictureBox7;
+        private PictureBox ThemePictureBox;
         private Label ThemeLabel;
         private RadioButton SystemThemeLabel;
         private RadioButton LightThemeLabel;

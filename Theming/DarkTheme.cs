@@ -14,5 +14,7 @@ namespace BatteryNotifier.Theming
         public override Color ForegroundColor => Color.White;
 
         public override Color Accent2Color => Color.FromArgb(40,40,40);
+
+        public override Color Accent3Color => Color.FromArgb(60, 60, 60);
     }
 }

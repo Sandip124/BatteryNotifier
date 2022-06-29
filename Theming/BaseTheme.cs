@@ -8,6 +8,7 @@ namespace BatteryNotifier.Theming
         public abstract Color BackgroundColor { get; }
         public abstract Color AccentColor { get; }
         public abstract Color Accent2Color { get; }
+        public abstract Color Accent3Color { get; }
         public abstract Color ForegroundColor { get; }
         
         

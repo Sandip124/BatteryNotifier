@@ -637,6 +637,10 @@ namespace BatteryNotifier.Forms
             LaunchAtStartupPanel.BackColor = theme.Accent2Color;
             ThemeConfigurationPanel.BackColor = theme.Accent2Color;
 
+            PinToNotificationAreaPictureBox.BackColor = theme.Accent3Color;
+            ThemePictureBox.BackColor = theme.Accent3Color;
+            LaunchAtStartUpPictureBox.BackColor = theme.Accent3Color;
+
             ThemePanel.BackColor = theme.Accent2Color;
             ThemePanel.ForeColor = theme.ForegroundColor;
 
