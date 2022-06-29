@@ -337,19 +337,19 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
             FindUpDown();
         }
 
-        private void FlatTabControl_ControlAdded(object sender, ControlEventArgs e)
+        private void FlatTabControl_ControlAdded(object? sender, ControlEventArgs e)
         {
             FindUpDown();
             UpdateUpDown();
         }
 
-        private void FlatTabControl_ControlRemoved(object sender, ControlEventArgs e)
+        private void FlatTabControl_ControlRemoved(object? sender, ControlEventArgs e)
         {
             FindUpDown();
             UpdateUpDown();
         }
 
-        private void FlatTabControl_SelectedIndexChanged(object sender, EventArgs e)
+        private void FlatTabControl_SelectedIndexChanged(object? sender, EventArgs e)
         {
             UpdateUpDown();
             Invalidate();   // we need to update border and background colors
@@ -493,14 +493,14 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
         }
 
         [Browsable(true)]
-        new public Color MyBackColor
+        public Color MyBackColor
         {
             get { return mBackColor; }
             set { mBackColor = value; Invalidate(); }
         }
 
         [Browsable(true)]
-        new public Color MyBorderColor
+        public Color MyBorderColor
         {
             get { return mBorderColor; }
             set { mBorderColor = value; Invalidate(); }
