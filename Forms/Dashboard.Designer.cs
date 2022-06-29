@@ -169,8 +169,8 @@ namespace BatteryNotifier.Forms
             // BatteryNotifierIcon
             // 
             this.BatteryNotifierIcon.BalloonTipIcon = System.Windows.Forms.ToolTipIcon.Info;
-            this.BatteryNotifierIcon.BalloonTipText = " Hi there";
-            this.BatteryNotifierIcon.BalloonTipTitle = " and this is the title";
+            this.BatteryNotifierIcon.BalloonTipText = "Did you get notification ?";
+            this.BatteryNotifierIcon.BalloonTipTitle = "Battery Notifier";
             this.BatteryNotifierIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("BatteryNotifierIcon.Icon")));
             this.BatteryNotifierIcon.Text = "Battery Notifier";
             this.BatteryNotifierIcon.Visible = true;
