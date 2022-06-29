@@ -330,6 +330,7 @@ namespace BatteryNotifier.Forms
             // 
             this.AppHeaderTitle.AutoSize = true;
             this.AppHeaderTitle.BackColor = System.Drawing.Color.Transparent;
+            this.AppHeaderTitle.Cursor = System.Windows.Forms.Cursors.SizeAll;
             this.AppHeaderTitle.Dock = System.Windows.Forms.DockStyle.Fill;
             this.AppHeaderTitle.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.AppHeaderTitle.ForeColor = System.Drawing.SystemColors.ButtonHighlight;
@@ -375,6 +376,7 @@ namespace BatteryNotifier.Forms
             // 
             this.DashboardTab.BackColor = System.Drawing.Color.Transparent;
             this.DashboardTab.Controls.Add(this.tableLayoutPanel9);
+            this.DashboardTab.Cursor = System.Windows.Forms.Cursors.Hand;
             this.DashboardTab.Location = new System.Drawing.Point(4, 29);
             this.DashboardTab.Margin = new System.Windows.Forms.Padding(0);
             this.DashboardTab.Name = "DashboardTab";
@@ -444,6 +446,7 @@ namespace BatteryNotifier.Forms
             // LowBatteryNotificationCheckbox
             // 
             this.LowBatteryNotificationCheckbox.AutoSize = true;
+            this.LowBatteryNotificationCheckbox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.LowBatteryNotificationCheckbox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.LowBatteryNotificationCheckbox.Font = new System.Drawing.Font("Roboto", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.LowBatteryNotificationCheckbox.Location = new System.Drawing.Point(313, 3);
@@ -497,6 +500,7 @@ namespace BatteryNotifier.Forms
             // FullBatteryNotificationCheckbox
             // 
             this.FullBatteryNotificationCheckbox.AutoSize = true;
+            this.FullBatteryNotificationCheckbox.Cursor = System.Windows.Forms.Cursors.Hand;
             this.FullBatteryNotificationCheckbox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.FullBatteryNotificationCheckbox.Font = new System.Drawing.Font("Roboto", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.FullBatteryNotificationCheckbox.Location = new System.Drawing.Point(313, 3);
@@ -581,6 +585,7 @@ namespace BatteryNotifier.Forms
             this.SettingTab.BackColor = System.Drawing.Color.Transparent;
             this.SettingTab.Controls.Add(this.NotificationGroupBox);
             this.SettingTab.Controls.Add(this.flowLayoutPanel2);
+            this.SettingTab.Cursor = System.Windows.Forms.Cursors.Hand;
             this.SettingTab.Location = new System.Drawing.Point(4, 29);
             this.SettingTab.Margin = new System.Windows.Forms.Padding(0);
             this.SettingTab.Name = "SettingTab";
@@ -643,6 +648,7 @@ namespace BatteryNotifier.Forms
             // 
             // lowBatteryTrackbar
             // 
+            this.lowBatteryTrackbar.Cursor = System.Windows.Forms.Cursors.SizeWE;
             this.lowBatteryTrackbar.LargeChange = 10;
             this.lowBatteryTrackbar.Location = new System.Drawing.Point(162, 138);
             this.lowBatteryTrackbar.Maximum = 100;
@@ -697,6 +703,7 @@ namespace BatteryNotifier.Forms
             // 
             // fullBatteryTrackbar
             // 
+            this.fullBatteryTrackbar.Cursor = System.Windows.Forms.Cursors.SizeWE;
             this.fullBatteryTrackbar.LargeChange = 10;
             this.fullBatteryTrackbar.Location = new System.Drawing.Point(162, 57);
             this.fullBatteryTrackbar.Maximum = 100;
@@ -765,6 +772,7 @@ namespace BatteryNotifier.Forms
             // PinToNotificationArea
             // 
             this.PinToNotificationArea.AutoSize = true;
+            this.PinToNotificationArea.Cursor = System.Windows.Forms.Cursors.Hand;
             this.PinToNotificationArea.Location = new System.Drawing.Point(351, 12);
             this.PinToNotificationArea.Name = "PinToNotificationArea";
             this.PinToNotificationArea.Size = new System.Drawing.Size(15, 14);
@@ -808,6 +816,7 @@ namespace BatteryNotifier.Forms
             // launchAtStartup
             // 
             this.launchAtStartup.AutoSize = true;
+            this.launchAtStartup.Cursor = System.Windows.Forms.Cursors.Hand;
             this.launchAtStartup.Location = new System.Drawing.Point(351, 11);
             this.launchAtStartup.Name = "launchAtStartup";
             this.launchAtStartup.Size = new System.Drawing.Size(15, 14);
@@ -837,6 +846,7 @@ namespace BatteryNotifier.Forms
             // DarkThemeLabel
             // 
             this.DarkThemeLabel.BackColor = System.Drawing.Color.Transparent;
+            this.DarkThemeLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.DarkThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
             this.DarkThemeLabel.Location = new System.Drawing.Point(301, 3);
             this.DarkThemeLabel.Name = "DarkThemeLabel";
@@ -887,6 +897,7 @@ namespace BatteryNotifier.Forms
             // SystemThemeLabel
             // 
             this.SystemThemeLabel.BackColor = System.Drawing.Color.Transparent;
+            this.SystemThemeLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.SystemThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
             this.SystemThemeLabel.Location = new System.Drawing.Point(110, 3);
             this.SystemThemeLabel.Name = "SystemThemeLabel";
@@ -899,6 +910,7 @@ namespace BatteryNotifier.Forms
             // LightThemeLabel
             // 
             this.LightThemeLabel.BackColor = System.Drawing.Color.Transparent;
+            this.LightThemeLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.LightThemeLabel.Dock = System.Windows.Forms.DockStyle.Right;
             this.LightThemeLabel.Location = new System.Drawing.Point(211, 3);
             this.LightThemeLabel.Name = "LightThemeLabel";
