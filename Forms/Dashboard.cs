@@ -260,8 +260,11 @@ namespace BatteryNotifier.Forms
         protected override void OnDeactivate(EventArgs e)
         {
             base.OnDeactivate(e);
-            Hide();
-            isFormActivated = false;
+            if (appSetting.Default.PinToNotificationArea)
+            {
+                Hide();
+                isFormActivated = false;
+            }
         }
 
         private readonly CustomTimer _timer = new();
