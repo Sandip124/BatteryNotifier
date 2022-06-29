@@ -324,7 +324,7 @@ namespace BatteryNotifier.Forms
 
                     BatteryNotifierIcon.ShowBalloonTip(50, "Full Battery", fullBatteryNotificationMessage, ToolTipIcon.Info);
 
-                    PlayFullBatterySound();
+                    PlaySound(appSetting.Default.fullBatteryNotificationMusic, Resources.BatteryFull);
                 }
 
                 if (isFormActivated) return;
@@ -346,7 +346,7 @@ namespace BatteryNotifier.Forms
             {
                 BatteryNotifierIcon.ShowBalloonTip(50, "Low Battery", LowBatteryNotificationMessage, ToolTipIcon.Info);
 
-                PlayLowBatterySound();
+                PlaySound(appSetting.Default.lowBatteryNotificationMusic, Resources.LowBatterySound);
             }
 
             if (isFormActivated) return;
@@ -354,34 +354,22 @@ namespace BatteryNotifier.Forms
 
         }
 
-
-        private void PlaySound(string soundLocation)
+        private void PlaySound(string source, System.IO.UnmanagedMemoryStream fallbackSoundSource)
         {
             _soundPlayingTimer.Start();
 
-            var notificationSoundAvailable = !string.IsNullOrEmpty(soundLocation);
+            var soundLocation = source;
 
+            var notificationSoundAvailable = !string.IsNullOrEmpty(soundLocation);
             if (notificationSoundAvailable)
             {
                 _batteryNotification.SoundLocation = soundLocation;
             }
             else
             {
-                _batteryNotification.Stream = Resources.BatteryFull;
+                _batteryNotification.Stream = fallbackSoundSource;
             }
             _batteryNotification.PlayLooping();
-        }
-
-        private void PlayFullBatterySound()
-        {
-            var soundLocation = appSetting.Default.fullBatteryNotificationMusic;
-            PlaySound(soundLocation);
-        }
-
-        private void PlayLowBatterySound()
-        {
-            var soundLocation = appSetting.Default.lowBatteryNotificationMusic;
-            PlaySound(soundLocation);
         }
 
         private void RefreshBatteryStatus()
@@ -617,7 +605,6 @@ namespace BatteryNotifier.Forms
             SettingTab.BackColor = theme.AccentColor;
             DashboardTab.ForeColor = theme.ForegroundColor;
             SettingTab.ForeColor = theme.ForegroundColor;
-            NotificationGroupBox.BackColor = theme.AccentColor;
 
             RemainingTime.ForeColor = theme.ForegroundColor;
             BatteryPercentage.ForeColor = theme.ForegroundColor;
@@ -648,6 +635,9 @@ namespace BatteryNotifier.Forms
             LightThemeLabel.ForeColor = theme.ForegroundColor;
             DarkThemeLabel.ForeColor = theme.ForegroundColor;
 
+            SettingHeader.BackColor = theme.Accent2Color;
+            NotificationGroupBox.BackColor = theme.AccentColor;
+            NotificationGroupBox.BorderStyle = BorderStyle.FixedSingle;
             NotificationGroupBox.ForeColor = theme.ForegroundColor;
             ShowFullBatteryNotificationLabel.ForeColor = theme.ForegroundColor;
 

@@ -65,7 +65,8 @@ namespace BatteryNotifier.Forms
             this.BatteryStatus = new System.Windows.Forms.Label();
             this.RemainingTime = new System.Windows.Forms.Label();
             this.SettingTab = new System.Windows.Forms.TabPage();
-            this.NotificationGroupBox = new System.Windows.Forms.GroupBox();
+            this.NotificationGroupBox = new System.Windows.Forms.Panel();
+            this.SettingHeader = new System.Windows.Forms.Label();
             this.lowBatteryPercentageValue = new System.Windows.Forms.NumericUpDown();
             this.pictureBox8 = new System.Windows.Forms.PictureBox();
             this.fullbatteryPercentageValue = new System.Windows.Forms.NumericUpDown();
@@ -489,7 +490,7 @@ namespace BatteryNotifier.Forms
             // 
             // FullBatteryNotificationPanel
             // 
-            this.FullBatteryNotificationPanel.BackColor = System.Drawing.Color.AliceBlue;
+            this.FullBatteryNotificationPanel.BackColor = System.Drawing.Color.Gainsboro;
             this.FullBatteryNotificationPanel.ColumnCount = 3;
             this.FullBatteryNotificationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 55F));
             this.FullBatteryNotificationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
@@ -618,6 +619,7 @@ namespace BatteryNotifier.Forms
             // NotificationGroupBox
             // 
             this.NotificationGroupBox.BackColor = System.Drawing.Color.Transparent;
+            this.NotificationGroupBox.Controls.Add(this.SettingHeader);
             this.NotificationGroupBox.Controls.Add(this.lowBatteryPercentageValue);
             this.NotificationGroupBox.Controls.Add(this.pictureBox8);
             this.NotificationGroupBox.Controls.Add(this.fullbatteryPercentageValue);
@@ -634,8 +636,19 @@ namespace BatteryNotifier.Forms
             this.NotificationGroupBox.Name = "NotificationGroupBox";
             this.NotificationGroupBox.Size = new System.Drawing.Size(176, 228);
             this.NotificationGroupBox.TabIndex = 35;
-            this.NotificationGroupBox.TabStop = false;
             this.NotificationGroupBox.Text = "Notification Setting for";
+            // 
+            // SettingHeader
+            // 
+            this.SettingHeader.BackColor = System.Drawing.Color.Transparent;
+            this.SettingHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.SettingHeader.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
+            this.SettingHeader.Location = new System.Drawing.Point(0, 0);
+            this.SettingHeader.Name = "SettingHeader";
+            this.SettingHeader.Size = new System.Drawing.Size(176, 27);
+            this.SettingHeader.TabIndex = 27;
+            this.SettingHeader.Text = "Notification Setting";
+            this.SettingHeader.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             // 
             // lowBatteryPercentageValue
             // 
@@ -1343,7 +1356,7 @@ namespace BatteryNotifier.Forms
         private Label ThemeLabel;
         private RadioButton SystemThemeLabel;
         private RadioButton LightThemeLabel;
-        private GroupBox NotificationGroupBox;
+        private Panel NotificationGroupBox;
         private NumericUpDown lowBatteryPercentageValue;
         private PictureBox pictureBox8;
         private NumericUpDown fullbatteryPercentageValue;
@@ -1356,5 +1369,6 @@ namespace BatteryNotifier.Forms
         private Label FullBatteryPercentageLabel;
         public CustomControls.FlatTabControl.FlatTabControl AppTabControl;
         private PictureBox pictureBox3;
+        private Label SettingHeader;
     }
 }
