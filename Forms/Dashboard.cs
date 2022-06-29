@@ -420,8 +420,6 @@ namespace BatteryNotifier.Forms
         }
 
 
-
-
         private void UpdateChargingAnimation()
         {
             if (!_isCharging) return;
@@ -462,23 +460,28 @@ namespace BatteryNotifier.Forms
 
             if (powerStatus.BatteryLifePercent >= .96)
             {
-                BatteryStatus.Text = "🔋 Full Battery";
+                BatteryStatus.Text = "Full Battery";
                 BatteryImage.Image = Resources.Full;
             }
-            else if (powerStatus.BatteryLifePercent >= .4 && powerStatus.BatteryLifePercent <= .96)
+            else if (powerStatus.BatteryLifePercent >= .6 && powerStatus.BatteryLifePercent <= .96)
             {
-                BatteryStatus.Text = "🔋 Sufficient Battery";
+                BatteryStatus.Text = "Adequate Battery";
+                BatteryImage.Image = Resources.Sufficient;
+            }
+            else if (powerStatus.BatteryLifePercent >= .4 && powerStatus.BatteryLifePercent <= .6)
+            {
+                BatteryStatus.Text = "Sufficient Battery";
                 BatteryImage.Image = Resources.Normal;
             }
             else if (powerStatus.BatteryLifePercent < .4)
             {
-                BatteryStatus.Text = "🔌 Battery Low";
-                BatteryImage.Image = Resources.Critical;
+                BatteryStatus.Text = "Battery Low";
+                BatteryImage.Image = Resources.Low;
             }
             else if (powerStatus.BatteryLifePercent <= .14)
             {
-                BatteryStatus.Text = "⚠ Battery Critical";
-                BatteryImage.Image = Resources.Low;
+                BatteryStatus.Text = "Battery Critical";
+                BatteryImage.Image = Resources.Critical;
             }
         }
 
@@ -587,7 +590,6 @@ namespace BatteryNotifier.Forms
             BatteryStatus.Font = FontProvider.GetRegularFont(BatteryStatus.Font.Size);
             RemainingTime.Font = FontProvider.GetRegularFont(RemainingTime.Font.Size);
             AppTabControl.Font = FontProvider.GetRegularFont(AppTabControl.Font.Size);
-            NotificationSettingGroupBox.Font = FontProvider.GetRegularFont(NotificationSettingGroupBox.Font.Size);
             FullBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(FullBatteryNotificationCheckbox.Font.Size);
             LowBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(LowBatteryNotificationCheckbox.Font.Size);
             VersionLabel.Font = FontProvider.GetRegularFont(VersionLabel.Font.Size);
@@ -619,7 +621,6 @@ namespace BatteryNotifier.Forms
 
             RemainingTime.ForeColor = theme.ForegroundColor;
             BatteryPercentage.ForeColor = theme.ForegroundColor;
-            NotificationSettingGroupBox.ForeColor = theme.ForegroundColor;
             FullBatteryLabel.ForeColor = theme.ForegroundColor;
             LowBatteryLabel.ForeColor = theme.ForegroundColor;
 
@@ -638,6 +639,10 @@ namespace BatteryNotifier.Forms
 
             ThemePanel.BackColor = theme.Accent2Color;
             ThemePanel.ForeColor = theme.ForegroundColor;
+
+            NotificationSettingPanel.BackColor = theme.AccentColor;
+            FullBatteryNotificationPanel.BackColor = theme.Accent2Color;
+            LowBatteryNotificationPanel.BackColor = theme.Accent2Color;
 
             SystemThemeLabel.ForeColor = theme.ForegroundColor;
             LightThemeLabel.ForeColor = theme.ForegroundColor;
