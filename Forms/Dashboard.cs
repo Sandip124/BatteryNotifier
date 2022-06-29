@@ -230,6 +230,7 @@ namespace BatteryNotifier.Forms
             appSetting.Default.PinToNotificationArea = PinToNotificationArea.Checked;
             appSetting.Default.Save();
             this.RenderFormPosition();
+            Show();
         }
 
         private void FullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)

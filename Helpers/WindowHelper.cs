@@ -13,7 +13,6 @@ namespace BatteryNotifier.Helpers
             var xPosition = Setting.appSetting.Default.WindowPositionX;
             var yPosition = Setting.appSetting.Default.WindowPositionY;
 
-            form.SuspendLayout();
             var pinToNotificationArea = Setting.appSetting.Default.PinToNotificationArea;
             if(pinToNotificationArea)
             {
@@ -28,8 +27,6 @@ namespace BatteryNotifier.Helpers
                 form.ShowIcon = true;
                 form.Location = new Point(xPosition, yPosition);
             }
-            form.ResumeLayout();
-            form.Update();
         }
     }
 }
