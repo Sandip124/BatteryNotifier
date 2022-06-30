@@ -36,7 +36,13 @@ namespace BatteryNotifier.Forms
             ApplyTheme();
             ApplyFontStyle();
             this.RenderFormPosition(BatteryNotifierIcon);
+            RenderTitleBarCursor();
             _debouncer = new Debouncer.Debouncer();
+        }
+
+        private void RenderTitleBarCursor()
+        {
+            AppHeaderTitle.Cursor = appSetting.Default.PinToNotificationArea ? Cursors.Default : Cursors.SizeAll;
         }
 
         public void SetVersion(string? ver)
@@ -241,6 +247,8 @@ namespace BatteryNotifier.Forms
             Show();
 
             UpdateStatus("Battery Notifier is " + (PinToNotificationArea.Checked ? "pinned" : "not pinned")+ " to notification area.");
+
+            RenderTitleBarCursor();
         }
 
         private void FullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
