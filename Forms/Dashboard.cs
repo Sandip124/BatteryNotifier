@@ -131,6 +131,8 @@ namespace BatteryNotifier.Forms
             }
             appSetting.Default.LaunchAtStartup = launchAtStartup.Checked;
             appSetting.Default.Save();
+
+            UpdateStatus("Battery Notifier will " + (launchAtStartup.Checked ? "launch" : "not launch") + " at windows startup.");
         }
 
 
@@ -238,7 +240,7 @@ namespace BatteryNotifier.Forms
             this.RenderFormPosition(BatteryNotifierIcon);
             Show();
 
-            UpdateStatus("Battery Notifier is" + (PinToNotificationArea.Checked ? "pinned" : "not pinned")+ " to notification area.");
+            UpdateStatus("Battery Notifier is " + (PinToNotificationArea.Checked ? "pinned" : "not pinned")+ " to notification area.");
         }
 
         private void FullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
