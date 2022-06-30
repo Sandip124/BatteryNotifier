@@ -35,7 +35,7 @@ namespace BatteryNotifier.Forms
             InitializeComponent();
             ApplyTheme();
             ApplyFontStyle();
-            this.RenderFormPosition();
+            this.RenderFormPosition(BatteryNotifierIcon);
             _debouncer = new Debouncer.Debouncer();
         }
 
@@ -55,7 +55,14 @@ namespace BatteryNotifier.Forms
 
         private void CloseIcon_Click(object? sender, EventArgs e)
         {
-            Hide();
+            if (appSetting.Default.PinToNotificationArea)
+            {
+                Hide();
+            }
+            else
+            {
+                PinToNotificationArea.Checked = true;
+            }
         }
 
         private void CloseIcon_MouseEnter(object? sender, EventArgs e)
@@ -73,7 +80,6 @@ namespace BatteryNotifier.Forms
         private void Dashboard_Load(object? sender, EventArgs e)
         {
             SuspendLayout();
-            isFormActivated = true;
             LoadSettings();
             HandleLaunchAtStartup();
             RefreshBatteryStatus();
@@ -229,7 +235,7 @@ namespace BatteryNotifier.Forms
         {
             appSetting.Default.PinToNotificationArea = PinToNotificationArea.Checked;
             appSetting.Default.Save();
-            this.RenderFormPosition();
+            this.RenderFormPosition(BatteryNotifierIcon);
             Show();
         }
 
@@ -255,16 +261,13 @@ namespace BatteryNotifier.Forms
 
         }
 
-        bool isFormActivated = false;
-
         protected override void OnDeactivate(EventArgs e)
-        {
-            base.OnDeactivate(e);
+        {            
             if (appSetting.Default.PinToNotificationArea)
             {
+                base.OnDeactivate(e);
                 Hide();
-                isFormActivated = false;
-            }
+            }            
         }
 
         private readonly CustomTimer _timer = new();
@@ -330,7 +333,7 @@ namespace BatteryNotifier.Forms
                     PlaySound(appSetting.Default.fullBatteryNotificationMusic, Resources.BatteryFull);
                 }
 
-                if (isFormActivated) return;
+                if (Visible) return;
                 Show();
 
             }
@@ -352,7 +355,7 @@ namespace BatteryNotifier.Forms
                 PlaySound(appSetting.Default.lowBatteryNotificationMusic, Resources.LowBatterySound);
             }
 
-            if (isFormActivated) return;
+            if (Visible) return;
             Show();
 
         }
@@ -527,7 +530,6 @@ namespace BatteryNotifier.Forms
             else
             {
                 Show();
-                Activate();
             }
         }
 
@@ -566,11 +568,10 @@ namespace BatteryNotifier.Forms
 
         private void Dashboard_Activated(object? sender, EventArgs e)
         {
-            isFormActivated = true;
             BatteryStatusTimer.Start();
             RefreshBatteryStatus();
             LoadNotificationSetting();
-            this.RenderFormPosition();
+            this.RenderFormPosition(BatteryNotifierIcon);
             UpdateChargingAnimation();
         }
 
