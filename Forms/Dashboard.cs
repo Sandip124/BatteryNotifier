@@ -68,7 +68,6 @@ namespace BatteryNotifier.Forms
         private void CloseIcon_MouseEnter(object? sender, EventArgs e)
         {
             CloseIcon.Image = Resources.closeIconHoverState;
-            CloseIcon.BackColor = Color.FromArgb(197, 48, 38);
         }
 
         private void CloseIcon_MouseLeave(object? sender, EventArgs e)
@@ -196,6 +195,8 @@ namespace BatteryNotifier.Forms
             appSetting.Default.Save();
             UpdateChargingAnimation();
             ApplyTheme();
+            
+            UpdateStatus("Battery Notifier is on light mode 🔆.");
         }
 
         private void DarkThemeLabel_CheckedChanged(object? sender, EventArgs e)
@@ -205,6 +206,8 @@ namespace BatteryNotifier.Forms
             appSetting.Default.Save();
             UpdateChargingAnimation();
             ApplyTheme();
+
+            UpdateStatus("Battery Notifier is on dark mode 🌙.");
         }
 
         private void SystemThemeLabel_CheckedChanged(object? sender, EventArgs e)
@@ -214,11 +217,8 @@ namespace BatteryNotifier.Forms
             appSetting.Default.Save();
             UpdateChargingAnimation();
             ApplyTheme();
-        }
 
-        private void GithubIcon_Click(object? sender, EventArgs e)
-        {
-            UtilityHelper.StartExternalUrlProcess(Constant.ReleaseUrl);
+            UpdateStatus("Battery Notifier theme is synced with system theme.");
         }
 
         private void FullBatteryTrackbar_Scroll(object? sender, EventArgs e)
@@ -237,6 +237,8 @@ namespace BatteryNotifier.Forms
             appSetting.Default.Save();
             this.RenderFormPosition(BatteryNotifierIcon);
             Show();
+
+            UpdateStatus("Battery Notifier is" + (PinToNotificationArea.Checked ? "pinned" : "not pinned")+ " to notification area.");
         }
 
         private void FullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
@@ -321,8 +323,9 @@ namespace BatteryNotifier.Forms
 
             if (status.PowerLineStatus == PowerLineStatus.Online && _isCharging && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
             {
-                var fullBatteryNotificationMessage = "Battery is full please unplug the charger.";
+                var fullBatteryNotificationMessage = "🔋 Battery is full please unplug the charger.";
 
+                PlaySound(string.Empty, Resources.long_pop);
                 UpdateStatus(fullBatteryNotificationMessage);
 
                 if (showFullBatteryNotification)
@@ -330,7 +333,7 @@ namespace BatteryNotifier.Forms
 
                     BatteryNotifierIcon.ShowBalloonTip(50, "Full Battery", fullBatteryNotificationMessage, ToolTipIcon.Info);
 
-                    PlaySound(appSetting.Default.fullBatteryNotificationMusic, Resources.BatteryFull);
+                    PlaySound(appSetting.Default.fullBatteryNotificationMusic, Resources.BatteryFull,true);
                 }
 
                 if (Visible) return;
@@ -344,23 +347,24 @@ namespace BatteryNotifier.Forms
             if (status.PowerLineStatus != PowerLineStatus.Offline || _isCharging ||
                 !(status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)) return;
 
-            var LowBatteryNotificationMessage = "Battery is low.Please Connect to Charger.";
+            var LowBatteryNotificationMessage = "🔋 Battery is low, please Connect to Charger.";
 
+            PlaySound(string.Empty, Resources.long_pop);
             UpdateStatus(LowBatteryNotificationMessage);
 
             if (showLowBatteryNotification)
             {
                 BatteryNotifierIcon.ShowBalloonTip(50, "Low Battery", LowBatteryNotificationMessage, ToolTipIcon.Info);
 
-                PlaySound(appSetting.Default.lowBatteryNotificationMusic, Resources.LowBatterySound);
+                PlaySound(appSetting.Default.lowBatteryNotificationMusic, Resources.LowBatterySound,true);
             }
 
-            if (Visible) return;
+            if (Visible)return;            
             Show();
 
         }
 
-        private void PlaySound(string source, System.IO.UnmanagedMemoryStream fallbackSoundSource)
+        private void PlaySound(string source, System.IO.UnmanagedMemoryStream fallbackSoundSource,bool loop = false)
         {
             _soundPlayingTimer.Start();
 
@@ -375,7 +379,15 @@ namespace BatteryNotifier.Forms
             {
                 _batteryNotification.Stream = fallbackSoundSource;
             }
-            _batteryNotification.PlayLooping();
+            if (loop)
+            {
+                _batteryNotification.PlayLooping();
+            }
+            else
+            {
+                _batteryNotification.PlaySync();
+            }
+            
         }
 
         private void RefreshBatteryStatus()

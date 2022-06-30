@@ -435,7 +435,7 @@ namespace BatteryNotifier.Forms
             // 
             // LowBatteryNotificationPanel
             // 
-            this.LowBatteryNotificationPanel.BackColor = System.Drawing.Color.AliceBlue;
+            this.LowBatteryNotificationPanel.BackColor = System.Drawing.Color.Gainsboro;
             this.LowBatteryNotificationPanel.ColumnCount = 3;
             this.LowBatteryNotificationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 56F));
             this.LowBatteryNotificationPanel.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
@@ -608,11 +608,11 @@ namespace BatteryNotifier.Forms
             this.SettingTab.Controls.Add(this.NotificationGroupBox);
             this.SettingTab.Controls.Add(this.flowLayoutPanel2);
             this.SettingTab.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.SettingTab.Location = new System.Drawing.Point(4, 29);
+            this.SettingTab.Location = new System.Drawing.Point(4, 25);
             this.SettingTab.Margin = new System.Windows.Forms.Padding(0);
             this.SettingTab.Name = "SettingTab";
             this.SettingTab.Padding = new System.Windows.Forms.Padding(8);
-            this.SettingTab.Size = new System.Drawing.Size(400, 388);
+            this.SettingTab.Size = new System.Drawing.Size(192, 71);
             this.SettingTab.TabIndex = 1;
             this.SettingTab.Text = "Setting";
             // 
@@ -631,10 +631,10 @@ namespace BatteryNotifier.Forms
             this.NotificationGroupBox.Controls.Add(this.fullBatteryTrackbar);
             this.NotificationGroupBox.Controls.Add(this.FullBatteryPercentageLabel);
             this.NotificationGroupBox.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.NotificationGroupBox.Location = new System.Drawing.Point(8, 152);
+            this.NotificationGroupBox.Location = new System.Drawing.Point(8, -165);
             this.NotificationGroupBox.Margin = new System.Windows.Forms.Padding(0);
             this.NotificationGroupBox.Name = "NotificationGroupBox";
-            this.NotificationGroupBox.Size = new System.Drawing.Size(384, 228);
+            this.NotificationGroupBox.Size = new System.Drawing.Size(176, 228);
             this.NotificationGroupBox.TabIndex = 35;
             this.NotificationGroupBox.Text = "Notification Setting for";
             // 
@@ -645,7 +645,7 @@ namespace BatteryNotifier.Forms
             this.SettingHeader.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point);
             this.SettingHeader.Location = new System.Drawing.Point(0, 0);
             this.SettingHeader.Name = "SettingHeader";
-            this.SettingHeader.Size = new System.Drawing.Size(384, 27);
+            this.SettingHeader.Size = new System.Drawing.Size(176, 27);
             this.SettingHeader.TabIndex = 27;
             this.SettingHeader.Text = "Notification Setting";
             this.SettingHeader.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -765,7 +765,7 @@ namespace BatteryNotifier.Forms
             this.flowLayoutPanel2.Location = new System.Drawing.Point(8, 8);
             this.flowLayoutPanel2.Margin = new System.Windows.Forms.Padding(0);
             this.flowLayoutPanel2.Name = "flowLayoutPanel2";
-            this.flowLayoutPanel2.Size = new System.Drawing.Size(384, 135);
+            this.flowLayoutPanel2.Size = new System.Drawing.Size(176, 135);
             this.flowLayoutPanel2.TabIndex = 34;
             // 
             // ShowAsWindowPanel
@@ -1219,8 +1219,9 @@ namespace BatteryNotifier.Forms
             this.MinimizeBox = false;
             this.Name = "Dashboard";
             this.Padding = new System.Windows.Forms.Padding(1);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Battery Notifier";
+            this.TopMost = true;
             this.Activated += new System.EventHandler(this.Dashboard_Activated);
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.tableLayoutPanel5.ResumeLayout(false);
