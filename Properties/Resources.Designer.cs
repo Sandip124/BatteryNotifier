@@ -170,6 +170,16 @@ namespace BatteryNotifier.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap LightMode {
+            get {
+                object obj = ResourceManager.GetObject("LightMode", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized resource of type System.IO.UnmanagedMemoryStream similar to System.IO.MemoryStream.
         /// </summary>
         internal static System.IO.UnmanagedMemoryStream long_pop {
@@ -204,6 +214,16 @@ namespace BatteryNotifier.Properties {
         internal static System.IO.UnmanagedMemoryStream LowBatterySound {
             get {
                 return ResourceManager.GetStream("LowBatterySound", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap music_icon {
+            get {
+                object obj = ResourceManager.GetObject("music_icon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

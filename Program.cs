@@ -71,7 +71,7 @@ namespace BatteryNotifier
             }
             catch (Exception)
             {
-                (MainForm as Dashboard)?.UpdateStatus("🕹 Could not initialize update manager!");
+                (MainForm as Dashboard)?.Notify("🕹 Could not initialize update manager!");
             }
         }
 
@@ -90,14 +90,14 @@ namespace BatteryNotifier
                     if (releaseEntry != null)
                     {
                         IsUpdateInProgress = false;
-                        (MainForm as Dashboard)?.UpdateStatus($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
+                        (MainForm as Dashboard)?.Notify($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
                     }
                 }
                 else
                 {
                    
                     IsUpdateInProgress = false;
-                    (MainForm as Dashboard)?.UpdateStatus("✌ No Update Available");
+                    (MainForm as Dashboard)?.Notify("✌ No Update Available");
                 }
             }
             catch (Exception)

@@ -30,10 +30,5 @@ namespace BatteryNotifier.Providers
         {
             return new Font(Default.FontCollection.Families[0], size, FontStyle.Bold, GraphicsUnit.Point);
         }
-
-        public static Font GetBoldUnderlineFont(float size = 8)
-        {
-            return new Font(Default.FontCollection.Families[0], size, FontStyle.Underline | FontStyle.Bold, GraphicsUnit.Point);
-        }
     }
 }

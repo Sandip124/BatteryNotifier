@@ -20,7 +20,6 @@ namespace BatteryNotifier.Helpers
                 form.ShowInTaskbar = false;
                 form.ShowIcon = false;
                 notifyIcon.Visible = true;
-                form.TopMost = true;
             }
             else
             {
@@ -28,7 +27,6 @@ namespace BatteryNotifier.Helpers
                 form.ShowIcon = true;
                 form.Location = new Point(xPosition, yPosition);
                 notifyIcon.Visible = false;
-                form.TopMost = false;
             }
         }
     }

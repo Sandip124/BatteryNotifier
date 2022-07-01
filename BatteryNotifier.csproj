@@ -15,15 +15,8 @@
 
   <ItemGroup>
     <None Remove="appSetting.settings" />
-    <None Remove="Assets\Fonts\Inter-Black.ttf" />
     <None Remove="Assets\Fonts\Inter-Bold.ttf" />
-    <None Remove="Assets\Fonts\Inter-ExtraBold.ttf" />
-    <None Remove="Assets\Fonts\Inter-ExtraLight.ttf" />
-    <None Remove="Assets\Fonts\Inter-Light.ttf" />
-    <None Remove="Assets\Fonts\Inter-Medium.ttf" />
     <None Remove="Assets\Fonts\Inter-Regular.ttf" />
-    <None Remove="Assets\Fonts\Inter-SemiBold.ttf" />
-    <None Remove="Assets\Fonts\Inter-Thin.ttf" />
     <None Remove="Assets\Fonts\SpaceMono-Bold.ttf" />
     <None Remove="Assets\Fonts\SpaceMono-BoldItalic.ttf" />
     <None Remove="Assets\Fonts\SpaceMono-Italic.ttf" />
@@ -36,31 +29,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\Fonts\Inter-Black.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="Assets\Fonts\Inter-Bold.ttf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="Assets\Fonts\Inter-ExtraBold.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Fonts\Inter-ExtraLight.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Fonts\Inter-Light.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Fonts\Inter-Medium.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="Assets\Fonts\Inter-Regular.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Fonts\Inter-SemiBold.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Fonts\Inter-Thin.ttf">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <EmbeddedResource Include="Setting\appSetting.settings">
