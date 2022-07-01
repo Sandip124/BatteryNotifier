@@ -53,7 +53,7 @@ namespace BatteryNotifier
                 Task UpdateTask = new(CheckForUpdates);
                 UpdateTask.Start();
                 version = UpdateManager!.CurrentlyInstalledVersion().ToString();
-                dashboard?.UpdateStatus("🤿 Checking for update ...");
+                dashboard?.Notify("🤿 Checking for update ...");
                 IsUpdateInProgress = true;
             }
 #endif               
