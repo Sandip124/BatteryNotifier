@@ -121,8 +121,11 @@
   <data name="Low" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Low.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="closeIconDark" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\closeIconDark.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="LowBatterySound" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\LowBatterySound.wav;System.IO.MemoryStream, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="icon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\icon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Normal" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Normal.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -133,11 +136,20 @@
   <data name="BatteryFull" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\BatteryFull.wav;System.IO.MemoryStream, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="DarkMode" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\DarkMode2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="launchatstartup" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\launchatstartup.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="closeIconLight" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\closeIconLight.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="closeIconHoverState" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\closeIconHoverState.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="Sufficient" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\Sufficient.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="LowBatterynotification" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\LowBatterynotification.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="Full" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Full.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -151,13 +163,22 @@
   <data name="ChargingBatteryAnimated" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ChargingBatteryAnimated.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="DarkMode" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\DarkMode2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="closeIconDark" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\closeIconDark.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="FullBatteryNotification" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\FullBatteryNotification.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="long_pop" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\long-pop.wav;System.IO.MemoryStream, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="ChargingBatteryAnimatedDark" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ChargingBatteryAnimatedDark1.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="closeIconHoverState" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\closeIconHoverState.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  <data name="music_icon" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\music_icon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="LightMode" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\LightMode.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>
