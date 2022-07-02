@@ -389,7 +389,6 @@ namespace BatteryNotifier.Forms
             {
                 var fullBatteryNotificationMessage = "🔋 Battery is full please unplug the charger.";
 
-                PlaySound(string.Empty, Resources.long_pop);
                 Notify(fullBatteryNotificationMessage);
 
                 if (showFullBatteryNotification)
@@ -413,7 +412,6 @@ namespace BatteryNotifier.Forms
 
             var LowBatteryNotificationMessage = "🔋 Battery is low, please Connect to Charger.";
 
-            PlaySound(string.Empty, Resources.long_pop);
             Notify(LowBatteryNotificationMessage);
 
             if (showLowBatteryNotification)
