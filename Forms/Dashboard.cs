@@ -36,10 +36,6 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-            ApplyTheme();
-            ApplyFontStyle();
-            this.RenderFormPosition(BatteryNotifierIcon);
-            RenderTitleBarCursor();
             _debouncer = new Debouncer.Debouncer();
         }
 
@@ -88,18 +84,30 @@ namespace BatteryNotifier.Forms
         private void Dashboard_Load(object? sender, EventArgs e)
         {
             SuspendLayout();
-            LoadSettings();
-            HandleLaunchAtStartup();
-            RefreshBatteryStatus();
-            LoadNotificationSetting();
-            BatteryStatusTimer.Enabled = true;
-            ShowNotificationTimer.Enabled = true;
-
-            ConfigureTimer();
-            AttachEventListeners();
-
-            InitializeContextMenu();
-            ResumeLayout();
+            try
+            {
+                this.RenderFormPosition(BatteryNotifierIcon);
+                ApplyTheme();
+                RenderTitleBarCursor();
+                ApplyFontStyle();
+                LoadSettings();
+                HandleLaunchAtStartup();
+                RefreshBatteryStatus();
+                LoadNotificationSetting();
+                BatteryStatusTimer.Enabled = true;
+                ShowNotificationTimer.Enabled = true;
+                ConfigureTimer();
+                AttachEventListeners();
+                InitializeContextMenu();
+            }
+            catch (Exception ex)
+            {
+                Notify(ex.Message);
+            }
+            finally
+            {
+                ResumeLayout();
+            }
         }
 
 
@@ -122,9 +130,9 @@ namespace BatteryNotifier.Forms
             LowBatterySound.Text = appSetting.Default.lowBatteryNotificationMusic;
         }
 
-        private bool IsDarkTheme() => appSetting.Default.darkThemeApplied || appSetting.Default.SystemThemeApplied && !UtilityHelper.IsLightTheme();
-
-        private bool IsLightTheme() => !appSetting.Default.darkThemeApplied && appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme();
+        private static bool IsDarkTheme() => appSetting.Default.darkThemeApplied || appSetting.Default.SystemThemeApplied && !UtilityHelper.IsLightTheme();
+        
+        private static bool IsLightTheme() => !appSetting.Default.darkThemeApplied && appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme();
 
         private void HandleLaunchAtStartup()
         {
@@ -287,7 +295,7 @@ namespace BatteryNotifier.Forms
             FullBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(fullBatteryTrackbar.Value);
         }
 
-        private string RenderBatteryPercentageValue(int value)
+        private static string RenderBatteryPercentageValue(int value)
         {
             return $"({value}%)";
         }
