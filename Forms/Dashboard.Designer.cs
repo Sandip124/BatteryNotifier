@@ -1271,6 +1271,7 @@ namespace BatteryNotifier.Forms
             this.Padding = new System.Windows.Forms.Padding(1);
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "Battery Notifier";
+            this.TopMost = true;
             this.Activated += new System.EventHandler(this.Dashboard_Activated);
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.tableLayoutPanel5.ResumeLayout(false);
