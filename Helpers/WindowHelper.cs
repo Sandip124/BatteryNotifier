@@ -26,7 +26,7 @@ namespace BatteryNotifier.Helpers
                 form.ShowInTaskbar = true;
                 form.ShowIcon = true;
                 form.Location = new Point(xPosition, yPosition);
-                notifyIcon.Visible = false;
+                notifyIcon.Visible = true;
             }
         }
     }
