@@ -1266,13 +1266,11 @@ namespace BatteryNotifier.Forms
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Location = new System.Drawing.Point(90, 90);
             this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            this.MinimizeBox = true;
             this.Name = "Dashboard";
             this.Padding = new System.Windows.Forms.Padding(1);
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
             this.Text = "Battery Notifier";
-            this.TopMost = true;
-            this.Activated += new System.EventHandler(this.Dashboard_Activated);
             this.Load += new System.EventHandler(this.Dashboard_Load);
             this.tableLayoutPanel5.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).EndInit();
