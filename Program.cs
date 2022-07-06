@@ -14,8 +14,6 @@ namespace BatteryNotifier
 
         private static Form? MainForm;
 
-        private static bool IsUpdateInProgress = false;
-
         private static string? version = UtilityHelper.AssemblyVersion;
 
         /// <summary>
@@ -24,42 +22,47 @@ namespace BatteryNotifier
         [STAThread]
         static void Main()
         {
-            var appId = Setting.appSetting.Default.AppId;
-            if (string.IsNullOrEmpty(appId))
+            try
             {
-                appId = Setting.appSetting.Default.AppId = Guid.NewGuid().ToString();
-                Setting.appSetting.Default.Save();
-            }
-                        
-            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledExpection);
-            AppDomain.CurrentDomain.ProcessExit += OnExit;
+                var appId = Setting.appSetting.Default.AppId;
+                if (string.IsNullOrEmpty(appId))
+                {
+                    appId = Setting.appSetting.Default.AppId = Guid.NewGuid().ToString();
+                    Setting.appSetting.Default.Save();
+                }
 
-            using Mutex mutex = new(false, "Global\\" + appId);
-            if (!mutex.WaitOne(0, false))
-            {
-                return;
-            }
+                AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledExpection);
 
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
+                using Mutex mutex = new(false, "Global\\" + appId);
+                if (!mutex.WaitOne(0, false))
+                {
+                    return;
+                }
 
-            MainForm = new Dashboard();
-            var dashboard = MainForm as Dashboard;
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+
+                MainForm = new Dashboard();
+                var dashboard = MainForm as Dashboard;
 #if RELEASE
 
-            if (InternetConnectivityHelper.CheckForInternetConnection())
-            {
-                Task.Run(() => InitUpdateManager()).Wait();
-                Task UpdateTask = new(CheckForUpdates);
-                UpdateTask.Start();
-                version = UpdateManager!.CurrentlyInstalledVersion().ToString();
-                dashboard?.Notify("🤿 Checking for update ...");
-                IsUpdateInProgress = true;
-            }
-#endif               
-            dashboard?.SetVersion(version);
+                if (InternetConnectivityHelper.CheckForInternetConnection())
+                {
+                    dashboard?.Notify("🤿 Checking for update ...");
+                    Task.Run( () =>InitUpdateManager()).Wait();
+                    Task UpdateTask = new(CheckForUpdates);
+                    UpdateTask.Start();
+                    version = UpdateManager?.CurrentlyInstalledVersion().ToString();
+                }
+#endif
+                dashboard?.SetVersion(version);
 
-            Application.Run(dashboard);
+                Application.Run(dashboard);
+            }
+            catch (Exception e)
+            {
+                (MainForm as Dashboard)?.Notify(e.Message);
+            }
 
         }
 
@@ -79,9 +82,7 @@ namespace BatteryNotifier
         {
             try
             {
-                var updateInfo = await UpdateManager!.CheckForUpdate();
-
-                if (!IsUpdateInProgress) return;
+                var updateInfo = await UpdateManager?.CheckForUpdate()!;
 
                 if (updateInfo.ReleasesToApply.Count > 0)
                 {
@@ -89,31 +90,23 @@ namespace BatteryNotifier
 
                     if (releaseEntry != null)
                     {
-                        IsUpdateInProgress = false;
-                        (MainForm as Dashboard)?.Notify($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply." );
+                        (MainForm as Dashboard)?.Notify($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply.");
                     }
                 }
                 else
                 {
-                   
-                    IsUpdateInProgress = false;
                     (MainForm as Dashboard)?.Notify("✌ No Update Available");
                 }
             }
             catch (Exception)
             {
-                MessageBox.Show("💀 Could not update app!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                (MainForm as Dashboard)?.Notify("💀 Could not update app!");
             }
-        }
-
-        private static void OnExit(object? sender, EventArgs e)
-        {
-            UpdateManager?.Dispose();
         }
 
         static void OnUnhandledExpection(object? sender, UnhandledExceptionEventArgs args)
         {
-            MessageBox.Show(args.ExceptionObject.ToString(),"Battery Notifier error!");
+            (MainForm as Dashboard)?.Notify("Unhandled exception occured.");
         }
 
     }
