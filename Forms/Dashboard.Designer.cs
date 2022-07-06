@@ -289,28 +289,31 @@ namespace BatteryNotifier.Forms
             this.AppFooter.Location = new System.Drawing.Point(0, 468);
             this.AppFooter.Margin = new System.Windows.Forms.Padding(0);
             this.AppFooter.Name = "AppFooter";
+            this.AppFooter.Padding = new System.Windows.Forms.Padding(8, 0, 8, 0);
             this.AppFooter.Size = new System.Drawing.Size(408, 40);
             this.AppFooter.TabIndex = 8;
             // 
             // VersionLabel
             // 
-            this.VersionLabel.AutoSize = true;
             this.VersionLabel.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.VersionLabel.Dock = System.Windows.Forms.DockStyle.Right;
             this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point);
             this.VersionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.VersionLabel.Location = new System.Drawing.Point(334, 14);
+            this.VersionLabel.Location = new System.Drawing.Point(337, 0);
             this.VersionLabel.Name = "VersionLabel";
             this.VersionLabel.RightToLeft = System.Windows.Forms.RightToLeft.Yes;
-            this.VersionLabel.Size = new System.Drawing.Size(63, 16);
+            this.VersionLabel.Size = new System.Drawing.Size(63, 40);
             this.VersionLabel.TabIndex = 23;
             this.VersionLabel.Text = "v 1.0.0.0";
+            this.VersionLabel.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             // 
             // NotificationText
             // 
+            this.NotificationText.Dock = System.Windows.Forms.DockStyle.Left;
             this.NotificationText.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.NotificationText.Location = new System.Drawing.Point(9, 14);
+            this.NotificationText.Location = new System.Drawing.Point(8, 0);
             this.NotificationText.Name = "NotificationText";
-            this.NotificationText.Size = new System.Drawing.Size(272, 16);
+            this.NotificationText.Size = new System.Drawing.Size(312, 40);
             this.NotificationText.TabIndex = 17;
             this.NotificationText.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
@@ -1266,7 +1269,6 @@ namespace BatteryNotifier.Forms
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Location = new System.Drawing.Point(90, 90);
             this.MaximizeBox = false;
-            this.MinimizeBox = true;
             this.Name = "Dashboard";
             this.Padding = new System.Windows.Forms.Padding(1);
             this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
@@ -1278,7 +1280,6 @@ namespace BatteryNotifier.Forms
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox4)).EndInit();
             this.AppContainer.ResumeLayout(false);
             this.AppFooter.ResumeLayout(false);
-            this.AppFooter.PerformLayout();
             this.AppHeader.ResumeLayout(false);
             this.AppHeader.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox3)).EndInit();
