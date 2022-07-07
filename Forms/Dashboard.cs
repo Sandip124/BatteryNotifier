@@ -63,8 +63,11 @@ namespace BatteryNotifier.Forms
         public void Notify(string status, int timeout = DefaultNotificationTimeout)
         {
             NotificationText.Text = status;
-            System.Threading.Thread.Sleep(timeout);
-            NotificationText.Text = string.Empty;
+            _debouncer.Debounce(() =>
+            {
+                NotificationText.Text = string.Empty;
+            }, timeout);
+            
         }
 
         private void CloseIcon_Click(object? sender, EventArgs e)

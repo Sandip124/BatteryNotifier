@@ -102,6 +102,11 @@ namespace BatteryNotifier
             {
                 (MainForm as Dashboard)?.Notify("💀 Could not update app!");
             }
+            finally
+            {
+                Thread.Sleep(1000);
+                (MainForm as Dashboard)?.Notify(string.Empty);
+            }
         }
 
         static void OnUnhandledExpection(object? sender, UnhandledExceptionEventArgs args)
