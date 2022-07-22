@@ -142,20 +142,30 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap FullBatteryNotification {
+        internal static System.Drawing.Bitmap icon {
             get {
-                object obj = ResourceManager.GetObject("FullBatteryNotification", resourceCulture);
+                object obj = ResourceManager.GetObject("icon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static System.Drawing.Bitmap icon {
+        internal static byte[] Inter_Bold {
             get {
-                object obj = ResourceManager.GetObject("icon", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
+                object obj = ResourceManager.GetObject("Inter_Bold", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] Inter_Regular {
+            get {
+                object obj = ResourceManager.GetObject("Inter_Regular", resourceCulture);
+                return ((byte[])(obj));
             }
         }
         
@@ -194,16 +204,6 @@ namespace BatteryNotifier.Properties {
         internal static System.Drawing.Bitmap Low {
             get {
                 object obj = ResourceManager.GetObject("Low", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap LowBatterynotification {
-            get {
-                object obj = ResourceManager.GetObject("LowBatterynotification", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

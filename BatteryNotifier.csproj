@@ -14,13 +14,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Assets\**" />
+    <EmbeddedResource Remove="Assets\**" />
+    <None Remove="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="appSetting.settings" />
-    <None Remove="Assets\Fonts\Inter-Bold.ttf" />
-    <None Remove="Assets\Fonts\Inter-Regular.ttf" />
-    <None Remove="Assets\Fonts\SpaceMono-Bold.ttf" />
-    <None Remove="Assets\Fonts\SpaceMono-BoldItalic.ttf" />
-    <None Remove="Assets\Fonts\SpaceMono-Italic.ttf" />
-    <None Remove="Assets\Fonts\SpaceMono-Regular.ttf" />
     <None Remove="battery-icon.ico" />
   </ItemGroup>
 
@@ -29,12 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\Fonts\Inter-Bold.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Assets\Fonts\Inter-Regular.ttf">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <EmbeddedResource Include="Setting\appSetting.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>appSetting.Designer.cs</LastGenOutput>
@@ -87,7 +81,7 @@
 		<NugetTools>$(PkgNuGet_CommandLine)\tools</NugetTools>
 		<SquirrelTools>$(Pkgsquirrel_windows)\tools</SquirrelTools>
 
-		<Version>2.0.4</Version>
+		<Version>2.0.5</Version>
 
 		<NuspecFile>$(SolutionDir)ReleaseSpec.nuspec</NuspecFile>
 	</PropertyGroup>
