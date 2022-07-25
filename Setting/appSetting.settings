@@ -36,7 +36,7 @@
       <Value Profile="(Default)">True</Value>
     </Setting>
     <Setting Name="AppId" Type="System.String" Scope="User">
-      <Value Profile="(Default)" />
+      <Value Profile="(Default)">68e189cd-278f-436f-b76a-8a4b75ec0b7c</Value>
     </Setting>
     <Setting Name="SystemThemeApplied" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>

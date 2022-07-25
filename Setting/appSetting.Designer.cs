@@ -157,7 +157,7 @@ namespace BatteryNotifier.Setting {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        [global::System.Configuration.DefaultSettingValueAttribute("68e189cd-278f-436f-b76a-8a4b75ec0b7c")]
         public string AppId {
             get {
                 return ((string)(this["AppId"]));
