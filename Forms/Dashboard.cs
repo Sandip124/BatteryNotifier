@@ -23,7 +23,7 @@ namespace BatteryNotifier.Forms
         private const int DefaultNotficationInterval = 30000;
         private const int DefaultSoundPlayingInterval = 1000;
         private const int DefaultNotificationTimeout = 3000;
-	
+
         const int WS_MINIMIZEBOX = 0x20000;
         const int CS_DBLCLKS = 0x8;
 
@@ -41,8 +41,9 @@ namespace BatteryNotifier.Forms
 
         protected override void OnPaint(PaintEventArgs e)
         {
+            Update();
             base.OnPaint(e);
-            Invalidate();
+
         }
         public Dashboard()
         {
@@ -67,7 +68,7 @@ namespace BatteryNotifier.Forms
             {
                 NotificationText.Text = string.Empty;
             }, timeout);
-            
+
         }
 
         private void CloseIcon_Click(object? sender, EventArgs e)
@@ -95,6 +96,11 @@ namespace BatteryNotifier.Forms
 
         private void Dashboard_Load(object? sender, EventArgs e)
         {
+            if (appSetting.Default.startMinimized)
+            {
+                this.Hide();
+            }
+
             SuspendLayout();
             try
             {
@@ -110,7 +116,7 @@ namespace BatteryNotifier.Forms
                 ShowNotificationTimer.Enabled = true;
                 ConfigureTimer();
                 AttachEventListeners();
-                InitializeContextMenu();
+                BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
             }
             catch (Exception ex)
             {
@@ -134,17 +140,28 @@ namespace BatteryNotifier.Forms
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
             LowBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(appSetting.Default.lowBatteryNotificationValue);
 
-            SystemThemeLabel.Checked = appSetting.Default.SystemThemeApplied;
-            DarkThemeLabel.Checked = IsDarkTheme();
-            LightThemeLabel.Checked = IsLightTheme();
+            if (appSetting.Default.SystemThemeApplied)
+            {
+                SystemThemeLabel.Checked = true;
+            }
+            else if (IsDarkTheme())
+            {
+                DarkThemeLabel.Checked = true;
+            }
+            else if (IsLightTheme())
+            {
+                LightThemeLabel.Checked = true;
+            }
 
             FullBatterySound.Text = appSetting.Default.fullBatteryNotificationMusic;
             LowBatterySound.Text = appSetting.Default.lowBatteryNotificationMusic;
+
+            Update();
         }
 
-        private static bool IsDarkTheme() => appSetting.Default.darkThemeApplied || appSetting.Default.SystemThemeApplied && !UtilityHelper.IsLightTheme();
+        private bool IsDarkTheme() => appSetting.Default.darkThemeApplied || (appSetting.Default.SystemThemeApplied && !UtilityHelper.IsLightTheme());
 
-        private static bool IsLightTheme() => !appSetting.Default.darkThemeApplied && appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme();
+        private bool IsLightTheme() => !appSetting.Default.darkThemeApplied || (appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme());
 
         private void HandleLaunchAtStartup()
         {
@@ -574,11 +591,39 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private void InitializeContextMenu()
+        private ContextMenuStrip InitializeContextMenu()
         {
             var contextMenu = new ContextMenuStrip();
             contextMenu.Items.Clear();
             contextMenu.TopLevel = true;
+
+            ToolStripMenuItem FullBatteryNotificationToolStripItem = new("Full Battery Notification")
+            {
+                Text = "Full Battery Notification" + (appSetting.Default.fullBatteryNotification ? "✔" : ""),
+                Name = "FullBatteryNotification",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = FontProvider.GetRegularFont(10.2F)
+            };
+            FullBatteryNotificationToolStripItem.Click += FullBatteryNotification_Click!;
+
+
+            ToolStripMenuItem LowBatteryNotificationToolStripItem = new("Low Battery Notification")
+            {
+                Text = "Low Battery Notification" + (appSetting.Default.lowBatteryNotification ? "✔" : ""),
+                Name = "LowBatteryNotification",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = FontProvider.GetRegularFont(10.2F)
+            };
+            LowBatteryNotificationToolStripItem.Click += LowBatteryNotification_Click!;
+
+            ToolStripMenuItem startMinimizedToolStripItem = new("Start Minimized")
+            {
+                Text = "Start Minimized" + (appSetting.Default.startMinimized ? "✔" : ""),
+                Name = "StartMinimized",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = FontProvider.GetRegularFont(10.2F)
+            };
+            startMinimizedToolStripItem.Click += StartMinimized_Click!;
 
             ToolStripMenuItem exitAppToolStripItem = new("ExitApplication")
             {
@@ -598,12 +643,54 @@ namespace BatteryNotifier.Forms
             };
             viewSourceToolStripItem.Click += ViewSource_Click!;
 
+            contextMenu.Items.Add(FullBatteryNotificationToolStripItem);
+            contextMenu.Items.Add(LowBatteryNotificationToolStripItem);
+            contextMenu.Items.Add(startMinimizedToolStripItem);
+            contextMenu.Items.Add(startMinimizedToolStripItem);
             contextMenu.Items.Add(viewSourceToolStripItem);
             contextMenu.Items.Add(exitAppToolStripItem);
 
-            BatteryNotifierIcon.ContextMenuStrip = contextMenu;
-            Update();
+            return contextMenu;
         }
+
+        private void StartMinimized_Click(object? sender, EventArgs e)
+        {
+            appSetting.Default.startMinimized = !appSetting.Default.startMinimized;
+            appSetting.Default.Save();
+
+            BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
+        }
+
+        private void FullBatteryNotification_Click(object? sender, EventArgs e)
+        {
+            appSetting.Default.fullBatteryNotification = !appSetting.Default.fullBatteryNotification;
+            appSetting.Default.Save();
+
+            ShowFullBatteryNotificationStatus();
+
+            BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
+        }
+
+        private void ShowFullBatteryNotificationStatus()
+        {
+            Notify("🔔 Full Battery Notification " + (appSetting.Default.fullBatteryNotification ? "Enabled" : "Disabled"));
+        }
+
+        private void LowBatteryNotification_Click(object? sender, EventArgs e)
+        {
+            appSetting.Default.lowBatteryNotification = !appSetting.Default.lowBatteryNotification;
+            appSetting.Default.Save();
+
+            ShowLowBatteryNotifactionStatus();
+
+            BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
+        }
+
+        private void ShowLowBatteryNotifactionStatus()
+        {
+            Notify("🔔 Low Battery Notification " + (appSetting.Default.lowBatteryNotification ? "Enabled" : "Disabled"));
+        }
+
 
 
         private void ExitApp_Click(object? sender, EventArgs e)
@@ -641,7 +728,9 @@ namespace BatteryNotifier.Forms
             appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
 
-            Notify("🔔 Full Battery Notification " + (FullBatteryNotificationCheckbox.Checked ? "Enabled" : "Disabled"));
+            ShowFullBatteryNotificationStatus();
+
+            BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
         }
         private void LowBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
         {
@@ -649,7 +738,9 @@ namespace BatteryNotifier.Forms
             appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
 
-            Notify("🔔 Low Battery Notification " + (LowBatteryNotificationCheckbox.Checked ? "Enabled" : "Disabled"));
+            ShowLowBatteryNotifactionStatus();
+
+            BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
         }
 
         private void ShowNotificationTimer_Tick(object? sender, EventArgs e)

@@ -12,7 +12,7 @@ namespace BatteryNotifier.Setting {
     
     
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.1.0.0")]
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "17.2.0.0")]
     internal sealed partial class appSetting : global::System.Configuration.ApplicationSettingsBase {
         
         private static appSetting defaultInstance = ((appSetting)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new appSetting())));
@@ -157,7 +157,7 @@ namespace BatteryNotifier.Setting {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        [global::System.Configuration.DefaultSettingValueAttribute("68e189cd-278f-436f-b76a-8a4b75ec0b7c")]
         public string AppId {
             get {
                 return ((string)(this["AppId"]));
@@ -176,6 +176,18 @@ namespace BatteryNotifier.Setting {
             }
             set {
                 this["SystemThemeApplied"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool startMinimized {
+            get {
+                return ((bool)(this["startMinimized"]));
+            }
+            set {
+                this["startMinimized"] = value;
             }
         }
     }
