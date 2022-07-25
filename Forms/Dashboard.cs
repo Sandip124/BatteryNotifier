@@ -96,6 +96,11 @@ namespace BatteryNotifier.Forms
 
         private void Dashboard_Load(object? sender, EventArgs e)
         {
+            if (appSetting.Default.startMinimized)
+            {
+                this.Hide();
+            }
+
             SuspendLayout();
             try
             {
@@ -112,12 +117,6 @@ namespace BatteryNotifier.Forms
                 ConfigureTimer();
                 AttachEventListeners();
                 BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
-
-                if(appSetting.Default.startMinimized)
-                {
-                    this.Hide();
-                }
-                
             }
             catch (Exception ex)
             {
@@ -141,17 +140,28 @@ namespace BatteryNotifier.Forms
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
             LowBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(appSetting.Default.lowBatteryNotificationValue);
 
-            SystemThemeLabel.Checked = appSetting.Default.SystemThemeApplied;
-            DarkThemeLabel.Checked = IsDarkTheme();
-            LightThemeLabel.Checked = IsLightTheme();
+            if (appSetting.Default.SystemThemeApplied)
+            {
+                SystemThemeLabel.Checked = true;
+            }
+            else if (IsDarkTheme())
+            {
+                DarkThemeLabel.Checked = true;
+            }
+            else if (IsLightTheme())
+            {
+                LightThemeLabel.Checked = true;
+            }
 
             FullBatterySound.Text = appSetting.Default.fullBatteryNotificationMusic;
             LowBatterySound.Text = appSetting.Default.lowBatteryNotificationMusic;
+
+            Update();
         }
 
-        private static bool IsDarkTheme() => appSetting.Default.darkThemeApplied || appSetting.Default.SystemThemeApplied && !UtilityHelper.IsLightTheme();
+        private bool IsDarkTheme() => appSetting.Default.darkThemeApplied || (appSetting.Default.SystemThemeApplied && !UtilityHelper.IsLightTheme());
 
-        private static bool IsLightTheme() => !appSetting.Default.darkThemeApplied && appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme();
+        private bool IsLightTheme() => !appSetting.Default.darkThemeApplied || (appSetting.Default.SystemThemeApplied && UtilityHelper.IsLightTheme());
 
         private void HandleLaunchAtStartup()
         {
@@ -645,7 +655,7 @@ namespace BatteryNotifier.Forms
 
         private void StartMinimized_Click(object? sender, EventArgs e)
         {
-            appSetting.Default.startMinimized  = !appSetting.Default.startMinimized;
+            appSetting.Default.startMinimized = !appSetting.Default.startMinimized;
             appSetting.Default.Save();
 
             BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
@@ -753,163 +763,163 @@ namespace BatteryNotifier.Forms
             UpdateChargingAnimation();
             ResumeLayout();
         }
-  
-    private void ApplyFontStyle()
-    {
-        AppHeaderTitle.Font = FontProvider.GetBoldFont(12);
-        BatteryPercentage.Font = FontProvider.GetBoldFont(BatteryPercentage.Font.Size);
-        BatteryStatus.Font = FontProvider.GetRegularFont(BatteryStatus.Font.Size);
-        RemainingTime.Font = FontProvider.GetBoldFont(RemainingTime.Font.Size);
 
-        NotificationSettingLabel.Font = FontProvider.GetRegularFont(NotificationSettingLabel.Font.Size);
-        FullBatteryLabel.Font = FontProvider.GetRegularFont(FullBatteryLabel.Font.Size);
-        LowBatteryLabel.Font = FontProvider.GetRegularFont(LowBatteryLabel.Font.Size);
-
-        AppTabControl.Font = FontProvider.GetRegularFont(AppTabControl.Font.Size);
-        FullBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(FullBatteryNotificationCheckbox.Font.Size);
-        LowBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(LowBatteryNotificationCheckbox.Font.Size);
-        VersionLabel.Font = FontProvider.GetRegularFont(VersionLabel.Font.Size);
-
-        PinToNotificationAreaLabel.Font = FontProvider.GetRegularFont(PinToNotificationAreaLabel.Font.Size);
-        LaunchAtStartUpLabel.Font = FontProvider.GetRegularFont(LaunchAtStartUpLabel.Font.Size);
-        ThemeLabel.Font = FontProvider.GetRegularFont(ThemeLabel.Font.Size);
-        SystemThemeLabel.Font = FontProvider.GetRegularFont(SystemThemeLabel.Font.Size);
-        LightThemeLabel.Font = FontProvider.GetRegularFont(LightThemeLabel.Font.Size);
-        DarkThemeLabel.Font = FontProvider.GetRegularFont(DarkThemeLabel.Font.Size);
-        NotificationPanel.Font = FontProvider.GetRegularFont(NotificationPanel.Font.Size);
-
-        SettingHeader.Font = FontProvider.GetRegularFont(SettingHeader.Font.Size);
-        FullBatteryNotificationSettingLabel.Font = FontProvider.GetRegularFont(FullBatteryNotificationSettingLabel.Font.Size);
-        LowBatteryNotificationSettingLabel.Font = FontProvider.GetRegularFont(LowBatteryNotificationSettingLabel.Font.Size);
-
-        FullBatteryNotificationPercentageLabel.Font = FontProvider.GetRegularFont(FullBatteryNotificationPercentageLabel.Font.Size);
-        LowBatteryNotificationPercentageLabel.Font = FontProvider.GetRegularFont(LowBatteryNotificationPercentageLabel.Font.Size);
-
-        FullBatterySound.Font = FontProvider.GetRegularFont(FullBatterySound.Font.Size);
-        LowBatterySound.Font = FontProvider.GetRegularFont(LowBatterySound.Font.Size);
-
-        NotificationText.Font = FontProvider.GetRegularFont(NotificationText.Font.Size);
-    }
-
-    private void ApplyTheme()
-    {
-        SuspendLayout();
-
-        ThemePictureBox.Image = IsDarkTheme() ? Resources.DarkMode : Resources.LightMode;
-
-        var theme = ThemeProvider.GetTheme();
-
-        AppContainer.BackColor = theme.AccentColor;
-        AppTabControl.MyBackColor = theme.AccentColor;
-        AppTabControl.MyBorderColor = theme.Accent2Color;
-        DashboardTab.BackColor = theme.AccentColor;
-        SettingTab.BackColor = theme.AccentColor;
-        DashboardTab.ForeColor = theme.ForegroundColor;
-        SettingTab.ForeColor = theme.ForegroundColor;
-
-        RemainingTime.ForeColor = theme.ForegroundColor;
-        BatteryPercentage.ForeColor = theme.ForegroundColor;
-        FullBatteryLabel.ForeColor = theme.ForegroundColor;
-        LowBatteryLabel.ForeColor = theme.ForegroundColor;
-
-        AppFooter.BackColor = theme.AccentColor;
-        VersionLabel.ForeColor = theme.ForegroundColor;
-
-        NotificationText.ForeColor = theme.ForegroundColor;
-
-        ShowAsWindowPanel.BackColor = theme.Accent2Color;
-        LaunchAtStartupPanel.BackColor = theme.Accent2Color;
-        ThemeConfigurationPanel.BackColor = theme.Accent2Color;
-
-        PinToNotificationAreaPictureBox.BackColor = theme.Accent3Color;
-        ThemePictureBox.BackColor = theme.Accent3Color;
-        LaunchAtStartUpPictureBox.BackColor = theme.Accent3Color;
-
-        ThemePanel.BackColor = theme.Accent2Color;
-        ThemePanel.ForeColor = theme.ForegroundColor;
-
-        NotificationSettingPanel.BackColor = theme.AccentColor;
-        FullBatteryNotificationPanel.BackColor = theme.Accent2Color;
-        LowBatteryNotificationPanel.BackColor = theme.Accent2Color;
-
-        SystemThemeLabel.ForeColor = theme.ForegroundColor;
-        LightThemeLabel.ForeColor = theme.ForegroundColor;
-        DarkThemeLabel.ForeColor = theme.ForegroundColor;
-
-        SettingHeader.BackColor = theme.Accent2Color;
-        NotificationSettingLabel.BackColor = theme.Accent2Color;
-        NotificationPanel.BackColor = theme.AccentColor;
-        NotificationPanel.BorderStyle = BorderStyle.FixedSingle;
-        NotificationPanel.ForeColor = theme.ForegroundColor;
-        FullBatteryNotificationPercentageLabel.ForeColor = theme.ForegroundColor;
-
-        FullBatterySound.BackColor = theme.Accent2Color;
-        FullBatterySound.ForeColor = theme.ForegroundColor;
-        LowBatterySound.BackColor = theme.Accent2Color;
-        LowBatterySound.ForeColor = theme.ForegroundColor;
-
-        PinToNotificationAreaLabel.ForeColor = theme.ForegroundColor;
-        LaunchAtStartUpLabel.ForeColor = theme.ForegroundColor;
-
-        fullBatteryTrackbar.BackColor = theme.AccentColor;
-        lowBatteryTrackbar.BackColor = theme.AccentColor;
-
-        BatteryPercentageLabel.ForeColor = theme.ForegroundColor;
-
-        LowBatteryNotificationPercentageLabel.ForeColor = theme.ForegroundColor;
-
-        CloseIcon.Image = Resources.closeIconDark;
-
-        FullBatteryPictureBox.BackColor = theme.Accent2Color;
-        LowBatteryPictureBox.BackColor = theme.Accent2Color;
-
-        ResumeLayout();
-    }
-
-    private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)
-    {
-        if (appSetting.Default.PinToNotificationArea) return;
-
-        _mouseDown = true;
-        _lastLocation = e.Location;
-    }
-
-    private void AppHeaderTitle_MouseMove(object? sender, MouseEventArgs e)
-    {
-        if (appSetting.Default.PinToNotificationArea) return;
-        if (!_mouseDown) return;
-
-        var xPosition = Location.X - _lastLocation.X + e.X;
-        var yPosition = Location.Y - _lastLocation.Y + e.Y;
-        Location = new Point(xPosition, yPosition);
-        Update();
-
-        _debouncer.Debounce(UpdateLocation, 1000);
-
-        void UpdateLocation()
+        private void ApplyFontStyle()
         {
-            appSetting.Default.WindowPositionX = xPosition;
-            appSetting.Default.WindowPositionY = yPosition;
-            appSetting.Default.Save();
+            AppHeaderTitle.Font = FontProvider.GetBoldFont(12);
+            BatteryPercentage.Font = FontProvider.GetBoldFont(BatteryPercentage.Font.Size);
+            BatteryStatus.Font = FontProvider.GetRegularFont(BatteryStatus.Font.Size);
+            RemainingTime.Font = FontProvider.GetBoldFont(RemainingTime.Font.Size);
+
+            NotificationSettingLabel.Font = FontProvider.GetRegularFont(NotificationSettingLabel.Font.Size);
+            FullBatteryLabel.Font = FontProvider.GetRegularFont(FullBatteryLabel.Font.Size);
+            LowBatteryLabel.Font = FontProvider.GetRegularFont(LowBatteryLabel.Font.Size);
+
+            AppTabControl.Font = FontProvider.GetRegularFont(AppTabControl.Font.Size);
+            FullBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(FullBatteryNotificationCheckbox.Font.Size);
+            LowBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(LowBatteryNotificationCheckbox.Font.Size);
+            VersionLabel.Font = FontProvider.GetRegularFont(VersionLabel.Font.Size);
+
+            PinToNotificationAreaLabel.Font = FontProvider.GetRegularFont(PinToNotificationAreaLabel.Font.Size);
+            LaunchAtStartUpLabel.Font = FontProvider.GetRegularFont(LaunchAtStartUpLabel.Font.Size);
+            ThemeLabel.Font = FontProvider.GetRegularFont(ThemeLabel.Font.Size);
+            SystemThemeLabel.Font = FontProvider.GetRegularFont(SystemThemeLabel.Font.Size);
+            LightThemeLabel.Font = FontProvider.GetRegularFont(LightThemeLabel.Font.Size);
+            DarkThemeLabel.Font = FontProvider.GetRegularFont(DarkThemeLabel.Font.Size);
+            NotificationPanel.Font = FontProvider.GetRegularFont(NotificationPanel.Font.Size);
+
+            SettingHeader.Font = FontProvider.GetRegularFont(SettingHeader.Font.Size);
+            FullBatteryNotificationSettingLabel.Font = FontProvider.GetRegularFont(FullBatteryNotificationSettingLabel.Font.Size);
+            LowBatteryNotificationSettingLabel.Font = FontProvider.GetRegularFont(LowBatteryNotificationSettingLabel.Font.Size);
+
+            FullBatteryNotificationPercentageLabel.Font = FontProvider.GetRegularFont(FullBatteryNotificationPercentageLabel.Font.Size);
+            LowBatteryNotificationPercentageLabel.Font = FontProvider.GetRegularFont(LowBatteryNotificationPercentageLabel.Font.Size);
+
+            FullBatterySound.Font = FontProvider.GetRegularFont(FullBatterySound.Font.Size);
+            LowBatterySound.Font = FontProvider.GetRegularFont(LowBatterySound.Font.Size);
+
+            NotificationText.Font = FontProvider.GetRegularFont(NotificationText.Font.Size);
+        }
+
+        private void ApplyTheme()
+        {
+            SuspendLayout();
+
+            ThemePictureBox.Image = IsDarkTheme() ? Resources.DarkMode : Resources.LightMode;
+
+            var theme = ThemeProvider.GetTheme();
+
+            AppContainer.BackColor = theme.AccentColor;
+            AppTabControl.MyBackColor = theme.AccentColor;
+            AppTabControl.MyBorderColor = theme.Accent2Color;
+            DashboardTab.BackColor = theme.AccentColor;
+            SettingTab.BackColor = theme.AccentColor;
+            DashboardTab.ForeColor = theme.ForegroundColor;
+            SettingTab.ForeColor = theme.ForegroundColor;
+
+            RemainingTime.ForeColor = theme.ForegroundColor;
+            BatteryPercentage.ForeColor = theme.ForegroundColor;
+            FullBatteryLabel.ForeColor = theme.ForegroundColor;
+            LowBatteryLabel.ForeColor = theme.ForegroundColor;
+
+            AppFooter.BackColor = theme.AccentColor;
+            VersionLabel.ForeColor = theme.ForegroundColor;
+
+            NotificationText.ForeColor = theme.ForegroundColor;
+
+            ShowAsWindowPanel.BackColor = theme.Accent2Color;
+            LaunchAtStartupPanel.BackColor = theme.Accent2Color;
+            ThemeConfigurationPanel.BackColor = theme.Accent2Color;
+
+            PinToNotificationAreaPictureBox.BackColor = theme.Accent3Color;
+            ThemePictureBox.BackColor = theme.Accent3Color;
+            LaunchAtStartUpPictureBox.BackColor = theme.Accent3Color;
+
+            ThemePanel.BackColor = theme.Accent2Color;
+            ThemePanel.ForeColor = theme.ForegroundColor;
+
+            NotificationSettingPanel.BackColor = theme.AccentColor;
+            FullBatteryNotificationPanel.BackColor = theme.Accent2Color;
+            LowBatteryNotificationPanel.BackColor = theme.Accent2Color;
+
+            SystemThemeLabel.ForeColor = theme.ForegroundColor;
+            LightThemeLabel.ForeColor = theme.ForegroundColor;
+            DarkThemeLabel.ForeColor = theme.ForegroundColor;
+
+            SettingHeader.BackColor = theme.Accent2Color;
+            NotificationSettingLabel.BackColor = theme.Accent2Color;
+            NotificationPanel.BackColor = theme.AccentColor;
+            NotificationPanel.BorderStyle = BorderStyle.FixedSingle;
+            NotificationPanel.ForeColor = theme.ForegroundColor;
+            FullBatteryNotificationPercentageLabel.ForeColor = theme.ForegroundColor;
+
+            FullBatterySound.BackColor = theme.Accent2Color;
+            FullBatterySound.ForeColor = theme.ForegroundColor;
+            LowBatterySound.BackColor = theme.Accent2Color;
+            LowBatterySound.ForeColor = theme.ForegroundColor;
+
+            PinToNotificationAreaLabel.ForeColor = theme.ForegroundColor;
+            LaunchAtStartUpLabel.ForeColor = theme.ForegroundColor;
+
+            fullBatteryTrackbar.BackColor = theme.AccentColor;
+            lowBatteryTrackbar.BackColor = theme.AccentColor;
+
+            BatteryPercentageLabel.ForeColor = theme.ForegroundColor;
+
+            LowBatteryNotificationPercentageLabel.ForeColor = theme.ForegroundColor;
+
+            CloseIcon.Image = Resources.closeIconDark;
+
+            FullBatteryPictureBox.BackColor = theme.Accent2Color;
+            LowBatteryPictureBox.BackColor = theme.Accent2Color;
+
+            ResumeLayout();
+        }
+
+        private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.PinToNotificationArea) return;
+
+            _mouseDown = true;
+            _lastLocation = e.Location;
+        }
+
+        private void AppHeaderTitle_MouseMove(object? sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.PinToNotificationArea) return;
+            if (!_mouseDown) return;
+
+            var xPosition = Location.X - _lastLocation.X + e.X;
+            var yPosition = Location.Y - _lastLocation.Y + e.Y;
+            Location = new Point(xPosition, yPosition);
+            Update();
+
+            _debouncer.Debounce(UpdateLocation, 1000);
+
+            void UpdateLocation()
+            {
+                appSetting.Default.WindowPositionX = xPosition;
+                appSetting.Default.WindowPositionY = yPosition;
+                appSetting.Default.Save();
+            }
+        }
+
+        private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
+        {
+            if (appSetting.Default.PinToNotificationArea) return;
+            _mouseDown = false;
+        }
+
+        private void BatteryNotifierIcon_BalloonTipClicked(object? sender, EventArgs e)
+        {
+            Show();
+            Activate();
+        }
+
+        private void BatteryNotifierIcon_BalloonTipClosed(object? sender, EventArgs e)
+        {
+            _batteryNotification.Stop();
+            _soundPlayingTimer.Stop();
         }
     }
-
-    private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
-    {
-        if (appSetting.Default.PinToNotificationArea) return;
-        _mouseDown = false;
-    }
-
-    private void BatteryNotifierIcon_BalloonTipClicked(object? sender, EventArgs e)
-    {
-        Show();
-        Activate();
-    }
-
-    private void BatteryNotifierIcon_BalloonTipClosed(object? sender, EventArgs e)
-    {
-        _batteryNotification.Stop();
-        _soundPlayingTimer.Stop();
-    }
-}
 }
