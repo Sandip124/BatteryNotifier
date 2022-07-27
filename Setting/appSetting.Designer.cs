@@ -190,5 +190,17 @@ namespace BatteryNotifier.Setting {
                 this["startMinimized"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool showBatteryPercentageInIcon {
+            get {
+                return ((bool)(this["showBatteryPercentageInIcon"]));
+            }
+            set {
+                this["showBatteryPercentageInIcon"] = value;
+            }
+        }
     }
 }
