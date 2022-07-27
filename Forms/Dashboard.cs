@@ -96,6 +96,8 @@ namespace BatteryNotifier.Forms
 
         private void Dashboard_Load(object? sender, EventArgs e)
         {
+            RenderIcon(_isCharging);
+            
             if (appSetting.Default.startMinimized)
             {
                 this.Hide();
@@ -523,6 +525,7 @@ namespace BatteryNotifier.Forms
 
             UpdateBatteryPercentage(status);
             UpdateBatteryChargeRemainingStatus(status);
+            RenderIcon(_isCharging);
         }
 
 
@@ -597,6 +600,15 @@ namespace BatteryNotifier.Forms
             contextMenu.Items.Clear();
             contextMenu.TopLevel = true;
 
+            ToolStripMenuItem BatteryPercentageToolStripItem = new("Show Battery Percentage")
+            {
+                Text = "Show Percentage In Icon" + (appSetting.Default.showBatteryPercentageInIcon ? "✔" : ""),
+                Name = "FullBatteryNotification",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = FontProvider.GetRegularFont(10.2F)
+            };
+            BatteryPercentageToolStripItem.Click += ShowBatteryPercentageInIcon_Click!;
+
             ToolStripMenuItem FullBatteryNotificationToolStripItem = new("Full Battery Notification")
             {
                 Text = "Full Battery Notification" + (appSetting.Default.fullBatteryNotification ? "✔" : ""),
@@ -643,6 +655,7 @@ namespace BatteryNotifier.Forms
             };
             viewSourceToolStripItem.Click += ViewSource_Click!;
 
+            contextMenu.Items.Add(BatteryPercentageToolStripItem);
             contextMenu.Items.Add(FullBatteryNotificationToolStripItem);
             contextMenu.Items.Add(LowBatteryNotificationToolStripItem);
             contextMenu.Items.Add(startMinimizedToolStripItem);
@@ -651,6 +664,14 @@ namespace BatteryNotifier.Forms
             contextMenu.Items.Add(exitAppToolStripItem);
 
             return contextMenu;
+        }
+
+        private void ShowBatteryPercentageInIcon_Click(object? sender, EventArgs e)
+        {
+            appSetting.Default.showBatteryPercentageInIcon = !appSetting.Default.showBatteryPercentageInIcon;
+            appSetting.Default.Save();
+
+            BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
         }
 
         private void StartMinimized_Click(object? sender, EventArgs e)
@@ -920,6 +941,39 @@ namespace BatteryNotifier.Forms
         {
             _batteryNotification.Stop();
             _soundPlayingTimer.Stop();
+        }
+
+        public void RenderIcon(bool isCharging)
+        {
+            if (!appSetting.Default.showBatteryPercentageInIcon)
+            {
+                Icon = Icon.FromHandle(Resources.logo_charging.GetHicon());
+            }
+            else
+            {
+                var status = SystemInformation.PowerStatus;
+                var percentage = (int)Math.Round(status.BatteryLifePercent * 100, 0);
+                Icon = RenderBadge(Resources.logo, 180, 180, 220, isCharging ? "⚡" : percentage.ToString());
+            }
+        }
+
+        private static Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
+        {
+            Graphics g = Graphics.FromImage(bitmap);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            Rectangle textborder = new(bitmap.Width / 2 - textWidth/2, bitmap.Height / 2 - height / 3, textWidth, height);
+
+            StringFormat stringFormat = new()
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+
+            g.FillEllipse(Brushes.DarkGreen, bitmap.Width / 2 - (width / 2), bitmap.Height / 2 - height / 3, width, height);
+            g.DrawString(batteryPercentage.ToString(), FontProvider.GetBoldFont(96), Brushes.White, textborder, stringFormat);
+
+            return Icon.FromHandle(bitmap.GetHicon());
         }
     }
 }
