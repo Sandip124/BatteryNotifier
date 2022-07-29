@@ -41,9 +41,11 @@ namespace BatteryNotifier.Forms
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            Update();
-            base.OnPaint(e);
-
+            if (!_mouseDown)
+            {
+                Update();
+                base.OnPaint(e);
+            }
         }
         public Dashboard()
         {
@@ -97,7 +99,8 @@ namespace BatteryNotifier.Forms
         private void Dashboard_Load(object? sender, EventArgs e)
         {
             RenderIcon(_isCharging);
-            
+            BatteryNotifierIcon.Icon = Resources.batteryNotifierIcon;
+
             if (appSetting.Default.startMinimized)
             {
                 this.Hide();
@@ -947,7 +950,7 @@ namespace BatteryNotifier.Forms
         {
             if (!appSetting.Default.showBatteryPercentageInIcon)
             {
-                Icon = Icon.FromHandle(Resources.logo_charging.GetHicon());
+                Icon = Resources.batteryNotifierIcon;
             }
             else
             {
@@ -957,7 +960,7 @@ namespace BatteryNotifier.Forms
             }
         }
 
-        private static Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
+        private Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
         {
             Graphics g = Graphics.FromImage(bitmap);
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
