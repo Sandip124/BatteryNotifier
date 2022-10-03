@@ -946,6 +946,8 @@ namespace BatteryNotifier.Forms
             _soundPlayingTimer.Stop();
         }
 
+        decimal percentageValue = 0;
+
         public void RenderIcon(bool isCharging)
         {
             if (!appSetting.Default.showBatteryPercentageInIcon)
@@ -956,16 +958,20 @@ namespace BatteryNotifier.Forms
             {
                 var status = SystemInformation.PowerStatus;
                 var percentage = (int)Math.Round(status.BatteryLifePercent * 100, 0);
+                if (percentage == percentageValue) return;
+                percentageValue = percentage;
                 Icon = RenderBadge(Resources.logo, 180, 180, 220, isCharging ? "⚡" : percentage.ToString());
             }
         }
 
-        private Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
+        private static Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
         {
-            Graphics g = Graphics.FromImage(bitmap);
+            using var g = Graphics.FromImage(bitmap);
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
             Rectangle textborder = new(bitmap.Width / 2 - textWidth/2, bitmap.Height / 2 - height / 3, textWidth, height);
+
+            var font = FontProvider.GetBoldFont(96);
 
             StringFormat stringFormat = new()
             {
@@ -974,7 +980,9 @@ namespace BatteryNotifier.Forms
             };
 
             g.FillEllipse(Brushes.DarkGreen, bitmap.Width / 2 - (width / 2), bitmap.Height / 2 - height / 3, width, height);
-            g.DrawString(batteryPercentage.ToString(), FontProvider.GetBoldFont(96), Brushes.White, textborder, stringFormat);
+            g.DrawString(batteryPercentage.ToString(),font, Brushes.White, textborder, stringFormat);
+            g.Dispose();
+            font.Dispose();
 
             return Icon.FromHandle(bitmap.GetHicon());
         }
