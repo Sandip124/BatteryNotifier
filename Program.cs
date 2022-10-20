@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Squirrel;
 using BatteryNotifier.Helpers;
 using System.Threading;
+using System.Runtime.InteropServices;
 
 namespace BatteryNotifier
 {
@@ -16,6 +17,13 @@ namespace BatteryNotifier
 
         private static string? version = UtilityHelper.AssemblyVersion;
 
+        [DllImport("User32.dll")]
+        private static extern bool ShowWindowAsync(IntPtr hWnd, int cmdShow);
+
+        [DllImport("User32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+        private const int WS_SHOWNORMAL = 1;
+
         /// <summary>
         ///  The main entry point for the application.
         /// </summary>
@@ -24,29 +32,26 @@ namespace BatteryNotifier
         {
             try
             {
-                var appId = Setting.appSetting.Default.AppId;
-                if (string.IsNullOrEmpty(appId))
-                {
-                    appId = Setting.appSetting.Default.AppId = Guid.NewGuid().ToString();
-                    Setting.appSetting.Default.Save();
-                }
-
                 AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledExpection);
-
-                using Mutex mutex = new(false, "Global\\" + appId);
-                if (!mutex.WaitOne(0, false))
-                {
-                    return;
-                }
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                MainForm = new Dashboard();
-                var dashboard = MainForm as Dashboard;
+                System.Diagnostics.Process[] name = System.Diagnostics.Process.GetProcessesByName(System.Diagnostics.Process.GetCurrentProcess().ProcessName);
+
+                if (name.Length > 1)
+                {
+                    ShowWindowAsync(name[0].MainWindowHandle, WS_SHOWNORMAL);
+                    SetForegroundWindow(name[0].MainWindowHandle);
+                }
+                else
+                {
+
+                    MainForm = new Dashboard();
+                    var dashboard = MainForm as Dashboard;
 #if RELEASE
 
-                if (InternetConnectivityHelper.CheckForInternetConnection())
+                    if (InternetConnectivityHelper.CheckForInternetConnection())
                 {
                     dashboard?.Notify("🤿 Checking for update ...");
                     Task.Run( () =>InitUpdateManager()).Wait();
@@ -55,9 +60,10 @@ namespace BatteryNotifier
                     version = UpdateManager?.CurrentlyInstalledVersion().ToString();
                 }
 #endif
-                dashboard?.SetVersion(version);
+                    dashboard?.SetVersion(version);
 
-                Application.Run(dashboard);
+                    Application.Run(dashboard);
+                }
             }
             catch (Exception e)
             {
