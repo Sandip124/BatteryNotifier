@@ -790,39 +790,39 @@ namespace BatteryNotifier.Forms
 
         private void ApplyFontStyle()
         {
-            AppHeaderTitle.Font = FontProvider.GetBoldFont(12);
-            BatteryPercentage.Font = FontProvider.GetBoldFont(BatteryPercentage.Font.Size);
-            BatteryStatus.Font = FontProvider.GetRegularFont(BatteryStatus.Font.Size);
-            RemainingTime.Font = FontProvider.GetBoldFont(RemainingTime.Font.Size);
+            AppHeaderTitle.ApplyBoldFont(12);
+            BatteryPercentage.ApplyBoldFont();
+            BatteryStatus.ApplyRegularFont();
+            RemainingTime.ApplyBoldFont();
 
-            NotificationSettingLabel.Font = FontProvider.GetRegularFont(NotificationSettingLabel.Font.Size);
-            FullBatteryLabel.Font = FontProvider.GetRegularFont(FullBatteryLabel.Font.Size);
-            LowBatteryLabel.Font = FontProvider.GetRegularFont(LowBatteryLabel.Font.Size);
+            NotificationSettingLabel.ApplyRegularFont();
+            FullBatteryLabel.ApplyRegularFont();
+            LowBatteryLabel.ApplyRegularFont();
 
-            AppTabControl.Font = FontProvider.GetRegularFont(AppTabControl.Font.Size);
-            FullBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(FullBatteryNotificationCheckbox.Font.Size);
-            LowBatteryNotificationCheckbox.Font = FontProvider.GetRegularFont(LowBatteryNotificationCheckbox.Font.Size);
-            VersionLabel.Font = FontProvider.GetRegularFont(VersionLabel.Font.Size);
+            AppTabControl.ApplyRegularFont();
+            FullBatteryNotificationCheckbox.ApplyRegularFont();
+            LowBatteryNotificationCheckbox.ApplyRegularFont();
+            VersionLabel.ApplyRegularFont();
 
-            PinToNotificationAreaLabel.Font = FontProvider.GetRegularFont(PinToNotificationAreaLabel.Font.Size);
-            LaunchAtStartUpLabel.Font = FontProvider.GetRegularFont(LaunchAtStartUpLabel.Font.Size);
-            ThemeLabel.Font = FontProvider.GetRegularFont(ThemeLabel.Font.Size);
-            SystemThemeLabel.Font = FontProvider.GetRegularFont(SystemThemeLabel.Font.Size);
-            LightThemeLabel.Font = FontProvider.GetRegularFont(LightThemeLabel.Font.Size);
-            DarkThemeLabel.Font = FontProvider.GetRegularFont(DarkThemeLabel.Font.Size);
-            NotificationPanel.Font = FontProvider.GetRegularFont(NotificationPanel.Font.Size);
+            PinToNotificationAreaLabel.ApplyRegularFont();
+            LaunchAtStartUpLabel.ApplyRegularFont();
+            ThemeLabel.ApplyRegularFont();
+            SystemThemeLabel.ApplyRegularFont();
+            LightThemeLabel.ApplyRegularFont();
+            DarkThemeLabel.ApplyRegularFont();
+            NotificationPanel.ApplyRegularFont();
 
-            SettingHeader.Font = FontProvider.GetRegularFont(SettingHeader.Font.Size);
-            FullBatteryNotificationSettingLabel.Font = FontProvider.GetRegularFont(FullBatteryNotificationSettingLabel.Font.Size);
-            LowBatteryNotificationSettingLabel.Font = FontProvider.GetRegularFont(LowBatteryNotificationSettingLabel.Font.Size);
+            SettingHeader.ApplyRegularFont();
+            FullBatteryNotificationSettingLabel.ApplyRegularFont();
+            LowBatteryNotificationSettingLabel.ApplyRegularFont();
 
-            FullBatteryNotificationPercentageLabel.Font = FontProvider.GetRegularFont(FullBatteryNotificationPercentageLabel.Font.Size);
-            LowBatteryNotificationPercentageLabel.Font = FontProvider.GetRegularFont(LowBatteryNotificationPercentageLabel.Font.Size);
+            FullBatteryNotificationPercentageLabel.ApplyRegularFont();
+            LowBatteryNotificationPercentageLabel.ApplyRegularFont();
 
-            FullBatterySound.Font = FontProvider.GetRegularFont(FullBatterySound.Font.Size);
-            LowBatterySound.Font = FontProvider.GetRegularFont(LowBatterySound.Font.Size);
+            FullBatterySound.ApplyRegularFont();
+            LowBatterySound.ApplyRegularFont();
 
-            NotificationText.Font = FontProvider.GetRegularFont(NotificationText.Font.Size);
+            NotificationText.ApplyRegularFont();
         }
 
         private void ApplyTheme()
