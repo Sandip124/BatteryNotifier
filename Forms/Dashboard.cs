@@ -15,9 +15,12 @@ namespace BatteryNotifier.Forms
         private readonly Debouncer.Debouncer _debouncer;
         private readonly Timer _soundPlayingTimer = new();
         private readonly SoundPlayer _batteryNotification = new(Resources.BatteryFull);
+        private readonly CustomTimer.CustomTimer _customTimer = new();
+        private readonly ContextMenuStrip contextMenu = new();
 
         private Point _lastLocation;
         private bool _mouseDown;
+        private bool _isCharging = false;
 
         private const int DefaultMusicPlayingDuration = 30;
         private const int DefaultNotficationInterval = 30000;
@@ -26,6 +29,13 @@ namespace BatteryNotifier.Forms
 
         const int WS_MINIMIZEBOX = 0x20000;
         const int CS_DBLCLKS = 0x8;
+
+        readonly decimal renderedPercentage = 0;
+        readonly PowerStatus powerStatus = SystemInformation.PowerStatus;
+        readonly decimal percentage = (int)Math.Round(SystemInformation.PowerStatus.BatteryLifePercent * 100, 0);
+
+        private readonly bool showFullBatteryNotification = appSetting.Default.fullBatteryNotification;
+        private readonly bool showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
 
         protected override CreateParams CreateParams
         {
@@ -121,6 +131,8 @@ namespace BatteryNotifier.Forms
                 ShowNotificationTimer.Enabled = true;
                 ConfigureTimer();
                 AttachEventListeners();
+
+                contextMenu.TopLevel = true;
                 BatteryNotifierIcon.ContextMenuStrip = InitializeContextMenu();
             }
             catch (Exception ex)
@@ -133,17 +145,16 @@ namespace BatteryNotifier.Forms
             }
         }
 
-
         private void LoadSettings()
         {
             PinToNotificationArea.Checked = appSetting.Default.PinToNotificationArea;
             launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
 
             fullBatteryTrackbar.Value = appSetting.Default.fullBatteryNotificationValue;
-            FullBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(appSetting.Default.fullBatteryNotificationValue);
+            FullBatteryNotificationPercentageLabel.Text = $"({appSetting.Default.fullBatteryNotificationValue}%)";
 
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
-            LowBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(appSetting.Default.lowBatteryNotificationValue);
+            LowBatteryNotificationPercentageLabel.Text = $"({appSetting.Default.lowBatteryNotificationValue}%)";
 
             if (appSetting.Default.SystemThemeApplied)
             {
@@ -278,18 +289,12 @@ namespace BatteryNotifier.Forms
 
             var fileName = fileBrowser.FileName;
 
-            if (!IsValidWavFile(fileName))
+            if (!UtilityHelper.IsValidWavFile(fileName))
             {
                 Notify("Only .wav file is supported.");
                 return string.Empty;
             }
-
             return fileBrowser.CheckFileExists ? fileName : string.Empty;
-        }
-
-        private static bool IsValidWavFile(string fileName)
-        {
-            return fileName.EndsWith(".wav");
         }
 
         private void LightThemeLabel_CheckedChanged(object? sender, EventArgs e)
@@ -327,17 +332,12 @@ namespace BatteryNotifier.Forms
 
         private void FullBatteryTrackbar_Scroll(object? sender, EventArgs e)
         {
-            FullBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(fullBatteryTrackbar.Value);
-        }
-
-        private static string RenderBatteryPercentageValue(int value)
-        {
-            return $"({value}%)";
+            FullBatteryNotificationPercentageLabel.Text = $"({fullBatteryTrackbar.Value}%)";
         }
 
         private void LowBatteryTrackbar_Scroll(object? sender, EventArgs e)
         {
-            LowBatteryNotificationPercentageLabel.Text = RenderBatteryPercentageValue(lowBatteryTrackbar.Value);
+            LowBatteryNotificationPercentageLabel.Text = $"({lowBatteryTrackbar.Value}%)";
         }
 
         private void PinToNotificationArea_CheckedChanged(object? sender, EventArgs e)
@@ -351,84 +351,51 @@ namespace BatteryNotifier.Forms
 
         private void FullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
         {
-            _debouncer.Debounce(SaveSetting, 500);
-
-            void SaveSetting()
+            _debouncer.Debounce(() =>
             {
                 appSetting.Default.fullBatteryNotificationValue = fullBatteryTrackbar.Value;
                 appSetting.Default.Save();
-            }
+            }, 500);
         }
 
         private void LowBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
         {
-            _debouncer.Debounce(SaveSetting, 500);
-            void SaveSetting()
+            _debouncer.Debounce(() =>
             {
                 appSetting.Default.lowBatteryNotificationValue = lowBatteryTrackbar.Value;
                 appSetting.Default.Save();
-            }
+            }, 500);
         }
 
         protected override void OnDeactivate(EventArgs e)
         {
-            if (appSetting.Default.PinToNotificationArea)
-            {
-                Hide();
-            }
+            if (appSetting.Default.PinToNotificationArea) Hide();
             base.OnDeactivate(e);
         }
 
-        private readonly CustomTimer _timer = new();
-
         private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
         {
-            if (_timer.TimerCount >= DefaultMusicPlayingDuration)
+            if (_customTimer.TimerCount >= DefaultMusicPlayingDuration)
             {
                 _soundPlayingTimer.Stop();
                 _batteryNotification.Stop();
-                _timer.ResetTimer();
+                _customTimer.ResetTimer();
             }
-            _timer.Increment();
-        }
-
-
-        public partial class CustomTimer
-        {
-            public int TimerCount { get; private set; } = 0;
-            public void ResetTimer() => TimerCount = 0;
-            public void Increment() => TimerCount++;
+            _customTimer.Increment();
         }
 
         private void LoadNotificationSetting()
         {
             var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
-            RenderCheckboxState(LowBatteryNotificationCheckbox, showLowBatteryNotification);
+            UtilityHelper.RenderCheckboxState(LowBatteryNotificationCheckbox, showLowBatteryNotification);
 
             var showFullBatteryNotification = appSetting.Default.fullBatteryNotification;
-            RenderCheckboxState(FullBatteryNotificationCheckbox, showFullBatteryNotification);
+            UtilityHelper.RenderCheckboxState(FullBatteryNotificationCheckbox, showFullBatteryNotification);
         }
-
-        private static void RenderCheckboxState(Control control, bool showNotification)
-        {
-            if (control == null) throw new ArgumentNullException(nameof(control));
-
-            var checkBox = (control as CheckBox)!;
-
-            checkBox.Checked = showNotification;
-            checkBox.Text = showNotification ? "On" : "Off";
-        }
-
-        private bool _isCharging = false;
 
         private void CheckNotification()
         {
-
-            var status = SystemInformation.PowerStatus;
-
-            var showFullBatteryNotification = appSetting.Default.fullBatteryNotification;
-
-            if (status.PowerLineStatus == PowerLineStatus.Online && _isCharging && status.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
+            if (powerStatus.PowerLineStatus == PowerLineStatus.Online && _isCharging && powerStatus.BatteryLifePercent >= (float)appSetting.Default.fullBatteryNotificationValue / 100)
             {
                 var fullBatteryNotificationMessage = "🔋 Battery is full please unplug the charger.";
 
@@ -436,22 +403,16 @@ namespace BatteryNotifier.Forms
 
                 if (showFullBatteryNotification)
                 {
-
                     BatteryNotifierIcon.ShowBalloonTip(50, "Full Battery", fullBatteryNotificationMessage, ToolTipIcon.Info);
-
                     PlaySound(appSetting.Default.fullBatteryNotificationMusic, Resources.BatteryFull, true);
                 }
 
                 if (Visible) return;
                 Show();
-
             }
 
-
-            var showLowBatteryNotification = appSetting.Default.lowBatteryNotification;
-
-            if (status.PowerLineStatus != PowerLineStatus.Offline || _isCharging ||
-                !(status.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)) return;
+            if (powerStatus.PowerLineStatus != PowerLineStatus.Offline || _isCharging ||
+                !(powerStatus.BatteryLifePercent <= (float)appSetting.Default.lowBatteryNotificationValue / 100)) return;
 
             var LowBatteryNotificationMessage = "🔋 Battery is low, please Connect to Charger.";
 
@@ -460,13 +421,11 @@ namespace BatteryNotifier.Forms
             if (showLowBatteryNotification)
             {
                 BatteryNotifierIcon.ShowBalloonTip(50, "Low Battery", LowBatteryNotificationMessage, ToolTipIcon.Info);
-
                 PlaySound(appSetting.Default.lowBatteryNotificationMusic, Resources.LowBatterySound, true);
             }
 
             if (Visible) return;
             Show();
-
         }
 
         private void PlaySound(string source, System.IO.UnmanagedMemoryStream fallbackSoundSource, bool loop = false)
@@ -475,8 +434,7 @@ namespace BatteryNotifier.Forms
 
             var soundLocation = source;
 
-            var notificationSoundAvailable = !string.IsNullOrEmpty(soundLocation);
-            if (notificationSoundAvailable)
+            if (!string.IsNullOrEmpty(soundLocation))
             {
                 _batteryNotification.SoundLocation = soundLocation;
             }
@@ -484,6 +442,7 @@ namespace BatteryNotifier.Forms
             {
                 _batteryNotification.Stream = fallbackSoundSource;
             }
+
             if (loop)
             {
                 _batteryNotification.PlayLooping();
@@ -497,67 +456,53 @@ namespace BatteryNotifier.Forms
 
         private void RefreshBatteryStatus()
         {
-            var status = SystemInformation.PowerStatus;
-
-            if (status.PowerLineStatus == PowerLineStatus.Online && status.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery && _isCharging == false)
+            if (powerStatus.PowerLineStatus == PowerLineStatus.Online && powerStatus.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery && _isCharging == false)
             {
                 _isCharging = true;
                 BatteryStatus.Text = "⚡ Charging";
                 BatteryStatus.ForeColor = Color.ForestGreen;
                 UpdateChargingAnimation();
             }
-            else if (status.PowerLineStatus == PowerLineStatus.Offline || status.PowerLineStatus == PowerLineStatus.Unknown)
+            else if (powerStatus.PowerLineStatus == PowerLineStatus.Offline || powerStatus.PowerLineStatus == PowerLineStatus.Unknown)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "🙄 Not Charging";
                 BatteryStatus.ForeColor = Color.Gray;
-                SetBatteryChargeStatus(status);
+                SetBatteryChargeStatus(powerStatus);
             }
-            else if (status.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+            else if (powerStatus.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "💀 Are you running on main power !!";
                 BatteryImage.Image = Resources.Unknown;
             }
-            else if (status.BatteryChargeStatus == BatteryChargeStatus.Unknown)
+            else if (powerStatus.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
                 _isCharging = false;
                 BatteryStatus.Text = "😇 Only God knows about this battery !!";
                 BatteryImage.Image = Resources.Unknown;
             }
 
-            UpdateBatteryPercentage(status);
-            UpdateBatteryChargeRemainingStatus(status);
+            UpdateBatteryPercentage(powerStatus);
+            UpdateBatteryChargeRemainingStatus(powerStatus);
             RenderIcon(_isCharging);
         }
-
 
         private void UpdateChargingAnimation()
         {
             if (!_isCharging) return;
-
-            if (ThemeProvider.IsDarkTheme)
-            {
-                BatteryImage.Image = Resources.ChargingBatteryAnimatedDark;
-            }
-            else
-            {
-                BatteryImage.Image = Resources.ChargingBatteryAnimated;
-            }
+            BatteryImage.Image = ThemeProvider.IsDarkTheme ? Resources.ChargingBatteryAnimatedDark : Resources.ChargingBatteryAnimated;
         }
 
         private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
         {
-            var secondsRemaining = status.BatteryLifeRemaining;
-            if (secondsRemaining >= 0)
+            if (status.BatteryLifeRemaining >= 0)
             {
-                var timeSpan = TimeSpan.FromSeconds(secondsRemaining);
+                var timeSpan = TimeSpan.FromSeconds(status.BatteryLifeRemaining);
                 RemainingTime.Text = $@"{timeSpan.Hours} hr {timeSpan.Minutes} min remaining";
+                return;
             }
-            else
-            {
-                RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100, 0)}% remaining";
-            }
+            RemainingTime.Text = $@"{Math.Round(status.BatteryLifePercent * 100, 0)}% remaining";
         }
 
         private void UpdateBatteryPercentage(PowerStatus status)
@@ -599,9 +544,7 @@ namespace BatteryNotifier.Forms
 
         private ContextMenuStrip InitializeContextMenu()
         {
-            var contextMenu = new ContextMenuStrip();
             contextMenu.Items.Clear();
-            contextMenu.TopLevel = true;
 
             ToolStripMenuItem BatteryPercentageToolStripItem = new("Show Battery Percentage")
             {
@@ -620,7 +563,6 @@ namespace BatteryNotifier.Forms
                 Font = FontProvider.GetRegularFont(10.2F)
             };
             FullBatteryNotificationToolStripItem.Click += FullBatteryNotification_Click!;
-
 
             ToolStripMenuItem LowBatteryNotificationToolStripItem = new("Low Battery Notification")
             {
@@ -715,8 +657,6 @@ namespace BatteryNotifier.Forms
             Notify("🔔 Low Battery Notification " + (appSetting.Default.lowBatteryNotification ? "Enabled" : "Disabled"));
         }
 
-
-
         private void ExitApp_Click(object? sender, EventArgs e)
         {
             Close();
@@ -726,7 +666,6 @@ namespace BatteryNotifier.Forms
         {
             UtilityHelper.StartExternalUrlProcess(Constant.SourceRepositoryUrl);
         }
-
 
         private void BatteryNotifierIcon_Click(object? sender, EventArgs e)
         {
@@ -748,7 +687,7 @@ namespace BatteryNotifier.Forms
 
         private void FullBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
         {
-            RenderCheckboxState(FullBatteryNotificationCheckbox, FullBatteryNotificationCheckbox.Checked);
+            UtilityHelper.RenderCheckboxState(FullBatteryNotificationCheckbox, FullBatteryNotificationCheckbox.Checked);
             appSetting.Default.fullBatteryNotification = FullBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
 
@@ -758,7 +697,7 @@ namespace BatteryNotifier.Forms
         }
         private void LowBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
         {
-            RenderCheckboxState(LowBatteryNotificationCheckbox, LowBatteryNotificationCheckbox.Checked);
+            UtilityHelper.RenderCheckboxState(LowBatteryNotificationCheckbox, LowBatteryNotificationCheckbox.Checked);
             appSetting.Default.lowBatteryNotification = LowBatteryNotificationCheckbox.Checked;
             appSetting.Default.Save();
 
@@ -783,7 +722,7 @@ namespace BatteryNotifier.Forms
             BatteryStatusTimer.Start();
             RefreshBatteryStatus();
             LoadNotificationSetting();
-            this.RenderFormPosition(BatteryNotifierIcon);
+            this.RenderFormPosition(notifyIcon: BatteryNotifierIcon);
             UpdateChargingAnimation();
             ResumeLayout();
         }
@@ -918,14 +857,12 @@ namespace BatteryNotifier.Forms
             Location = new Point(xPosition, yPosition);
             Update();
 
-            _debouncer.Debounce(UpdateLocation, 1000);
-
-            void UpdateLocation()
+            _debouncer.Debounce(() =>
             {
                 appSetting.Default.WindowPositionX = xPosition;
                 appSetting.Default.WindowPositionY = yPosition;
                 appSetting.Default.Save();
-            }
+            }, 1000);
         }
 
         private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
@@ -946,8 +883,6 @@ namespace BatteryNotifier.Forms
             _soundPlayingTimer.Stop();
         }
 
-        decimal percentageValue = 0;
-
         public void RenderIcon(bool isCharging)
         {
             if (!appSetting.Default.showBatteryPercentageInIcon)
@@ -956,35 +891,11 @@ namespace BatteryNotifier.Forms
             }
             else
             {
-                var status = SystemInformation.PowerStatus;
-                var percentage = (int)Math.Round(status.BatteryLifePercent * 100, 0);
-                if (percentage == percentageValue) return;
-                percentageValue = percentage;
-                Icon = RenderBadge(Resources.logo, 180, 180, 220, isCharging ? "⚡" : percentage.ToString());
+                if (percentage != renderedPercentage)
+                {
+                    Icon = UtilityHelper.RenderBadge(Resources.logo, 180, 180, 220, isCharging ? "⚡" : percentage.ToString());
+                }
             }
-        }
-
-        private static Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
-        {
-            using var g = Graphics.FromImage(bitmap);
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-
-            Rectangle textborder = new(bitmap.Width / 2 - textWidth/2, bitmap.Height / 2 - height / 3, textWidth, height);
-
-            var font = FontProvider.GetBoldFont(96);
-
-            StringFormat stringFormat = new()
-            {
-                Alignment = StringAlignment.Center,
-                LineAlignment = StringAlignment.Center
-            };
-
-            g.FillEllipse(Brushes.DarkGreen, bitmap.Width / 2 - (width / 2), bitmap.Height / 2 - height / 3, width, height);
-            g.DrawString(batteryPercentage.ToString(),font, Brushes.White, textborder, stringFormat);
-            g.Dispose();
-            font.Dispose();
-
-            return Icon.FromHandle(bitmap.GetHicon());
         }
     }
 }
