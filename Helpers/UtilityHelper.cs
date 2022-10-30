@@ -1,6 +1,10 @@
-﻿using Microsoft.Win32;
+﻿using BatteryNotifier.Providers;
+using Microsoft.Win32;
+using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Reflection;
+using System.Windows.Forms;
 
 namespace BatteryNotifier.Helpers
 {
@@ -53,6 +57,45 @@ namespace BatteryNotifier.Helpers
             using var personalizeKey =
                    Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", false);
             return (int)(personalizeKey?.GetValue("SystemUsesLightTheme", 0) ?? 0) == 1;
+        }
+
+        //Just Checking extension for wav file
+        public static bool IsValidWavFile(string fileName)
+        {
+            return fileName.EndsWith(".wav");
+        }
+
+        public static void RenderCheckboxState(Control control, bool @checked)
+        {
+            if (control == null) throw new ArgumentNullException(nameof(control));
+
+            var checkboxControl = (control as CheckBox)!;
+
+            checkboxControl.Checked = @checked;
+            checkboxControl.Text = @checked ? "On" : "Off";
+        }
+
+        public static Icon RenderBadge(Bitmap bitmap, int width, int height, int textWidth, string batteryPercentage)
+        {
+            using var g = Graphics.FromImage(bitmap);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            Rectangle textborder = new(bitmap.Width / 2 - textWidth / 2, bitmap.Height / 2 - height / 3, textWidth, height);
+
+            var font = FontProvider.GetBoldFont(96);
+
+            StringFormat stringFormat = new()
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            };
+
+            g.FillEllipse(Brushes.DarkGreen, bitmap.Width / 2 - (width / 2), bitmap.Height / 2 - height / 3, width, height);
+            g.DrawString(batteryPercentage.ToString(), font, Brushes.White, textborder, stringFormat);
+            g.Dispose();
+            font.Dispose();
+
+            return Icon.FromHandle(bitmap.GetHicon());
         }
 
     }
