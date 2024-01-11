@@ -9,9 +9,9 @@ namespace BatteryNotifier.Providers
         [System.Runtime.InteropServices.DllImport("gdi32.dll")]
         private static extern IntPtr AddFontMemResourceEx(IntPtr pbFont, uint cbFont, IntPtr pdv, [System.Runtime.InteropServices.In] ref uint pcFonts);
 
-        public PrivateFontCollection FontsCollection = new();
+        private readonly PrivateFontCollection _fontsCollection = new();
 
-        public static FontProvider Default = new();
+        private static readonly FontProvider Default = new();
 
         private FontProvider()
         {
@@ -21,22 +21,22 @@ namespace BatteryNotifier.Providers
 
         private void LoadFont(byte[] fontResource)
         {
-            IntPtr fontPtr = System.Runtime.InteropServices.Marshal.AllocCoTaskMem(fontResource.Length);
+            var fontPtr = System.Runtime.InteropServices.Marshal.AllocCoTaskMem(fontResource.Length);
             System.Runtime.InteropServices.Marshal.Copy(fontResource, 0, fontPtr, fontResource.Length);
             uint dummy = 0;
-            FontsCollection.AddMemoryFont(fontPtr, fontResource.Length);
+            _fontsCollection.AddMemoryFont(fontPtr, fontResource.Length);
             AddFontMemResourceEx(fontPtr, (uint)fontResource.Length, IntPtr.Zero, ref dummy);
             System.Runtime.InteropServices.Marshal.FreeCoTaskMem(fontPtr);
         }
 
         public static Font GetRegularFont(float size = 8)
         {
-            return new Font(Default.FontsCollection.Families[0], size, FontStyle.Regular, GraphicsUnit.Point);
+            return new Font(Default._fontsCollection.Families[0], size, FontStyle.Regular, GraphicsUnit.Point);
         }
 
         public static Font GetBoldFont(float size = 8)
         {
-            return new Font(Default.FontsCollection.Families[0], size, FontStyle.Bold, GraphicsUnit.Point);
+            return new Font(Default._fontsCollection.Families[0], size, FontStyle.Bold, GraphicsUnit.Point);
         }
     }
 
