@@ -7,7 +7,7 @@ namespace BatteryNotifier.Helpers
     {
         public static void RenderFormPosition(this Form form, NotifyIcon notifyIcon)
         {
-            Rectangle workingArea = Screen.GetWorkingArea(form);
+            var workingArea = Screen.GetWorkingArea(form);
 
             var xPosition = Setting.appSetting.Default.WindowPositionX;
             var yPosition = Setting.appSetting.Default.WindowPositionY;
