@@ -1,99 +1,159 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{E542D0A2-5EB3-4320-82A2-C09FB73B148C}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <RootNamespace>BatteryNotifier</RootNamespace>
+    <AssemblyName>BatteryNotifier</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <PackageProjectUrl>https://github.com/Sandip124/BatteryNotifier</PackageProjectUrl>
-    <Description>An windows app for notifying when battery is full or low.</Description>
-    <PackageIcon>batteryNotifier.png</PackageIcon>
-    <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
+    <AssemblyVersion>2.2.4</AssemblyVersion>
     <ApplicationIcon>battery-icon.ico</ApplicationIcon>
   </PropertyGroup>
-
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="Assets\**" />
-    <EmbeddedResource Remove="Assets\**" />
-    <None Remove="Assets\**" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Deployment" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
-
   <ItemGroup>
-    <None Remove="appSetting.settings" />
-    <None Remove="battery-icon.ico" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="battery-icon.ico" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="Setting\appSetting.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>appSetting.Designer.cs</LastGenOutput>
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="battery-icon.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-	  <EmbeddedResource Include="batteryNotifier.png">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="NuGet.CommandLine" Version="6.2.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="squirrel.windows" Version="1.9.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Update="Setting\appSetting.Designer.cs">
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>appSetting.settings</DependentUpon>
+    <Compile Include="Constants\Constant.cs" />
+    <Compile Include="CustomControls\FlatTabControl\FlatTabControl.cs">
+      <SubType>Component</SubType>
     </Compile>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
+    <Compile Include="CustomControls\FlatTabControl\Win32.cs" />
+    <Compile Include="CustomTimer\CustomTimer.cs" />
+    <Compile Include="Debouncer\Debouncer.cs" />
+    <Compile Include="Forms\Dashboard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Dashboard.Designer.cs" />
+    <Compile Include="Helpers\ApplyFontHelper.cs" />
+    <Compile Include="Helpers\UtilityHelper.cs" />
+    <Compile Include="Helpers\WindowHelper.cs" />
+    <Compile Include="Program.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Providers\FontProvider.cs" />
+    <Compile Include="Providers\ThemeProvider.cs" />
+    <Compile Include="Setting\appSetting.cs" />
+    <Compile Include="Setting\appSetting.Designer.cs" />
+    <Compile Include="Theming\BaseTheme.cs" />
+    <Compile Include="Theming\DarkTheme.cs" />
+    <Compile Include="Theming\LightTheme.cs" />
+    <EmbeddedResource Include="CustomControls\FlatTabControl\FlatTabControl.resx" />
+    <EmbeddedResource Include="Forms\Dashboard.resx" />
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-
   <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
+    <None Include="App.config" />
   </ItemGroup>
-
   <ItemGroup>
-	  <None Update="batteryNotifier.png">
-		  <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
+    <Content Include=".gitattributes" />
+    <Content Include=".gitignore" />
+    <Content Include="Assets\Fonts\Inter-Bold.ttf" />
+    <Content Include="Assets\Fonts\Inter-Regular.ttf" />
+    <Content Include="battery-icon.ico" />
+    <Content Include="batteryNotifier.png" />
+    <Content Include="BatteryNotifierBanner.png" />
+    <Content Include="BatteryNotifierLogo.png" />
+    <Content Include="LICENSE" />
+    <Content Include="README.md" />
+    <Content Include="ReleaseSpec.nuspec" />
+    <Content Include="Resources\BatteryFull.wav" />
+    <Content Include="Resources\batteryNotifierIcon.ico" />
+    <Content Include="Resources\batteryNotifiyerIcon.ico" />
+    <Content Include="Resources\battery_icon.ico" />
+    <Content Include="Resources\ChargingBatteryAnimated.gif" />
+    <Content Include="Resources\ChargingBatteryAnimatedDark1.gif" />
+    <Content Include="Resources\closeIconDark.png" />
+    <Content Include="Resources\closeIconHoverState.png" />
+    <Content Include="Resources\Critical.png" />
+    <Content Include="Resources\DarkMode2.png" />
+    <Content Include="Resources\Full.png" />
+    <Content Include="Resources\FullBatteryNotification.png" />
+    <Content Include="Resources\icon.png" />
+    <Content Include="Resources\launchatstartup.png" />
+    <Content Include="Resources\LightMode.png" />
+    <Content Include="Resources\logo.png" />
+    <Content Include="Resources\logo_charging.ico" />
+    <Content Include="Resources\logo_charging.png" />
+    <Content Include="Resources\logo_charging1.png" />
+    <Content Include="Resources\long-pop.wav" />
+    <Content Include="Resources\Low.png" />
+    <Content Include="Resources\LowBatterynotification.png" />
+    <Content Include="Resources\LowBatterySound.wav" />
+    <Content Include="Resources\music_icon.png" />
+    <Content Include="Resources\Normal.png" />
+    <Content Include="Resources\Sufficient.png" />
+    <Content Include="Resources\Unknown.png" />
+    <Content Include="Resources\Window.png" />
+    <Content Include="Setting\appSetting.settings" />
   </ItemGroup>
-
-	<PropertyGroup>
-		<NugetTools>$(PkgNuGet_CommandLine)\tools</NugetTools>
-		<SquirrelTools>$(Pkgsquirrel_windows)\tools</SquirrelTools>
-
-		<Version>2.2.4</Version>
-
-		<NuspecFile>$(SolutionDir)ReleaseSpec.nuspec</NuspecFile>
-	</PropertyGroup>
-
-	<Target Name="GenerateRelease" AfterTargets="AfterBuild" Condition="$(Configuration) == Release">
-		<XmlPeek XmlInputPath="$(NuspecFile)" Query="/package/metadata/id/text()">
-			<Output TaskParameter="Result" ItemName="ID" />
-		</XmlPeek>
-
-		<Exec Command="NuGet.exe pack $(NuspecFile) -Version $(Version) -Properties Configuration=Release -OutputDirectory $(SolutionDir)Deployment\GeneratedNugets" />
-
-		<Exec Command="Squirrel.exe --releasify $(SolutionDir)Deployment\GeneratedNugets\@(ID).$(Version).nupkg --releaseDir=$(SolutionDir)Deployment\Releases" />
-	</Target>
-
+  <ItemGroup>
+    <PackageReference Include="DeltaCompressionDotNet" Version="1.1.0" />
+    <PackageReference Include="Lib.Extensions.System.ComponentModel" Version="22.4.12" />
+    <PackageReference Include="Mono.Cecil" Version="0.9.6.1" />
+    <PackageReference Include="NuGet.CommandLine" Version="6.8.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="SharpCompress" Version="0.17.1" />
+    <PackageReference Include="Splat" Version="1.6.2" />
+    <PackageReference Include="squirrel.windows" Version="1.9.1" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <NugetTools>$(PkgNuGet_CommandLine)\tools</NugetTools>
+    <SquirrelTools>$(Pkgsquirrel_windows)\tools</SquirrelTools>
+    <NuspecFile>$(SolutionDir)ReleaseSpec.nuspec</NuspecFile>
+  </PropertyGroup>
+  <Target Name="GenerateRelease" AfterTargets="AfterBuild" Condition="$(Configuration) == Release">
+    <XmlPeek XmlInputPath="$(NuspecFile)" Query="/package/metadata/id/text()">
+      <Output TaskParameter="Result" ItemName="ID" />
+    </XmlPeek>
+    <Exec Command="NuGet.exe pack $(NuspecFile) -Version $(Version) -Properties Configuration=Release -OutputDirectory $(SolutionDir)Deployment\GeneratedNugets" />
+    <Exec Command="Squirrel.exe --releasify $(SolutionDir)Deployment\GeneratedNugets\@(ID).$(Version).nupkg --releaseDir=$(SolutionDir)Deployment\Releases" />
+  </Target>
 </Project>
