@@ -86,6 +86,11 @@
     <Compile Include="Providers\FontProvider.cs" />
     <Compile Include="Providers\ThemeProvider.cs" />
     <Compile Include="Setting\appSetting.cs" />
+    <Compile Include="Setting\appSetting.Designer.cs">
+      <DependentUpon>appSetting.settings</DependentUpon>
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
     <Compile Include="Theming\BaseTheme.cs" />
     <Compile Include="Theming\DarkTheme.cs" />
     <Compile Include="Theming\LightTheme.cs" />
@@ -144,7 +149,10 @@
     <Content Include="Resources\Sufficient.png" />
     <Content Include="Resources\Unknown.png" />
     <Content Include="Resources\Window.png" />
-    <Content Include="Setting\appSetting.settings" />
+    <Content Include="Setting\appSetting.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>appSetting.Designer.cs</LastGenOutput>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="DeltaCompressionDotNet" Version="1.1.0" />
@@ -175,7 +183,7 @@
     <NugetTools>$(PkgNuGet_CommandLine)\tools</NugetTools>
     <SquirrelTools>$(Pkgsquirrel_windows)\tools</SquirrelTools>
     <NuspecFile>$(SolutionDir)ReleaseSpec.nuspec</NuspecFile>
-	 <Version>3.0.0</Version>
+    <Version>3.0.0</Version>
   </PropertyGroup>
   <Target Name="GenerateRelease" AfterTargets="AfterBuild" Condition="$(Configuration) == Release">
     <XmlPeek XmlInputPath="$(NuspecFile)" Query="/package/metadata/id/text()">
