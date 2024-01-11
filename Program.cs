@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Squirrel;
 using BatteryNotifier.Helpers;
 using System.Threading;
-using System.Runtime.InteropServices;
 
 namespace BatteryNotifier
 {
@@ -17,12 +16,7 @@ namespace BatteryNotifier
 
         private static string? version = UtilityHelper.AssemblyVersion;
 
-        [DllImport("User32.dll")]
-        private static extern bool ShowWindowAsync(IntPtr hWnd, int cmdShow);
-
-        [DllImport("User32.dll")]
-        private static extern bool SetForegroundWindow(IntPtr hWnd);
-        private const int WS_SHOWNORMAL = 1;
+        private static readonly string EventName = "BatteryNotifier.Instance.WaitHandle";
 
         /// <summary>
         ///  The main entry point for the application.
@@ -37,18 +31,13 @@ namespace BatteryNotifier
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                System.Diagnostics.Process[] name = System.Diagnostics.Process.GetProcessesByName(System.Diagnostics.Process.GetCurrentProcess().ProcessName);
-
-                if (name.Length > 1)
+                using (EventWaitHandle eventWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, EventName, out bool createdNew))
                 {
-                    ShowWindowAsync(name[0].MainWindowHandle, WS_SHOWNORMAL);
-                    SetForegroundWindow(name[0].MainWindowHandle);
-                }
-                else
-                {
+                    if (createdNew)
+                    {
 
-                    MainForm = new Dashboard();
-                    var dashboard = MainForm as Dashboard;
+                        MainForm = new Dashboard();
+                        var dashboard = MainForm as Dashboard;
 #if RELEASE
 
                     if (InternetConnectivityHelper.CheckForInternetConnection())
@@ -60,10 +49,16 @@ namespace BatteryNotifier
                     version = UpdateManager?.CurrentlyInstalledVersion().ToString();
                 }
 #endif
-                    dashboard?.SetVersion(version);
+                        dashboard?.SetVersion(version);
 
-                    Application.Run(dashboard);
+                        Application.Run(dashboard);
+                    }
+                    else
+                    {
+                        (MainForm as Dashboard)?.Notify("Another instance of Battery Notifier is already running.");
+                    }
                 }
+
             }
             catch (Exception e)
             {

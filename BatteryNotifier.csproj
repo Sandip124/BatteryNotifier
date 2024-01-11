@@ -86,7 +86,6 @@
     <Compile Include="Providers\FontProvider.cs" />
     <Compile Include="Providers\ThemeProvider.cs" />
     <Compile Include="Setting\appSetting.cs" />
-    <Compile Include="Setting\appSetting.Designer.cs" />
     <Compile Include="Theming\BaseTheme.cs" />
     <Compile Include="Theming\DarkTheme.cs" />
     <Compile Include="Theming\LightTheme.cs" />
