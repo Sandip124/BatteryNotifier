@@ -1,11 +1,11 @@
 using System;
 using System.ComponentModel;
-using System.Drawing;
-using System.Windows.Forms;
-using System.Drawing.Design;
 using System.ComponentModel.Design;
+using System.Drawing;
+using System.Drawing.Design;
+using System.Windows.Forms;
 
-namespace BatteryNotifier.CustomControls.FlatTabControl
+namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
 {
 
     //https://www.codeproject.com/Articles/12185/A-NET-Flat-TabControl-CustomDraw

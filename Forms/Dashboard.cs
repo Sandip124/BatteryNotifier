@@ -3,19 +3,20 @@ using System.Drawing;
 using System.Media;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
-using BatteryNotifier.Helpers;
+using BatteryNotifier.Lib.CustomTimer;
+using BatteryNotifier.Lib.Providers;
 using BatteryNotifier.Properties;
-using BatteryNotifier.Providers;
+using BatteryNotifier.Utils;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Forms
 {
     public partial class Dashboard : Form
     {
-        private readonly Debouncer.Debouncer _debouncer;
+        private readonly Debouncer _debouncer;
         private readonly Timer _soundPlayingTimer = new();
         private readonly SoundPlayer _batteryNotification = new(Resources.BatteryFull);
-        private readonly CustomTimer.CustomTimer _customTimer = new();
+        private readonly CustomTimer _customTimer = new();
         private readonly ContextMenuStrip contextMenu = new();
 
         private Point _lastLocation;
@@ -50,7 +51,7 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-            _debouncer = new Debouncer.Debouncer();
+            _debouncer = new Debouncer();
         }
 
         private void RenderTitleBarCursor()
@@ -464,7 +465,7 @@ namespace BatteryNotifier.Forms
         private void UpdateChargingAnimation()
         {
             if (!_isCharging) return;
-            BatteryImage.Image = ThemeProvider.IsDarkTheme ? Resources.ChargingBatteryAnimatedDark : Resources.ChargingBatteryAnimated;
+            BatteryImage.Image = ThemeUtils.IsDarkTheme ? Resources.ChargingBatteryAnimatedDark : Resources.ChargingBatteryAnimated;
         }
 
         private void UpdateBatteryChargeRemainingStatus(PowerStatus status)
@@ -637,6 +638,8 @@ namespace BatteryNotifier.Forms
 
         private void BatteryStatusTimer_Tick(object? sender, EventArgs e)
         {
+            // dont update the battery status using timer but rather update when any event occur or just one time when the form is activated
+            // this is to avoid flickering and unnecessary updates
             RefreshBatteryStatus();
         }
 
@@ -684,7 +687,7 @@ namespace BatteryNotifier.Forms
 
         private void ApplyFontStyle()
         {
-            AppHeaderTitle.ApplyBoldFont(12);
+            AppHeaderTitle.ApplyBoldFont(size: 12);
             BatteryPercentage.ApplyBoldFont();
             BatteryStatus.ApplyRegularFont();
             RemainingTime.ApplyBoldFont();
@@ -725,7 +728,7 @@ namespace BatteryNotifier.Forms
 
             ThemePictureBox.Image = IsDarkTheme() ? Resources.DarkMode : Resources.LightMode;
 
-            var theme = ThemeProvider.GetTheme();
+            var theme = ThemeUtils.GetTheme();
 
             AppContainer.BackColor = theme.AccentColor;
             AppTabControl.MyBackColor = theme.AccentColor;

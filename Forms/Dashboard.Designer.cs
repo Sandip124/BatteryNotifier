@@ -1,4 +1,5 @@
 ﻿using System.Windows.Forms;
+using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 
 namespace BatteryNotifier.Forms
 {
@@ -47,7 +48,7 @@ namespace BatteryNotifier.Forms
             this.pictureBox3 = new System.Windows.Forms.PictureBox();
             this.AppHeaderTitle = new System.Windows.Forms.Label();
             this.CloseIcon = new System.Windows.Forms.PictureBox();
-            this.AppTabControl = new BatteryNotifier.CustomControls.FlatTabControl.FlatTabControl();
+            this.AppTabControl = new FlatTabControl();
             this.DashboardTab = new System.Windows.Forms.TabPage();
             this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
             this.NotificationSettingPanel = new System.Windows.Forms.Panel();
@@ -1414,7 +1415,7 @@ namespace BatteryNotifier.Forms
         private System.Windows.Forms.Label FullBatteryNotificationPercentageLabel;
         private System.Windows.Forms.Label LowBatteryNotificationPercentageLabel;
         private System.Windows.Forms.TrackBar fullBatteryTrackbar;
-        public BatteryNotifier.CustomControls.FlatTabControl.FlatTabControl AppTabControl;
+        public FlatTabControl AppTabControl;
         private System.Windows.Forms.PictureBox pictureBox3;
         private System.Windows.Forms.Label SettingHeader;
         private System.Windows.Forms.PictureBox BrowserFullBatterySound;

@@ -2,18 +2,10 @@
 
 namespace BatteryNotifier.Theming
 {
-    internal class LightTheme : BaseTheme
-    {
-        public override string Name => "Light";
-
-        public override Color BackgroundColor => Color.White;
-        
-        public override Color AccentColor => Color.White;
-
-        public override Color ForegroundColor => Color.Black;
-
-        public override Color Accent2Color => Color.WhiteSmoke;
-
-        public override Color Accent3Color => Color.WhiteSmoke;
-    }
+    internal class LightTheme() : BaseTheme(name: "Light",
+        backgroundColor: Color.White,
+        accentColor: Color.White,
+        accent2Color: Color.WhiteSmoke,
+        accent3Color: Color.WhiteSmoke,
+        foregroundColor: Color.Black);
 }

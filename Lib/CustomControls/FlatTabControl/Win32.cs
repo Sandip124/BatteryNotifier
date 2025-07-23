@@ -1,9 +1,9 @@
 using System;
 using System.Drawing;
-using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
-namespace BatteryNotifier.CustomControls.FlatTabControl
+namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
 {
     internal class Win32
     {
