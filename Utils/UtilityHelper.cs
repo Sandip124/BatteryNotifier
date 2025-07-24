@@ -59,5 +59,23 @@ namespace BatteryNotifier.Utils
             checkboxControl.Checked = @checked;
             checkboxControl.Text = @checked ? "On" : "Off";
         }
+
+        public static void EnableDoubleBuffering(Control ctrl)
+        {
+            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.SetValue(ctrl, true, null);
+        }
+
+        public static void EnableDoubleBufferingRecursively(Control parent)
+        {
+            foreach (Control ctrl in parent.Controls)
+            {
+                EnableDoubleBuffering(ctrl);
+                if (ctrl.HasChildren)
+                {
+                    EnableDoubleBufferingRecursively(ctrl);
+                }
+            }
+        }
     }
 }
