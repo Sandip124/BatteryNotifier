@@ -26,7 +26,7 @@ namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
         private bool bUpDown; // true when the button UpDown is required
         private ImageList leftRightImages = null;
         private const int nMargin = 5;
-        private Color mBackColor = SystemColors.Control;
+        private Color mBackColor = Color.Transparent;
         private Color mBorderColor = SystemColors.ControlText;
 
         public FlatTabControl()
@@ -37,7 +37,7 @@ namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
             // double buffering
             SetStyle(ControlStyles.UserPaint, true);
             SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-            SetStyle(ControlStyles.DoubleBuffer, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             SetStyle(ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
 
@@ -493,14 +493,14 @@ namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
         }
 
         [Browsable(true)]
-        public Color MyBackColor
+        public override Color BackColor
         {
             get { return mBackColor; }
             set { mBackColor = value; Invalidate(); }
         }
 
         [Browsable(true)]
-        public Color MyBorderColor
+        public Color BorderColor
         {
             get { return mBorderColor; }
             set { mBorderColor = value; Invalidate(); }
