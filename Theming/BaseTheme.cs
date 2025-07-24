@@ -8,7 +8,8 @@ namespace BatteryNotifier.Theming
         Color accentColor,
         Color accent2Color,
         Color accent3Color,
-        Color foregroundColor)
+        Color foregroundColor,
+        Color borderColor)
     {
         public string Name { get; } = name;
         public Color BackgroundColor { get; } = backgroundColor;
@@ -16,5 +17,6 @@ namespace BatteryNotifier.Theming
         public Color Accent2Color { get; } = accent2Color;
         public Color Accent3Color { get; } = accent3Color;
         public Color ForegroundColor { get; } = foregroundColor;
+        public Color BorderColor { get; } = borderColor;
     }
 }

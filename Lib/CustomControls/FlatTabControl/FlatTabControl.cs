@@ -27,7 +27,7 @@ namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
         private ImageList leftRightImages = null;
         private const int nMargin = 5;
         private Color mBackColor = Color.Transparent;
-        private Color mBorderColor = SystemColors.ControlText;
+        private Color mBorderColor = Color.Transparent;
 
         public FlatTabControl()
         {

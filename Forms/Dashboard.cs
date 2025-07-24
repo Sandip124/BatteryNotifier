@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
+using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 using BatteryNotifier.Lib.Manager;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Utils;
@@ -27,7 +28,7 @@ namespace BatteryNotifier.Forms
             {
                 var cp = base.CreateParams;
                 cp.Style |= 0x20000; // WS_MINIMIZEBOX
-                //cp.ClassStyle |= 0x8; // CS_DBLCLKS
+                // cp.ClassStyle |= 0x8; // CS_DBLCLKS
                 return cp;
             }
         }
@@ -38,7 +39,6 @@ namespace BatteryNotifier.Forms
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             UpdateStyles();
-
             InitializeManagers();
         }
 
@@ -51,22 +51,19 @@ namespace BatteryNotifier.Forms
             var backAccentControls = new Control[]
             {
                 AppContainer,AppTabControl, DashboardTab, SettingTab,
-                AppFooter, NotificationSettingPanel,
-                fullBatteryTrackbar, lowBatteryTrackbar,
-                FullBatteryPictureBox, LowBatteryPictureBox
+                AppFooter
             };
 
             var backAccent2Controls = new Control[]
             {
                 ShowAsWindowPanel, LaunchAtStartupPanel, ThemeConfigurationPanel,
-                ThemePanel, FullBatteryNotificationPanel, LowBatteryNotificationPanel,
-                SettingHeader, NotificationSettingLabel,
-                FullBatterySound, LowBatterySound
+                ThemePanel, NotificationSettingPanel, 
+                NotificationPanel,FullBatteryNotificationPanel, LowBatteryNotificationPanel,
             };
 
             var backAccent3Controls = new Control[]
             {
-                PinToNotificationAreaPictureBox, ThemePictureBox, LaunchAtStartUpPictureBox
+                PinToNotificationAreaPictureBox, ThemePictureBox, LaunchAtStartUpPictureBox,NotificationSettingLabel,SettingHeader
             };
 
             var foreControls = new Control[]
@@ -75,19 +72,22 @@ namespace BatteryNotifier.Forms
                 FullBatteryLabel, LowBatteryLabel, VersionLabel,
                 NotificationText, ThemePanel, SystemThemeLabel,
                 LightThemeLabel, DarkThemeLabel, NotificationPanel,
-                FullBatteryNotificationPercentageLabel, FullBatterySound,
-                LowBatterySound, PinToNotificationAreaLabel, LaunchAtStartUpLabel,
+                FullBatteryNotificationPercentageLabel, PinToNotificationAreaLabel, LaunchAtStartUpLabel,
                 BatteryPercentageLabel, LowBatteryNotificationPercentageLabel
+            };
+            
+            var borderedCustomControls = new FlatTabControl[]
+            {
+                AppTabControl
             };
             
             _themeManager = new ThemeManager(this)
                 .RegisterAccentControls(backAccentControls)
                 .RegisterAccent2Controls(backAccent2Controls)
                 .RegisterAccent3Controls(backAccent3Controls)
-                .RegisterForegroundControls(foreControls);
-
-            NotificationPanel.BorderStyle = BorderStyle.FixedSingle;
-
+                .RegisterForegroundControls(foreControls)
+                .RegisterBorderedCustomControls(borderedCustomControls);
+            
             _settingsManager = new SettingsManager();
             _windowManager = new WindowManager(this);
             _contextMenuManager = new ContextMenuManager(_notificationManager, this);
@@ -122,7 +122,7 @@ namespace BatteryNotifier.Forms
                 ApplyFontStyle();
                 _settingsManager.LoadCheckboxSettings(PinToNotificationArea, launchAtStartup)
                     .LoadTrackbarSettings(fullBatteryTrackbar, lowBatteryTrackbar, FullBatteryNotificationPercentageLabel, LowBatteryNotificationPercentageLabel)
-                    .LoadSoundSettings(FullBatterySound, LowBatterySound)
+                    // .LoadSoundSettings(FullBatterySound, LowBatterySound)
                     .LoadThemeSettings(SystemThemeLabel, DarkThemeLabel, LightThemeLabel)
                     .LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox)
                     .HandleStartupLaunchSetting(launchAtStartup);
@@ -131,6 +131,7 @@ namespace BatteryNotifier.Forms
                 ConfigureTimers();
                 AttachEventListeners();
 
+                Invalidate();
                 _contextMenuManager.AttachContextMenu(BatteryNotifierIcon, NotificationSettingLabel);
             }
             catch (Exception ex)
@@ -156,7 +157,6 @@ namespace BatteryNotifier.Forms
         {
             // Form events
             Activated += Dashboard_Activated;
-            Shown += Dashboard_Shown;
 
             // Close icon events
             CloseIcon.Click += CloseIcon_Click;
@@ -317,7 +317,6 @@ namespace BatteryNotifier.Forms
             var soundPath = _soundManager.BrowseForSoundFile(NotificationText);
             if (!string.IsNullOrEmpty(soundPath))
             {
-                FullBatterySound.Text = soundPath;
                 _settingsManager.SaveFullBatterySoundPath(soundPath);
             }
         }
@@ -327,7 +326,6 @@ namespace BatteryNotifier.Forms
             var soundPath = _soundManager.BrowseForSoundFile(NotificationText);
             if (!string.IsNullOrEmpty(soundPath))
             {
-                LowBatterySound.Text = soundPath;
                 _settingsManager.SaveLowBatterySoundPath(soundPath);
             }
         }
@@ -375,17 +373,13 @@ namespace BatteryNotifier.Forms
             if (!Visible)
             {
                 Show();
+                Activate();
                 WindowState = FormWindowState.Normal;
             }
             else
             {
                 Hide();
             }
-        }
-
-        private void Dashboard_Shown(object? sender, EventArgs e)
-        {
-            Invalidate();
         }
 
         private void ApplyFontStyle()
@@ -405,8 +399,7 @@ namespace BatteryNotifier.Forms
                 VersionLabel, PinToNotificationAreaLabel, LaunchAtStartUpLabel, ThemeLabel,
                 SystemThemeLabel, LightThemeLabel, DarkThemeLabel, NotificationPanel,
                 SettingHeader, FullBatteryNotificationSettingLabel, LowBatteryNotificationSettingLabel,
-                FullBatteryNotificationPercentageLabel, LowBatteryNotificationPercentageLabel,
-                FullBatterySound, LowBatterySound, NotificationText
+                FullBatteryNotificationPercentageLabel, LowBatteryNotificationPercentageLabel,NotificationText
             };
             foreach (var ctrl in regularControls)
                 ctrl.ApplyRegularFont();

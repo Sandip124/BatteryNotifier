@@ -72,14 +72,10 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\Dashboard.Designer.cs" />
-    <Compile Include="Lib\CustomControls\DoubleBufferedPanel.cs">
-      <SubType>Component</SubType>
-    </Compile>
     <Compile Include="Lib\CustomControls\FlatTabControl\FlatTabControl.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Lib\CustomControls\FlatTabControl\Win32.cs" />
-    <Compile Include="Lib\CustomTimer\CustomTimer.cs" />
     <Compile Include="Lib\Manager\BatteryManager.cs" />
     <Compile Include="Lib\Manager\ContextMenuManager.cs" />
     <Compile Include="Lib\Manager\NotificationManager.cs" />

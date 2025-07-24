@@ -1,4 +1,5 @@
-﻿using System.Windows.Forms;
+﻿using System.Drawing;
+using System.Windows.Forms;
 using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 
 namespace BatteryNotifier.Forms
@@ -55,9 +56,7 @@ namespace BatteryNotifier.Forms
             this.RemainingTime = new System.Windows.Forms.Label();
             this.SettingTab = new System.Windows.Forms.TabPage();
             this.NotificationPanel = new System.Windows.Forms.Panel();
-            this.LowBatterySound = new System.Windows.Forms.TextBox();
             this.LowBatteryNotificationSettingLabel = new System.Windows.Forms.Label();
-            this.FullBatterySound = new System.Windows.Forms.TextBox();
             this.FullBatteryNotificationSettingLabel = new System.Windows.Forms.Label();
             this.BrowseLowBatterySound = new System.Windows.Forms.PictureBox();
             this.BrowserFullBatterySound = new System.Windows.Forms.PictureBox();
@@ -415,7 +414,6 @@ namespace BatteryNotifier.Forms
             // 
             // NotificationSettingPanel
             // 
-            this.NotificationSettingPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.NotificationSettingPanel.Controls.Add(this.NotificationSettingLabel);
             this.NotificationSettingPanel.Controls.Add(this.LowBatteryNotificationPanel);
             this.NotificationSettingPanel.Controls.Add(this.FullBatteryNotificationPanel);
@@ -625,10 +623,7 @@ namespace BatteryNotifier.Forms
             // 
             // NotificationPanel
             // 
-            this.NotificationPanel.BackColor = System.Drawing.Color.Transparent;
-            this.NotificationPanel.Controls.Add(this.LowBatterySound);
             this.NotificationPanel.Controls.Add(this.LowBatteryNotificationSettingLabel);
-            this.NotificationPanel.Controls.Add(this.FullBatterySound);
             this.NotificationPanel.Controls.Add(this.FullBatteryNotificationSettingLabel);
             this.NotificationPanel.Controls.Add(this.BrowseLowBatterySound);
             this.NotificationPanel.Controls.Add(this.BrowserFullBatterySound);
@@ -646,40 +641,26 @@ namespace BatteryNotifier.Forms
             this.NotificationPanel.Size = new System.Drawing.Size(357, 205);
             this.NotificationPanel.TabIndex = 35;
             this.NotificationPanel.Text = "Notification Setting for";
-            // 
-            // LowBatterySound
-            // 
-            this.LowBatterySound.Location = new System.Drawing.Point(7, 176);
-            this.LowBatterySound.Name = "LowBatterySound";
-            this.LowBatterySound.ReadOnly = true;
-            this.LowBatterySound.Size = new System.Drawing.Size(306, 27);
-            this.LowBatterySound.TabIndex = 33;
+
             // 
             // LowBatteryNotificationSettingLabel
             // 
             this.LowBatteryNotificationSettingLabel.AutoSize = true;
             this.LowBatteryNotificationSettingLabel.BackColor = System.Drawing.Color.Transparent;
             this.LowBatteryNotificationSettingLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
-            this.LowBatteryNotificationSettingLabel.Location = new System.Drawing.Point(60, 117);
+            this.LowBatteryNotificationSettingLabel.Location = new System.Drawing.Point(60, 115);
             this.LowBatteryNotificationSettingLabel.Name = "LowBatteryNotificationSettingLabel";
             this.LowBatteryNotificationSettingLabel.Size = new System.Drawing.Size(93, 20);
             this.LowBatteryNotificationSettingLabel.TabIndex = 32;
             this.LowBatteryNotificationSettingLabel.Text = "Low Battery";
-            // 
-            // FullBatterySound
-            // 
-            this.FullBatterySound.Location = new System.Drawing.Point(8, 84);
-            this.FullBatterySound.Name = "FullBatterySound";
-            this.FullBatterySound.ReadOnly = true;
-            this.FullBatterySound.Size = new System.Drawing.Size(305, 27);
-            this.FullBatterySound.TabIndex = 31;
+
             // 
             // FullBatteryNotificationSettingLabel
             // 
             this.FullBatteryNotificationSettingLabel.AutoSize = true;
             this.FullBatteryNotificationSettingLabel.BackColor = System.Drawing.Color.Transparent;
             this.FullBatteryNotificationSettingLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
-            this.FullBatteryNotificationSettingLabel.Location = new System.Drawing.Point(60, 31);
+            this.FullBatteryNotificationSettingLabel.Location = new System.Drawing.Point(60, 30);
             this.FullBatteryNotificationSettingLabel.Name = "FullBatteryNotificationSettingLabel";
             this.FullBatteryNotificationSettingLabel.Size = new System.Drawing.Size(89, 20);
             this.FullBatteryNotificationSettingLabel.TabIndex = 30;
@@ -690,7 +671,7 @@ namespace BatteryNotifier.Forms
             this.BrowseLowBatterySound.BackColor = System.Drawing.Color.Transparent;
             this.BrowseLowBatterySound.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.BrowseLowBatterySound.Image = global::BatteryNotifier.Properties.Resources.music_icon;
-            this.BrowseLowBatterySound.Location = new System.Drawing.Point(316, 174);
+            this.BrowseLowBatterySound.Location = new System.Drawing.Point(316, 130);
             this.BrowseLowBatterySound.Margin = new System.Windows.Forms.Padding(0);
             this.BrowseLowBatterySound.Name = "BrowseLowBatterySound";
             this.BrowseLowBatterySound.Padding = new System.Windows.Forms.Padding(2);
@@ -704,7 +685,7 @@ namespace BatteryNotifier.Forms
             this.BrowserFullBatterySound.BackColor = System.Drawing.Color.Transparent;
             this.BrowserFullBatterySound.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.BrowserFullBatterySound.Image = global::BatteryNotifier.Properties.Resources.music_icon;
-            this.BrowserFullBatterySound.Location = new System.Drawing.Point(316, 84);
+            this.BrowserFullBatterySound.Location = new System.Drawing.Point(316, 45);
             this.BrowserFullBatterySound.Margin = new System.Windows.Forms.Padding(0);
             this.BrowserFullBatterySound.Name = "BrowserFullBatterySound";
             this.BrowserFullBatterySound.Padding = new System.Windows.Forms.Padding(2);
@@ -730,9 +711,9 @@ namespace BatteryNotifier.Forms
             this.LowBatteryPictureBox.BackColor = System.Drawing.Color.Transparent;
             this.LowBatteryPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.LowBatteryPictureBox.Image = global::BatteryNotifier.Properties.Resources.Low;
-            this.LowBatteryPictureBox.Location = new System.Drawing.Point(7, 117);
+            this.LowBatteryPictureBox.Location = new System.Drawing.Point(7, 127);
             this.LowBatteryPictureBox.Name = "LowBatteryPictureBox";
-            this.LowBatteryPictureBox.Size = new System.Drawing.Size(48, 54);
+            this.LowBatteryPictureBox.Size = new System.Drawing.Size(48, 45);
             this.LowBatteryPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.LowBatteryPictureBox.TabIndex = 26;
             this.LowBatteryPictureBox.TabStop = false;
@@ -741,21 +722,20 @@ namespace BatteryNotifier.Forms
             // 
             this.lowBatteryTrackbar.Cursor = System.Windows.Forms.Cursors.SizeWE;
             this.lowBatteryTrackbar.LargeChange = 10;
-            this.lowBatteryTrackbar.Location = new System.Drawing.Point(59, 137);
+            this.lowBatteryTrackbar.Location = new System.Drawing.Point(60, 137);
             this.lowBatteryTrackbar.Maximum = 100;
             this.lowBatteryTrackbar.Name = "lowBatteryTrackbar";
-            this.lowBatteryTrackbar.Size = new System.Drawing.Size(229, 45);
+            this.lowBatteryTrackbar.Size = new System.Drawing.Size(245, 45);
             this.lowBatteryTrackbar.TabIndex = 20;
             this.lowBatteryTrackbar.Value = 40;
             // 
             // FullBatteryPictureBox
             // 
-            this.FullBatteryPictureBox.BackColor = System.Drawing.Color.Transparent;
             this.FullBatteryPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.FullBatteryPictureBox.Image = global::BatteryNotifier.Properties.Resources.Full;
-            this.FullBatteryPictureBox.Location = new System.Drawing.Point(7, 31);
+            this.FullBatteryPictureBox.Location = new System.Drawing.Point(7, 40);
             this.FullBatteryPictureBox.Name = "FullBatteryPictureBox";
-            this.FullBatteryPictureBox.Size = new System.Drawing.Size(47, 48);
+            this.FullBatteryPictureBox.Size = new System.Drawing.Size(48, 45);
             this.FullBatteryPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.FullBatteryPictureBox.TabIndex = 25;
             this.FullBatteryPictureBox.TabStop = false;
@@ -765,7 +745,7 @@ namespace BatteryNotifier.Forms
             this.FullBatteryNotificationPercentageLabel.AutoSize = true;
             this.FullBatteryNotificationPercentageLabel.BackColor = System.Drawing.Color.Transparent;
             this.FullBatteryNotificationPercentageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
-            this.FullBatteryNotificationPercentageLabel.Location = new System.Drawing.Point(289, 49);
+            this.FullBatteryNotificationPercentageLabel.Location = new System.Drawing.Point(220, 30);
             this.FullBatteryNotificationPercentageLabel.Name = "FullBatteryNotificationPercentageLabel";
             this.FullBatteryNotificationPercentageLabel.Size = new System.Drawing.Size(50, 20);
             this.FullBatteryNotificationPercentageLabel.TabIndex = 18;
@@ -777,9 +757,9 @@ namespace BatteryNotifier.Forms
             this.LowBatteryNotificationPercentageLabel.AutoSize = true;
             this.LowBatteryNotificationPercentageLabel.BackColor = System.Drawing.Color.Transparent;
             this.LowBatteryNotificationPercentageLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
-            this.LowBatteryNotificationPercentageLabel.Location = new System.Drawing.Point(289, 137);
+            this.LowBatteryNotificationPercentageLabel.Location = new System.Drawing.Point(220, 115);
             this.LowBatteryNotificationPercentageLabel.Name = "LowBatteryNotificationPercentageLabel";
-            this.LowBatteryNotificationPercentageLabel.Size = new System.Drawing.Size(41, 20);
+            this.LowBatteryNotificationPercentageLabel.Size = new System.Drawing.Size(50, 20);
             this.LowBatteryNotificationPercentageLabel.TabIndex = 18;
             this.LowBatteryNotificationPercentageLabel.Text = "40%";
             this.LowBatteryNotificationPercentageLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -788,11 +768,11 @@ namespace BatteryNotifier.Forms
             // 
             this.fullBatteryTrackbar.Cursor = System.Windows.Forms.Cursors.SizeWE;
             this.fullBatteryTrackbar.LargeChange = 10;
-            this.fullBatteryTrackbar.Location = new System.Drawing.Point(57, 49);
+            this.fullBatteryTrackbar.Location = new System.Drawing.Point(60, 50);
             this.fullBatteryTrackbar.Margin = new System.Windows.Forms.Padding(0);
             this.fullBatteryTrackbar.Maximum = 100;
             this.fullBatteryTrackbar.Name = "fullBatteryTrackbar";
-            this.fullBatteryTrackbar.Size = new System.Drawing.Size(231, 45);
+            this.fullBatteryTrackbar.Size = new System.Drawing.Size(245, 45);
             this.fullBatteryTrackbar.TabIndex = 20;
             this.fullBatteryTrackbar.Value = 100;
             // 
@@ -1408,9 +1388,7 @@ namespace BatteryNotifier.Forms
         private System.Windows.Forms.PictureBox BrowserFullBatterySound;
         private System.Windows.Forms.PictureBox BrowseLowBatterySound;
         private System.Windows.Forms.Label NotificationSettingLabel;
-        private System.Windows.Forms.TextBox LowBatterySound;
         private Label LowBatteryNotificationSettingLabel;
-        private System.Windows.Forms.TextBox FullBatterySound;
         private Label FullBatteryNotificationSettingLabel;
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
+using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Theming;
 using BatteryNotifier.Utils;
@@ -19,6 +20,7 @@ namespace BatteryNotifier.Lib.Manager
         private readonly List<Control>? accentControls = new();
         private readonly List<Control>? accent2Controls = new();
         private readonly List<Control>? accent3Controls = new();
+        private readonly List<FlatTabControl>? borderdCustomControls = new();
         private readonly Dashboard dashboard;
 
         public ThemeManager(Dashboard dashboard)
@@ -47,6 +49,12 @@ namespace BatteryNotifier.Lib.Manager
         public ThemeManager RegisterAccent3Controls(Control[] controls)
         {
             accent3Controls?.AddRange(controls);
+            return this;
+        }
+        
+        public ThemeManager RegisterBorderedCustomControls(FlatTabControl[] controls)
+        {
+            borderdCustomControls?.AddRange(controls);
             return this;
         }
 
@@ -109,6 +117,7 @@ namespace BatteryNotifier.Lib.Manager
             ApplyBackgroundColor(accent2Controls, accent2);
             ApplyBackgroundColor(accent3Controls, accent3);
             ApplyForegroundColor(foregroundControls, foreground);
+            ApplyBorderColor(borderdCustomControls, theme.BorderColor);
         }
 
         private void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
@@ -152,7 +161,18 @@ namespace BatteryNotifier.Lib.Manager
                 }
             }
         }
-
+        
+        private void ApplyBorderColor(List<FlatTabControl>? controls, Color color)
+        {
+            if (controls == null || controls.Count == 0) return;
+            foreach (var control in controls)
+            {
+                if (control != null && control.IsDisposed == false && control.ForeColor != color)
+                {
+                    control.BorderColor = color;
+                }
+            }
+        }
         public void Dispose()
         {
             Dispose(true);
