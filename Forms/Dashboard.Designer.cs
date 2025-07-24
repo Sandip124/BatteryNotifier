@@ -54,7 +54,7 @@ namespace BatteryNotifier.Forms
             this.BatteryStatus = new System.Windows.Forms.Label();
             this.RemainingTime = new System.Windows.Forms.Label();
             this.SettingTab = new System.Windows.Forms.TabPage();
-            this.NotificationPanel = new DoubleBufferedPanel();
+            this.NotificationPanel = new System.Windows.Forms.Panel();
             this.LowBatterySound = new System.Windows.Forms.TextBox();
             this.LowBatteryNotificationSettingLabel = new System.Windows.Forms.Label();
             this.FullBatterySound = new System.Windows.Forms.TextBox();
@@ -1395,7 +1395,7 @@ namespace BatteryNotifier.Forms
         private System.Windows.Forms.Label ThemeLabel;
         private System.Windows.Forms.RadioButton SystemThemeLabel;
         private System.Windows.Forms.RadioButton LightThemeLabel;
-        private DoubleBufferedPanel NotificationPanel;
+        private System.Windows.Forms.Panel NotificationPanel;
         private PictureBox LowBatteryPictureBox;
         private System.Windows.Forms.TrackBar lowBatteryTrackbar;
         private PictureBox FullBatteryPictureBox;

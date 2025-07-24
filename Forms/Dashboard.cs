@@ -18,8 +18,9 @@ namespace BatteryNotifier.Forms
         private WindowManager _windowManager;
         private ContextMenuManager _contextMenuManager;
 
-        private const int DefaultNotificationInterval = 30000;
-
+        private const int BATTERY_STATUS_TIMER_INTERVAL = 5000; // 5 seconds instead of frequent updates
+        private const int NOTIFICATION_CHECK_INTERVAL = 30000; // 30 seconds
+        
         protected override CreateParams CreateParams
         {
             get
@@ -34,9 +35,8 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-            //UtilityHelper.EnableDoubleBuffering(this);
-            //UtilityHelper.EnableDoubleBufferingRecursively(this);
-            SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint, true);
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer | ControlStyles.ResizeRedraw, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             UpdateStyles();
 
             InitializeManagers();
@@ -79,7 +79,7 @@ namespace BatteryNotifier.Forms
                 LowBatterySound, PinToNotificationAreaLabel, LaunchAtStartUpLabel,
                 BatteryPercentageLabel, LowBatteryNotificationPercentageLabel
             };
-
+            
             _themeManager = new ThemeManager(this)
                 .RegisterAccentControls(backAccentControls)
                 .RegisterAccent2Controls(backAccent2Controls)
@@ -95,6 +95,12 @@ namespace BatteryNotifier.Forms
 
         public void SetVersion(string? ver)
         {
+            if (InvokeRequired)
+            {
+                Invoke(new Action<string?>(SetVersion), ver);
+                return;
+            }
+            
             VersionLabel.Text = ver is null ? UtilityHelper.AssemblyVersion : $"v {ver}";
         }
 
@@ -107,12 +113,11 @@ namespace BatteryNotifier.Forms
         {
             if (appSetting.Default.startMinimized) Hide();
 
+            SuspendLayout();
             try
             {
                 _windowManager.RenderFormPosition(BatteryNotifierIcon);
-                SuspendLayout();
                 _themeManager.ApplyTheme(ThemePictureBox, CloseIcon);
-                ResumeLayout(true);
                 _windowManager.RenderTitleBarCursor(AppHeaderTitle);
                 ApplyFontStyle();
                 _settingsManager.LoadCheckboxSettings(PinToNotificationArea, launchAtStartup)
@@ -127,20 +132,24 @@ namespace BatteryNotifier.Forms
                 AttachEventListeners();
 
                 _contextMenuManager.AttachContextMenu(BatteryNotifierIcon, NotificationSettingLabel);
-
-                Invalidate();
             }
             catch (Exception ex)
             {
                 Notify(ex.Message);
             }
+            finally
+            {
+                ResumeLayout(false);
+            }
         }
 
         private void ConfigureTimers()
         {
+            BatteryStatusTimer.Interval = BATTERY_STATUS_TIMER_INTERVAL;
             BatteryStatusTimer.Enabled = true;
+            
+            ShowNotificationTimer.Interval = NOTIFICATION_CHECK_INTERVAL;
             ShowNotificationTimer.Enabled = true;
-            ShowNotificationTimer.Interval = DefaultNotificationInterval;
         }
 
         private void AttachEventListeners()
@@ -205,7 +214,6 @@ namespace BatteryNotifier.Forms
 
         private void CloseIcon_MouseLeave(object? sender, EventArgs e)
         {
-            //CloseIcon.BackColor = theme.;
             CloseIcon.Image = Resources.closeIconDark;
         }
 
@@ -352,7 +360,7 @@ namespace BatteryNotifier.Forms
 
         private void BatteryNotifierIcon_BalloonTipClosed(object? sender, EventArgs e)
         {
-            _soundManager.StopAllSounds();
+            _soundManager.StopSound();
         }
 
 

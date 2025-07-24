@@ -204,7 +204,7 @@ namespace BatteryNotifier.Lib.Manager
         private void BatteryNotifierIcon_BalloonTipClosed()
         {
             var soundManager = new SoundManager();
-            soundManager.StopAllSounds();
+            soundManager.StopSound();
         }
 
         private void UpdateContextMenu(NotifyIcon notifyIcon, Label notificationLabel)

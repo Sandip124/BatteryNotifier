@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Media;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using BatteryNotifier.Utils;
 
@@ -8,58 +10,153 @@ namespace BatteryNotifier.Lib.Manager
 {
     public class SoundManager : IDisposable
     {
-        private readonly Timer _soundPlayingTimer;
         private readonly SoundPlayer _batteryNotification;
-        private readonly CustomTimer.CustomTimer _customTimer;
+        private CancellationTokenSource _cancellationTokenSource;
+        private bool _isPlaying;
         private bool _disposed;
         private readonly Debouncer _debouncer;
-        
-        private const int DEFAULT_MUSIC_PLAYING_DURATION = 30;
-        private const int DEFAULT_SOUND_PLAYING_INTERVAL = 1000;
+
+        private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
+
+        public bool IsPlaying => _isPlaying;
 
         public SoundManager()
         {
-            _soundPlayingTimer = new Timer();
             _batteryNotification = new SoundPlayer();
-            _customTimer = new CustomTimer.CustomTimer();
+            _cancellationTokenSource = new CancellationTokenSource();
             _debouncer = new Debouncer();
-            ConfigureTimer();
         }
 
-        private void ConfigureTimer()
+        public async Task PlaySoundAsync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
+            int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)
         {
-            _soundPlayingTimer.Enabled = true;
-            _soundPlayingTimer.Interval = DEFAULT_SOUND_PLAYING_INTERVAL;
-            _soundPlayingTimer.Tick += SoundPlayingTimer_Tick;
-        }
+            if (_disposed || _isPlaying) return;
 
-        public void PlaySound(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false)
-        {
             try
             {
-                _soundPlayingTimer.Start();
+                _isPlaying = true;
 
-                if (!string.IsNullOrEmpty(source) && File.Exists(source))
-                {
-                    _batteryNotification.SoundLocation = source;
-                }
-                else
-                {
-                    _batteryNotification.Stream = fallbackSoundSource;
-                }
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource = new CancellationTokenSource();
+
+                await SetupSoundSource(source, fallbackSoundSource);
 
                 if (loop)
                 {
-                    _batteryNotification.PlayLooping();
+                    await PlayLoopingWithTimeout(durationMs, _cancellationTokenSource.Token);
                 }
                 else
                 {
-                    _batteryNotification.PlaySync();
+                    await PlayOnceAsync(_cancellationTokenSource.Token);
                 }
+            }
+            catch (OperationCanceledException)
+            {
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error playing sound: {ex.Message}");
+            }
+            finally
+            {
+                _isPlaying = false;
+            }
+        }
+
+        public void PlaySoundSync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
+            int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)
+        {
+            if (_disposed || _isPlaying) return;
+
+            try
+            {
+                _isPlaying = true;
+
+                SetupSoundSourceSync(source, fallbackSoundSource);
+
+                if (loop)
+                {
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+                            _batteryNotification.PlayLooping();
+                            await Task.Delay(durationMs, _cancellationTokenSource.Token);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                        }
+                        finally
+                        {
+                            StopSound();
+                        }
+                    }, _cancellationTokenSource.Token);
+                }
+                else
+                {
+                    _batteryNotification.PlaySync();
+                    _isPlaying = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error playing sound sync: {ex.Message}");
+                _isPlaying = false;
+            }
+        }
+
+        private async Task SetupSoundSource(string source, UnmanagedMemoryStream fallbackSoundSource)
+        {
+            await Task.Run(() => SetupSoundSourceSync(source, fallbackSoundSource));
+        }
+
+        private void SetupSoundSourceSync(string source, UnmanagedMemoryStream fallbackSoundSource)
+        {
+            if (!string.IsNullOrEmpty(source) && File.Exists(source))
+            {
+                _batteryNotification.SoundLocation = source;
+                _batteryNotification.Stream = null;
+            }
+            else
+            {
+                _batteryNotification.SoundLocation = null;
+                _batteryNotification.Stream = fallbackSoundSource;
+            }
+
+            _batteryNotification.LoadAsync();
+        }
+
+        private async Task PlayLoopingWithTimeout(int durationMs, CancellationToken cancellationToken)
+        {
+            var playTask = Task.Run(() => { _batteryNotification.PlayLooping(); }, cancellationToken);
+
+            var timeoutTask = Task.Delay(durationMs, cancellationToken);
+
+            await Task.WhenAny(playTask, timeoutTask);
+        }
+
+        private async Task PlayOnceAsync(CancellationToken cancellationToken)
+        {
+            await Task.Run(() =>
+            {
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    _batteryNotification.PlaySync();
+                }
+            }, cancellationToken);
+        }
+
+        public void StopSound()
+        {
+            try
+            {
+                _cancellationTokenSource?.Cancel();
+                _batteryNotification?.Stop();
+                _isPlaying = false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error stopping sound: {ex.Message}");
             }
         }
 
@@ -87,32 +184,6 @@ namespace BatteryNotifier.Lib.Manager
             return File.Exists(fileName) ? fileName : string.Empty;
         }
 
-        public void StopAllSounds()
-        {
-            try
-            {
-                _batteryNotification?.Stop();
-                _soundPlayingTimer?.Stop();
-                _customTimer?.ResetTimer();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error stopping sounds: {ex.Message}");
-            }
-        }
-
-        private void SoundPlayingTimer_Tick(object? sender, EventArgs e)
-        {
-            if (_customTimer.TimerCount >= DEFAULT_MUSIC_PLAYING_DURATION)
-            {
-                StopAllSounds();
-            }
-            else
-            {
-                _customTimer.Increment();
-            }
-        }
-
         public void Dispose()
         {
             Dispose(true);
@@ -123,11 +194,14 @@ namespace BatteryNotifier.Lib.Manager
         {
             if (!_disposed && disposing)
             {
-                _soundPlayingTimer?.Stop();
-                _soundPlayingTimer?.Dispose();
+                StopSound();
+
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+
                 _batteryNotification?.Stop();
                 _batteryNotification?.Dispose();
-                _customTimer?.Dispose();
+                _debouncer.Dispose();
                 _disposed = true;
             }
         }

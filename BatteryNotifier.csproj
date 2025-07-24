@@ -83,9 +83,8 @@
     <Compile Include="Lib\Manager\BatteryManager.cs" />
     <Compile Include="Lib\Manager\ContextMenuManager.cs" />
     <Compile Include="Lib\Manager\NotificationManager.cs" />
-    <Compile Include="Lib\Manager\OptimizedSoundManager.cs" />
-    <Compile Include="Lib\Manager\SettingsManager.cs" />
     <Compile Include="Lib\Manager\SoundManager.cs" />
+    <Compile Include="Lib\Manager\SettingsManager.cs" />
     <Compile Include="Lib\Manager\ThemeManager.cs" />
     <Compile Include="Lib\Manager\WindowManager.cs" />
     <Compile Include="Lib\Providers\FontProvider.cs" />
