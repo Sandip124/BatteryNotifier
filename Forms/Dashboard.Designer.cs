@@ -10,19 +10,6 @@ namespace BatteryNotifier.Forms
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -48,7 +35,7 @@ namespace BatteryNotifier.Forms
             this.pictureBox3 = new System.Windows.Forms.PictureBox();
             this.AppHeaderTitle = new System.Windows.Forms.Label();
             this.CloseIcon = new System.Windows.Forms.PictureBox();
-            this.AppTabControl = new FlatTabControl();
+            this.AppTabControl = new BatteryNotifier.Lib.CustomControls.FlatTabControl.FlatTabControl();
             this.DashboardTab = new System.Windows.Forms.TabPage();
             this.tableLayoutPanel9 = new System.Windows.Forms.TableLayoutPanel();
             this.NotificationSettingPanel = new System.Windows.Forms.Panel();
@@ -67,7 +54,7 @@ namespace BatteryNotifier.Forms
             this.BatteryStatus = new System.Windows.Forms.Label();
             this.RemainingTime = new System.Windows.Forms.Label();
             this.SettingTab = new System.Windows.Forms.TabPage();
-            this.NotificationPanel = new System.Windows.Forms.Panel();
+            this.NotificationPanel = new DoubleBufferedPanel();
             this.LowBatterySound = new System.Windows.Forms.TextBox();
             this.LowBatteryNotificationSettingLabel = new System.Windows.Forms.Label();
             this.FullBatterySound = new System.Windows.Forms.TextBox();
@@ -390,8 +377,8 @@ namespace BatteryNotifier.Forms
             this.AppTabControl.Font = new System.Drawing.Font("Segoe UI", 11.25F);
             this.AppTabControl.Location = new System.Drawing.Point(0, 40);
             this.AppTabControl.Margin = new System.Windows.Forms.Padding(0);
-            this.AppTabControl.MyBackColor = System.Drawing.Color.Transparent;
-            this.AppTabControl.MyBorderColor = System.Drawing.SystemColors.ControlText;
+            this.AppTabControl.BackColor = System.Drawing.Color.Transparent;
+            this.AppTabControl.BorderColor = System.Drawing.SystemColors.ControlText;
             this.AppTabControl.Name = "AppTabControl";
             this.AppTabControl.SelectedIndex = 0;
             this.AppTabControl.ShowToolTips = true;
@@ -1408,14 +1395,14 @@ namespace BatteryNotifier.Forms
         private System.Windows.Forms.Label ThemeLabel;
         private System.Windows.Forms.RadioButton SystemThemeLabel;
         private System.Windows.Forms.RadioButton LightThemeLabel;
-        private System.Windows.Forms.Panel NotificationPanel;
+        private DoubleBufferedPanel NotificationPanel;
         private PictureBox LowBatteryPictureBox;
         private System.Windows.Forms.TrackBar lowBatteryTrackbar;
         private PictureBox FullBatteryPictureBox;
         private System.Windows.Forms.Label FullBatteryNotificationPercentageLabel;
         private System.Windows.Forms.Label LowBatteryNotificationPercentageLabel;
         private System.Windows.Forms.TrackBar fullBatteryTrackbar;
-        public FlatTabControl AppTabControl;
+        public BatteryNotifier.Lib.CustomControls.FlatTabControl.FlatTabControl AppTabControl;
         private System.Windows.Forms.PictureBox pictureBox3;
         private System.Windows.Forms.Label SettingHeader;
         private System.Windows.Forms.PictureBox BrowserFullBatterySound;

@@ -72,9 +72,22 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\Dashboard.Designer.cs" />
-    <Compile Include="Lib\CustomControls\FlatTabControl\FlatTabControl.cs" />
+    <Compile Include="Lib\CustomControls\DoubleBufferedPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Lib\CustomControls\FlatTabControl\FlatTabControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Lib\CustomControls\FlatTabControl\Win32.cs" />
     <Compile Include="Lib\CustomTimer\CustomTimer.cs" />
+    <Compile Include="Lib\Manager\BatteryManager.cs" />
+    <Compile Include="Lib\Manager\ContextMenuManager.cs" />
+    <Compile Include="Lib\Manager\NotificationManager.cs" />
+    <Compile Include="Lib\Manager\OptimizedSoundManager.cs" />
+    <Compile Include="Lib\Manager\SettingsManager.cs" />
+    <Compile Include="Lib\Manager\SoundManager.cs" />
+    <Compile Include="Lib\Manager\ThemeManager.cs" />
+    <Compile Include="Lib\Manager\WindowManager.cs" />
     <Compile Include="Lib\Providers\FontProvider.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -175,9 +188,6 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Lib\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
