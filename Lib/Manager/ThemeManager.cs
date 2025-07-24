@@ -125,15 +125,13 @@ namespace BatteryNotifier.Lib.Manager
             var desiredImage = ThemeUtils.IsDarkTheme ? Resources.DarkMode : Resources.LightMode;
             if (themePictureBox.Image != desiredImage)
             {
-                if (themePictureBox.Image != Resources.DarkMode && themePictureBox.Image != Resources.LightMode)
-                {
-                    themePictureBox.Image?.Dispose();
-                }
+                themePictureBox.Image?.Dispose();
                 themePictureBox.Image = desiredImage;
             }
 
             if (closeIcon.Image != Resources.closeIconDark)
             {
+                closeIcon.Image?.Dispose();
                 closeIcon.Image = Resources.closeIconDark;
             }
         }

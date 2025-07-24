@@ -12,57 +12,59 @@ namespace BatteryNotifier.Lib.Manager
     public class ContextMenuManager : IDisposable
     {
         private readonly NotificationManager _notificationManager;
+        private readonly SoundManager _soundManager;
+
         private bool _disposed;
 
         private readonly ContextMenuStrip? _contextMenu;
-        private ToolStripMenuItem _fullBatteryNotificationItem;
-        private ToolStripMenuItem _lowBatteryNotificationItem;
-        private ToolStripMenuItem _startMinimizedItem;
-
+        private readonly ToolStripMenuItem _fullBatteryNotificationItem;
+        private readonly ToolStripMenuItem _lowBatteryNotificationItem;
+        private readonly ToolStripMenuItem _startMinimizedItem;
+        private readonly ToolStripMenuItem _viewSourceItem;
+        private readonly ToolStripMenuItem _exitAppItem;
+        
         private readonly Dashboard dashboard;
 
-        public ContextMenuManager(NotificationManager notificationManager, Dashboard dashboard)
+        public ContextMenuManager(NotificationManager notificationManager, SoundManager soundManager,
+            Dashboard dashboard, Label notificationLabel)
         {
             this.dashboard = dashboard;
             _notificationManager = notificationManager;
+            _soundManager = soundManager;
             _contextMenu = new ContextMenuStrip { TopLevel = true };
+            _fullBatteryNotificationItem = CreateFullBatteryNotificationItem(notificationLabel);
+            _lowBatteryNotificationItem = CreateLowBatteryNotificationItem(notificationLabel);
+            _startMinimizedItem = CreateStartMinimizedMenuItem(notificationLabel);
+            _viewSourceItem = CreateViewSourceMenuItem();
+            _exitAppItem = CreateExitApplicationMenuItem();
         }
 
-        public ContextMenuStrip? InitializeContextMenu(NotifyIcon notifyIcon, Label notificationLabel)
+        public ContextMenuStrip? InitializeContextMenu()
         {
             _contextMenu?.Items.Clear();
-            
-            CreateFullBatteryNotificationItem(notifyIcon, notificationLabel);
-
-            CreateLowBatteryNotificationItem(notifyIcon, notificationLabel);
-
-            CreateStartMinimizedMenuItem(notifyIcon, notificationLabel);
-
-            var viewSourceItem = CreateViewSourceMenuItem();
-
-            var exitAppItem = CreateExitApplicationMenuItem();
-
+            UpdateMenuItemText();
             _contextMenu?.Items.AddRange([
                 _fullBatteryNotificationItem,
                 _lowBatteryNotificationItem,
                 _startMinimizedItem,
-                viewSourceItem,
-                exitAppItem
+                _viewSourceItem,
+                _exitAppItem
             ]);
 
+            return _contextMenu;
+        }
+
+        private void UpdateMenuItemText()
+        {
             _fullBatteryNotificationItem.Text =
                 "Full Battery Notification" + (appSetting.Default.fullBatteryNotification ? " ✔" : "");
             _lowBatteryNotificationItem.Text =
                 "Low Battery Notification" + (appSetting.Default.lowBatteryNotification ? " ✔" : "");
             _startMinimizedItem.Text = "Start Minimized" + (appSetting.Default.startMinimized ? " ✔" : "");
-
-
-            return _contextMenu;
         }
 
         private ToolStripMenuItem CreateExitApplicationMenuItem()
         {
-            // Exit Application
             var exitAppItem = new ToolStripMenuItem
             {
                 Text = "Exit Application",
@@ -76,7 +78,6 @@ namespace BatteryNotifier.Lib.Manager
 
         private ToolStripMenuItem CreateViewSourceMenuItem()
         {
-            // View Source
             var viewSourceItem = new ToolStripMenuItem
             {
                 Text = "View Source",
@@ -88,52 +89,64 @@ namespace BatteryNotifier.Lib.Manager
             return viewSourceItem;
         }
 
-        private void CreateStartMinimizedMenuItem(NotifyIcon notifyIcon, Label notificationLabel)
+        private ToolStripMenuItem CreateStartMinimizedMenuItem(Label notificationLabel)
         {
-            // Start Minimized
-            _startMinimizedItem = new ToolStripMenuItem
+            var startMinimizedItem = new ToolStripMenuItem
             {
                 Name = "StartMinimized",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.GetRegularFont(10.2F)
             };
-            _startMinimizedItem.Click += (s, e) => StartMinimized_Click(notifyIcon, notificationLabel);
+            startMinimizedItem.Click += (s, e) => StartMinimized_Click(notificationLabel);
+            return startMinimizedItem;
         }
 
-        private void CreateLowBatteryNotificationItem(NotifyIcon notifyIcon, Label notificationLabel)
+        private ToolStripMenuItem CreateLowBatteryNotificationItem(Label notificationLabel)
         {
-            // Low Battery Notification
-            _lowBatteryNotificationItem = new ToolStripMenuItem
+            var lowBatteryNotificationItem = new ToolStripMenuItem
             {
                 Name = "LowBatteryNotification",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.GetRegularFont(10.2F)
             };
-            _lowBatteryNotificationItem.Click += (s, e) => LowBatteryNotification_Click(notifyIcon, notificationLabel);
+            lowBatteryNotificationItem.Click += (s, e) => LowBatteryNotification_Click(notificationLabel);
+            return lowBatteryNotificationItem;
         }
 
-        private void CreateFullBatteryNotificationItem(NotifyIcon notifyIcon, Label notificationLabel)
+        private ToolStripMenuItem CreateFullBatteryNotificationItem( Label notificationLabel)
         {
-            // Full Battery Notification
-            _fullBatteryNotificationItem = new ToolStripMenuItem
+            var fullBatteryNotificationItem = new ToolStripMenuItem
             {
                 Name = "FullBatteryNotification",
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.GetRegularFont(10.2F)
             };
-            _fullBatteryNotificationItem.Click +=
-                (s, e) => FullBatteryNotification_Click(notifyIcon, notificationLabel);
+            fullBatteryNotificationItem.Click +=
+                (s, e) => FullBatteryNotification_Click(notificationLabel);
+            return fullBatteryNotificationItem;
         }
 
-        public void AttachContextMenu(NotifyIcon notifyIcon, Label notificationLabel)
+        public void AttachContextMenu(NotifyIcon notifyIcon)
         {
-            notifyIcon.ContextMenuStrip = InitializeContextMenu(notifyIcon, notificationLabel);
-            notifyIcon.Click += (s, e) => BatteryNotifierIcon_Click();
-            notifyIcon.BalloonTipClicked += (s, e) => BatteryNotifierIcon_BalloonTipClicked();
-            notifyIcon.BalloonTipClosed += (s, e) => BatteryNotifierIcon_BalloonTipClosed();
-        }
+            if (notifyIcon == null)
+                throw new ArgumentNullException(nameof(notifyIcon));
+            
+            notifyIcon.ContextMenuStrip = InitializeContextMenu();
 
-        private void FullBatteryNotification_Click(NotifyIcon notifyIcon, Label notificationLabel)
+            notifyIcon.Click -= NotifyIcon_Click;
+            notifyIcon.BalloonTipClicked -= NotifyIcon_BalloonTipClicked;
+            notifyIcon.BalloonTipClosed -= NotifyIcon_BalloonTipClosed;
+            
+            notifyIcon.Click += NotifyIcon_Click;
+            notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
+            notifyIcon.BalloonTipClosed += NotifyIcon_BalloonTipClosed;
+        }
+        
+        private void NotifyIcon_Click(object sender, EventArgs e) => BatteryNotifierIcon_Click();
+        private void NotifyIcon_BalloonTipClicked(object sender, EventArgs e) => BatteryNotifierIcon_BalloonTipClicked();
+        private void NotifyIcon_BalloonTipClosed(object sender, EventArgs e) => BatteryNotifierIcon_BalloonTipClosed();
+
+        private void FullBatteryNotification_Click(Label notificationLabel)
         {
             appSetting.Default.fullBatteryNotification = !appSetting.Default.fullBatteryNotification;
             appSetting.Default.Save();
@@ -143,10 +156,10 @@ namespace BatteryNotifier.Lib.Manager
                 "🔔 Full Battery Notification " +
                 (appSetting.Default.fullBatteryNotification ? "Enabled" : "Disabled"));
 
-            UpdateContextMenu(notifyIcon, notificationLabel);
+            UpdateMenuItemText();
         }
 
-        private void LowBatteryNotification_Click(NotifyIcon notifyIcon, Label notificationLabel)
+        private void LowBatteryNotification_Click(Label notificationLabel)
         {
             appSetting.Default.lowBatteryNotification = !appSetting.Default.lowBatteryNotification;
             appSetting.Default.Save();
@@ -156,10 +169,10 @@ namespace BatteryNotifier.Lib.Manager
                 "🔔 Low Battery Notification " +
                 (appSetting.Default.lowBatteryNotification ? "Enabled" : "Disabled"));
 
-            UpdateContextMenu(notifyIcon, notificationLabel);
+            UpdateMenuItemText();
         }
 
-        private void StartMinimized_Click(NotifyIcon notifyIcon, Label notificationLabel)
+        private void StartMinimized_Click(Label notificationLabel)
         {
             appSetting.Default.startMinimized = !appSetting.Default.startMinimized;
             appSetting.Default.Save();
@@ -169,7 +182,7 @@ namespace BatteryNotifier.Lib.Manager
                 "🔔 Start Minimized " +
                 (appSetting.Default.startMinimized ? "Enabled" : "Disabled"));
 
-            UpdateContextMenu(notifyIcon, notificationLabel);
+            UpdateMenuItemText();
         }
 
         private void ViewSource_Click()
@@ -203,13 +216,7 @@ namespace BatteryNotifier.Lib.Manager
 
         private void BatteryNotifierIcon_BalloonTipClosed()
         {
-            var soundManager = new SoundManager();
-            soundManager.StopSound();
-        }
-
-        private void UpdateContextMenu(NotifyIcon notifyIcon, Label notificationLabel)
-        {
-            notifyIcon.ContextMenuStrip = InitializeContextMenu(notifyIcon, notificationLabel);
+            _soundManager.StopSound();
         }
 
         public void Dispose()
