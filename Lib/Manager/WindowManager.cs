@@ -21,11 +21,6 @@ namespace BatteryNotifier.Lib.Manager
             _debouncer = new Debouncer();
         }
 
-        public void RenderFormPosition(NotifyIcon notifyIcon)
-        {
-            dashboard.RenderFormPosition(notifyIcon);
-        }
-
         public void RenderTitleBarCursor(Label appHeaderTitle)
         {
             appHeaderTitle.Cursor = appSetting.Default.PinToNotificationArea ? Cursors.Default : Cursors.SizeAll;

@@ -143,10 +143,6 @@ namespace BatteryNotifier.Lib.Manager
                 throw new ArgumentNullException(nameof(notifyIcon));
             
             notifyIcon.ContextMenuStrip = InitializeContextMenu();
-
-            notifyIcon.Click -= NotifyIcon_Click;
-            notifyIcon.BalloonTipClicked -= NotifyIcon_BalloonTipClicked;
-            notifyIcon.BalloonTipClosed -= NotifyIcon_BalloonTipClosed;
             
             notifyIcon.Click += NotifyIcon_Click;
             notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
