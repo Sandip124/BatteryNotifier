@@ -65,9 +65,6 @@
   <data name="Low" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Low.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="logo_charging" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\logo_charging1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="LowBatterySound" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\LowBatterySound.wav;System.IO.MemoryStream, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
@@ -115,9 +112,6 @@
   </data>
   <data name="DarkMode" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\DarkMode2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="long_pop" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\long-pop.wav;System.IO.MemoryStream, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="ChargingBatteryAnimatedDark" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\ChargingBatteryAnimatedDark1.gif;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

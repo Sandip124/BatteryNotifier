@@ -7,6 +7,7 @@ using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Theming;
 using BatteryNotifier.Utils;
+using NuGet;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Lib.Manager
@@ -16,11 +17,11 @@ namespace BatteryNotifier.Lib.Manager
         private bool _disposed;
         private bool _isApplyingTheme;
 
-        private readonly List<Control>? foregroundControls = new();
-        private readonly List<Control>? accentControls = new();
-        private readonly List<Control>? accent2Controls = new();
-        private readonly List<Control>? accent3Controls = new();
-        private readonly List<FlatTabControl>? borderdCustomControls = new();
+        private readonly HashSet<Control>? foregroundControls = new();
+        private readonly HashSet<Control>? accentControls = new();
+        private readonly HashSet<Control>? accent2Controls = new();
+        private readonly HashSet<Control>? accent3Controls = new();
+        private readonly HashSet<FlatTabControl>? borderdCustomControls = new();
         private readonly Dashboard dashboard;
 
         public ThemeManager(Dashboard dashboard)
@@ -30,31 +31,46 @@ namespace BatteryNotifier.Lib.Manager
 
         public ThemeManager RegisterForegroundControls(Control[] controls)
         {
-            foregroundControls?.AddRange(controls);
+            foreach (var control in controls)
+            {
+                foregroundControls?.Add(control);
+            }
             return this;
         }
 
         public ThemeManager RegisterAccentControls(Control[] controls)
         {
-            accentControls?.AddRange(controls);
+            foreach (var control in controls)
+            {
+                accentControls?.Add(control);
+            }
             return this;
         }
 
         public ThemeManager RegisterAccent2Controls(Control[] controls)
         {
-            accent2Controls?.AddRange(controls);
+            foreach (var control in controls)
+            {
+                accent2Controls?.Add(control);
+            }
             return this;
         }
 
         public ThemeManager RegisterAccent3Controls(Control[] controls)
         {
-            accent3Controls?.AddRange(controls);
+            foreach (var control in controls)
+            {
+                accent3Controls?.Add(control);
+            }
             return this;
         }
         
         public ThemeManager RegisterBorderedCustomControls(FlatTabControl[] controls)
         {
-            borderdCustomControls?.AddRange(controls);
+            foreach (var control in controls)
+            {
+                borderdCustomControls?.Add(control);
+            }
             return this;
         }
 
@@ -122,21 +138,19 @@ namespace BatteryNotifier.Lib.Manager
 
         private void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
         {
-            var desiredImage = ThemeUtils.IsDarkTheme ? Resources.DarkMode : Resources.LightMode;
+            var desiredImage = ThemeUtils.IsDarkTheme ? ImageCache.DarkMode : ImageCache.LightMode;
             if (themePictureBox.Image != desiredImage)
             {
-                themePictureBox.Image?.Dispose();
                 themePictureBox.Image = desiredImage;
             }
 
-            if (closeIcon.Image != Resources.closeIconDark)
+            if (closeIcon.Image != ImageCache.CloseIconDark)
             {
-                closeIcon.Image?.Dispose();
-                closeIcon.Image = Resources.closeIconDark;
+                closeIcon.Image = ImageCache.CloseIconDark;
             }
         }
 
-        private void ApplyBackgroundColor(List<Control>? controls, Color color)
+        private void ApplyBackgroundColor(HashSet<Control>? controls, Color color)
         {
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
@@ -148,7 +162,7 @@ namespace BatteryNotifier.Lib.Manager
             }
         }
 
-        private void ApplyForegroundColor(List<Control>? controls, Color color)
+        private void ApplyForegroundColor(HashSet<Control>? controls, Color color)
         {
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
@@ -160,7 +174,7 @@ namespace BatteryNotifier.Lib.Manager
             }
         }
         
-        private void ApplyBorderColor(List<FlatTabControl>? controls, Color color)
+        private void ApplyBorderColor(HashSet<FlatTabControl>? controls, Color color)
         {
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
@@ -184,5 +198,14 @@ namespace BatteryNotifier.Lib.Manager
                 _disposed = true;
             }
         }
+        
+        static class ImageCache
+        {
+            public static readonly Image DarkMode = Resources.DarkMode;
+            public static readonly Image LightMode = Resources.LightMode;
+            public static readonly Image CloseIconDark = Resources.closeIconDark;
+        }
     }
+    
+    
 }

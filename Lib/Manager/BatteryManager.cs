@@ -30,7 +30,7 @@ namespace BatteryNotifier.Lib.Manager
                 _powerStatus.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery && !_isCharging)
             {
                 _isCharging = true;
-                batteryStatusLabel.Text = "⚡ Charging";
+                batteryStatusLabel.Text = @"⚡ Charging";
                 batteryStatusLabel.ForeColor = Color.ForestGreen;
                 UpdateChargingAnimation(batteryImage);
             }
@@ -38,21 +38,21 @@ namespace BatteryNotifier.Lib.Manager
                      _powerStatus.PowerLineStatus == PowerLineStatus.Unknown)
             {
                 _isCharging = false;
-                batteryStatusLabel.Text = "🙄 Not Charging";
+                batteryStatusLabel.Text = @"🙄 Not Charging";
                 batteryStatusLabel.ForeColor = Color.Gray;
                 SetBatteryChargeStatus(batteryStatusLabel, batteryImage);
             }
             else if (_powerStatus.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
             {
                 _isCharging = false;
-                batteryStatusLabel.Text = "💀 Are you running on main power !!";
-                batteryImage.Image = Resources.Unknown;
+                batteryStatusLabel.Text = @"💀 Are you running on main power !!";
+                batteryImage.Image = ImageCache.Unknown;
             }
             else if (_powerStatus.BatteryChargeStatus == BatteryChargeStatus.Unknown)
             {
                 _isCharging = false;
-                batteryStatusLabel.Text = "😇 Only God knows about this battery !!";
-                batteryImage.Image = Resources.Unknown;
+                batteryStatusLabel.Text = @"😇 Only God knows about this battery !!";
+                batteryImage.Image = ImageCache.Unknown;
             }
 
             UpdateBatteryPercentage(batteryPercentageLabel);
@@ -65,8 +65,8 @@ namespace BatteryNotifier.Lib.Manager
                 return;
 
             var desiredImage = ThemeUtils.IsDarkTheme
-                ? Resources.ChargingBatteryAnimatedDark
-                : Resources.ChargingBatteryAnimated;
+                ? ImageCache.ChargingAnimatedDark
+                : ImageCache.ChargingAnimated;
 
             if (batteryImage.Image != desiredImage)
             {
@@ -100,24 +100,24 @@ namespace BatteryNotifier.Lib.Manager
             switch (_powerStatus.BatteryLifePercent)
             {
                 case >= .96f:
-                    batteryStatusLabel.Text = "Full Battery";
-                    batteryImage.Image = Resources.Full;
+                    batteryStatusLabel.Text = @"Full Battery";
+                    batteryImage.Image = ImageCache.Full;
                     break;
                 case >= .6f and <= .96f:
-                    batteryStatusLabel.Text = "Adequate Battery";
-                    batteryImage.Image = Resources.Sufficient;
+                    batteryStatusLabel.Text = @"Adequate Battery";
+                    batteryImage.Image = ImageCache.Sufficient;
                     break;
                 case >= .4f and <= .6f:
-                    batteryStatusLabel.Text = "Sufficient Battery";
-                    batteryImage.Image = Resources.Normal;
+                    batteryStatusLabel.Text = @"Sufficient Battery";
+                    batteryImage.Image = ImageCache.Normal;
                     break;
                 case < .4f and > .14f:
-                    batteryStatusLabel.Text = "Battery Low";
-                    batteryImage.Image = Resources.Low;
+                    batteryStatusLabel.Text = @"Battery Low";
+                    batteryImage.Image = ImageCache.Low;
                     break;
                 case <= .14f:
-                    batteryStatusLabel.Text = "Battery Critical";
-                    batteryImage.Image = Resources.Critical;
+                    batteryStatusLabel.Text = @"Battery Critical";
+                    batteryImage.Image = ImageCache.Critical;
                     break;
             }
         }
@@ -135,5 +135,17 @@ namespace BatteryNotifier.Lib.Manager
                 _disposed = true;
             }
         }
+    }
+    
+    static class ImageCache
+    {
+        public static readonly Image Full = Resources.Full;
+        public static readonly Image Sufficient = Resources.Sufficient;
+        public static readonly Image Normal = Resources.Normal;
+        public static readonly Image Low = Resources.Low;
+        public static readonly Image Critical = Resources.Critical;
+        public static readonly Image Unknown = Resources.Unknown;
+        public static readonly Image ChargingAnimated = Resources.ChargingBatteryAnimated;
+        public static readonly Image ChargingAnimatedDark = Resources.ChargingBatteryAnimatedDark;
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Text;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Forms;
@@ -50,6 +51,8 @@ namespace BatteryNotifier.Lib.Manager
                 _viewSourceItem,
                 _exitAppItem
             ]);
+            
+            ForceGarbageCollection();
 
             return _contextMenu;
         }
@@ -57,10 +60,18 @@ namespace BatteryNotifier.Lib.Manager
         private void UpdateMenuItemText()
         {
             _fullBatteryNotificationItem.Text =
-                "Full Battery Notification" + (appSetting.Default.fullBatteryNotification ? " ✔" : "");
+                new StringBuilder().Append("Full Battery Notification")
+                    .Append(appSetting.Default.fullBatteryNotification ? " ✔" : "")
+                    .ToString();
             _lowBatteryNotificationItem.Text =
-                "Low Battery Notification" + (appSetting.Default.lowBatteryNotification ? " ✔" : "");
-            _startMinimizedItem.Text = "Start Minimized" + (appSetting.Default.startMinimized ? " ✔" : "");
+                new StringBuilder().Append("Low Battery Notification")
+                    .Append(appSetting.Default.lowBatteryNotification ? " ✔" : "")
+                    .ToString();
+            _startMinimizedItem.Text = new StringBuilder().Append("Start Minimized")
+                .Append(appSetting.Default.startMinimized ? " ✔" : "")
+                .ToString();
+            
+            ForceGarbageCollection();
         }
 
         private ToolStripMenuItem CreateExitApplicationMenuItem()
@@ -70,7 +81,7 @@ namespace BatteryNotifier.Lib.Manager
                 Text = "Exit Application",
                 Name = "ExitApp",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = FontProvider.GetRegularFont(10.2F)
+                Font = FontProvider.DefaultRegularFont
             };
             exitAppItem.Click += (s, e) => ExitApp_Click();
             return exitAppItem;
@@ -83,7 +94,7 @@ namespace BatteryNotifier.Lib.Manager
                 Text = "View Source",
                 Name = "ViewSource",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = FontProvider.GetRegularFont(10.2F)
+                Font = FontProvider.DefaultRegularFont
             };
             viewSourceItem.Click += (s, e) => ViewSource_Click();
             return viewSourceItem;
@@ -95,7 +106,7 @@ namespace BatteryNotifier.Lib.Manager
             {
                 Name = "StartMinimized",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = FontProvider.GetRegularFont(10.2F)
+                Font = FontProvider.DefaultRegularFont
             };
             startMinimizedItem.Click += (s, e) => StartMinimized_Click(notificationLabel);
             return startMinimizedItem;
@@ -107,7 +118,7 @@ namespace BatteryNotifier.Lib.Manager
             {
                 Name = "LowBatteryNotification",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = FontProvider.GetRegularFont(10.2F)
+                Font = FontProvider.DefaultRegularFont
             };
             lowBatteryNotificationItem.Click += (s, e) => LowBatteryNotification_Click(notificationLabel);
             return lowBatteryNotificationItem;
@@ -119,7 +130,7 @@ namespace BatteryNotifier.Lib.Manager
             {
                 Name = "FullBatteryNotification",
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = FontProvider.GetRegularFont(10.2F)
+                Font = FontProvider.DefaultRegularFont
             };
             fullBatteryNotificationItem.Click +=
                 (s, e) => FullBatteryNotification_Click(notificationLabel);
@@ -153,8 +164,9 @@ namespace BatteryNotifier.Lib.Manager
 
             _notificationManager.ShowInAppNotification(
                 notificationLabel,
-                "🔔 Full Battery Notification " +
-                (appSetting.Default.fullBatteryNotification ? "Enabled" : "Disabled"));
+                new StringBuilder().Append("🔔 Full Battery Notification ")
+                    .Append(appSetting.Default.fullBatteryNotification ? "Enabled" : "Disabled")
+                    .ToString());
 
             UpdateMenuItemText();
         }
@@ -166,8 +178,9 @@ namespace BatteryNotifier.Lib.Manager
 
             _notificationManager.ShowInAppNotification(
                 notificationLabel,
-                "🔔 Low Battery Notification " +
-                (appSetting.Default.lowBatteryNotification ? "Enabled" : "Disabled"));
+                new StringBuilder().Append("🔔 Low Battery Notification ")
+                    .Append(appSetting.Default.lowBatteryNotification ? "Enabled" : "Disabled")
+                    .ToString());
 
             UpdateMenuItemText();
         }
@@ -179,10 +192,12 @@ namespace BatteryNotifier.Lib.Manager
 
             _notificationManager.ShowInAppNotification(
                 notificationLabel,
-                "🔔 Start Minimized " +
-                (appSetting.Default.startMinimized ? "Enabled" : "Disabled"));
+                new StringBuilder().Append("🔔 Start Minimized ")
+                    .Append(appSetting.Default.startMinimized ? "Enabled" : "Disabled")
+                    .ToString());
 
             UpdateMenuItemText();
+            
         }
 
         private void ViewSource_Click()
@@ -206,6 +221,8 @@ namespace BatteryNotifier.Lib.Manager
                 dashboard.Show();
                 dashboard.WindowState = FormWindowState.Normal;
             }
+            
+            ForceGarbageCollection();
         }
 
         private void BatteryNotifierIcon_BalloonTipClicked()
@@ -217,6 +234,12 @@ namespace BatteryNotifier.Lib.Manager
         private void BatteryNotifierIcon_BalloonTipClosed()
         {
             _soundManager.StopSound();
+        }
+        
+        private void ForceGarbageCollection()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
 
         public void Dispose()

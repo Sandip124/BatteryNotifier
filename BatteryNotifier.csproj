@@ -128,8 +128,6 @@
     <Content Include="README.md" />
     <Content Include="ReleaseSpec.nuspec" />
     <Content Include="Resources\BatteryFull.wav" />
-    <Content Include="Resources\batteryNotifierIcon.ico" />
-    <Content Include="Resources\batteryNotifiyerIcon.ico" />
     <Content Include="Resources\battery_icon.ico" />
     <Content Include="Resources\ChargingBatteryAnimated.gif" />
     <Content Include="Resources\ChargingBatteryAnimatedDark1.gif" />
@@ -142,11 +140,6 @@
     <Content Include="Resources\icon.png" />
     <Content Include="Resources\launchatstartup.png" />
     <Content Include="Resources\LightMode.png" />
-    <Content Include="Resources\logo.png" />
-    <Content Include="Resources\logo_charging.ico" />
-    <Content Include="Resources\logo_charging.png" />
-    <Content Include="Resources\logo_charging1.png" />
-    <Content Include="Resources\long-pop.wav" />
     <Content Include="Resources\Low.png" />
     <Content Include="Resources\LowBatterynotification.png" />
     <Content Include="Resources\LowBatterySound.wav" />

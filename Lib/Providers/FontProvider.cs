@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Text;
@@ -6,7 +7,7 @@ using System.Runtime.InteropServices;
 
 namespace BatteryNotifier.Lib.Providers;
 
-internal  class FontProvider : IDisposable
+internal class FontProvider : IDisposable
 {
     [DllImport("gdi32.dll")]
     private static extern IntPtr AddFontMemResourceEx(IntPtr pbFont, uint cbFont, IntPtr pdv, [In] ref uint pcFonts);
@@ -16,11 +17,13 @@ internal  class FontProvider : IDisposable
 
     private readonly PrivateFontCollection _fontsCollection = new();
     private readonly List<IntPtr> _fontHandles = new();
-    private readonly Dictionary<float, Font> _regularFontCache = new();
-    private readonly Dictionary<float, Font> _boldFontCache = new();
-    public static string FontFamilyName => _default._fontsCollection.Families[0].Name;
+    private readonly ConcurrentDictionary<(float Size, FontStyle Style), Font> _fontCache = new();
 
-    private static readonly FontProvider _default = new();
+    private static readonly Lazy<FontProvider> _default = new(() => new FontProvider());
+    
+    public static string FontFamilyName => _default.Value._fontsCollection.Families[0].Name;
+
+    public static readonly Font DefaultRegularFont = _default.Value.GetOrCreateFont(10.2F, FontStyle.Regular);
 
     private FontProvider()
     {
@@ -30,7 +33,7 @@ internal  class FontProvider : IDisposable
 
     private void LoadFont(byte[] fontResource)
     {
-        var fontPtr = Marshal.AllocCoTaskMem(fontResource.Length);
+        IntPtr fontPtr = Marshal.AllocCoTaskMem(fontResource.Length);
         Marshal.Copy(fontResource, 0, fontPtr, fontResource.Length);
         uint dummy = 0;
         _fontsCollection.AddMemoryFont(fontPtr, fontResource.Length);
@@ -39,40 +42,30 @@ internal  class FontProvider : IDisposable
         Marshal.FreeCoTaskMem(fontPtr);
     }
 
-    public static Font GetRegularFont(float size = 8)
+    public static Font GetFont(float size = 8F, FontStyle style = FontStyle.Regular)
     {
-        return _default.GetOrCreateFont(size, FontStyle.Regular, _default._regularFontCache);
+        return _default.Value.GetOrCreateFont(size, style);
     }
 
-    public static Font GetBoldFont(float size = 8)
+    private Font GetOrCreateFont(float size, FontStyle style)
     {
-        return _default.GetOrCreateFont(size, FontStyle.Bold, _default._boldFontCache);
-    }
-
-    private Font GetOrCreateFont(float size, FontStyle style, Dictionary<float, Font> cache)
-    {
-        if (!cache.TryGetValue(size, out var font))
+        var key = (size, style);
+        if (!_fontCache.TryGetValue(key, out var font))
         {
             font = new Font(_fontsCollection.Families[0], size, style, GraphicsUnit.Point);
-            cache[size] = font;
+            _fontCache[key] = font;
         }
         return font;
     }
 
     public void Dispose()
     {
-        foreach (var font in _regularFontCache.Values)
+        foreach (var font in _fontCache.Values)
         {
             font.Dispose();
         }
 
-        foreach (var font in _boldFontCache.Values)
-        {
-            font.Dispose();
-        }
-
-        _regularFontCache.Clear();
-        _boldFontCache.Clear();
+        _fontCache.Clear();
 
         foreach (var handle in _fontHandles)
         {

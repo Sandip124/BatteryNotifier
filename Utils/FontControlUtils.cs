@@ -13,7 +13,7 @@ namespace BatteryNotifier.Utils
 
             if (!IsSameFont(control.Font, FontStyle.Regular, targetSize))
             {
-                control.Font = FontProvider.GetRegularFont(targetSize);
+                control.Font = FontProvider.GetFont(targetSize);
             }
         }
 
@@ -23,7 +23,7 @@ namespace BatteryNotifier.Utils
 
             if (!IsSameFont(control.Font, FontStyle.Bold, targetSize))
             {
-                control.Font = FontProvider.GetBoldFont(targetSize);
+                control.Font = FontProvider.GetFont(targetSize, FontStyle.Bold);
             }
         }
 

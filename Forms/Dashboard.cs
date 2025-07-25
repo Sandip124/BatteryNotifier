@@ -19,8 +19,8 @@ namespace BatteryNotifier.Forms
         private WindowManager _windowManager;
         private ContextMenuManager _contextMenuManager;
 
-        private const int BATTERY_STATUS_TIMER_INTERVAL = 5000;
-        private const int NOTIFICATION_CHECK_INTERVAL = 60000;
+        private const int BATTERY_STATUS_TIMER_INTERVAL = 10000;
+        private const int NOTIFICATION_CHECK_INTERVAL = 120000;
 
         protected override CreateParams CreateParams
         {
@@ -38,7 +38,6 @@ namespace BatteryNotifier.Forms
             SetStyle(
                 ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer |
                 ControlStyles.ResizeRedraw, true);
-            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             UpdateStyles();
             InitializeManagers();
         }
@@ -142,8 +141,10 @@ namespace BatteryNotifier.Forms
             }
             finally
             {
+                ForceGarbageCollection();
                 ResumeLayout(false);
             }
+            
         }
 
         private void ConfigureTimers()
@@ -247,11 +248,13 @@ namespace BatteryNotifier.Forms
         private void BatteryStatusTimer_Tick(object? sender, EventArgs e)
         {
             _batteryManager.RefreshBatteryStatus(BatteryStatus, BatteryPercentage, RemainingTime, BatteryImage);
+            ForceGarbageCollection();
         }
 
         private void ShowNotificationTimer_Tick(object? sender, EventArgs e)
         {
             _notificationManager.CheckAndShowNotifications(_batteryManager.PowerStatus, BatteryNotifierIcon);
+            ForceGarbageCollection();
         }
 
         private void Dashboard_Activated(object? sender, EventArgs e)
@@ -261,6 +264,8 @@ namespace BatteryNotifier.Forms
             _settingsManager.LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox);
             _windowManager.RenderFormPosition(BatteryNotifierIcon);
             _batteryManager.UpdateChargingAnimation(BatteryImage);
+            
+            ForceGarbageCollection();
         }
 
         private void FullBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
@@ -319,6 +324,7 @@ namespace BatteryNotifier.Forms
             _themeManager.SetSystemTheme().ApplyTheme(ThemePictureBox, CloseIcon);
             _batteryManager.UpdateChargingAnimation(BatteryImage);
             Notify("Battery Notifier theme is synced with system theme.");
+            ForceGarbageCollection();
             ResumeLayout(true);
         }
 
@@ -328,6 +334,7 @@ namespace BatteryNotifier.Forms
             _themeManager.SetDarkTheme().ApplyTheme(ThemePictureBox, CloseIcon);
             _batteryManager.UpdateChargingAnimation(BatteryImage);
             Notify("Battery Notifier is on dark mode 🌙.");
+            ForceGarbageCollection();
             ResumeLayout(true);
         }
 
@@ -337,6 +344,7 @@ namespace BatteryNotifier.Forms
             _themeManager.SetLightTheme().ApplyTheme(ThemePictureBox, CloseIcon);
             _batteryManager.UpdateChargingAnimation(BatteryImage);
             Notify("Battery Notifier is on light mode 🔆.");
+            ForceGarbageCollection();
             ResumeLayout(true);
         }
 
@@ -347,6 +355,8 @@ namespace BatteryNotifier.Forms
             {
                 _settingsManager.SaveFullBatterySoundPath(soundPath);
             }
+            
+            ForceGarbageCollection();
         }
 
         private void BrowseLowBatterySound_Click(object? sender, EventArgs e)
@@ -356,6 +366,8 @@ namespace BatteryNotifier.Forms
             {
                 _settingsManager.SaveLowBatterySoundPath(soundPath);
             }
+            
+            ForceGarbageCollection();
         }
 
         private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)
@@ -371,6 +383,7 @@ namespace BatteryNotifier.Forms
         private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
         {
             _windowManager.HandleMouseUp(e);
+            ForceGarbageCollection();
         }
 
         private void VersionLabel_Click(object? sender, EventArgs e)
@@ -401,7 +414,6 @@ namespace BatteryNotifier.Forms
             if (!Visible)
             {
                 Show();
-                Activate();
                 WindowState = FormWindowState.Normal;
             }
             else
@@ -431,6 +443,12 @@ namespace BatteryNotifier.Forms
             };
             foreach (var ctrl in regularControls)
                 ctrl.ApplyRegularFont();
+        }
+        
+        private void ForceGarbageCollection()
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
 
         protected override void Dispose(bool disposing)

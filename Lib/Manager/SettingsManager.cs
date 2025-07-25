@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Windows.Forms;
 using BatteryNotifier.Utils;
 using appSetting = BatteryNotifier.Setting.appSetting;
@@ -27,9 +28,15 @@ namespace BatteryNotifier.Lib.Manager
             Label fullBatteryPercentageLabel, Label lowBatteryPercentageLabel)
         {
             fullBatteryTrackbar.Value = appSetting.Default.fullBatteryNotificationValue;
-            fullBatteryPercentageLabel.Text = $"({appSetting.Default.fullBatteryNotificationValue}%)";
+            fullBatteryPercentageLabel.Text = new StringBuilder().Append("(")
+                .Append(appSetting.Default.fullBatteryNotificationValue)
+                .Append("%)")
+                .ToString();
             lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
-            lowBatteryPercentageLabel.Text = $"({appSetting.Default.lowBatteryNotificationValue}%)";
+            lowBatteryPercentageLabel.Text = new StringBuilder().Append("(")
+                .Append(appSetting.Default.lowBatteryNotificationValue)
+                .Append("%)")
+                .ToString();
 
             return this;
         }
