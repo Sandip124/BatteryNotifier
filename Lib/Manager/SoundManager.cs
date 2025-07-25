@@ -119,7 +119,7 @@ namespace BatteryNotifier.Lib.Manager
             }
             else
             {
-                _batteryNotification.SoundLocation = null;
+                _batteryNotification.SoundLocation = string.Empty;
                 _batteryNotification.Stream = fallbackSoundSource;
             }
 

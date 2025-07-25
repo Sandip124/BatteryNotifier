@@ -20,7 +20,7 @@ namespace BatteryNotifier.Forms
         private ContextMenuManager _contextMenuManager;
 
         private const int BATTERY_STATUS_TIMER_INTERVAL = 5000;
-        private const int NOTIFICATION_CHECK_INTERVAL = 120000;
+        private const int NOTIFICATION_CHECK_INTERVAL = 30000;
 
         protected override CreateParams CreateParams
         {
@@ -97,6 +97,9 @@ namespace BatteryNotifier.Forms
         {
             ResetFullBatterySound.Visible = !string.IsNullOrEmpty(appSetting.Default.fullBatteryNotificationMusic);
             ResetLowBatterySound.Visible = !string.IsNullOrEmpty(appSetting.Default.lowBatteryNotificationMusic);
+            
+            FullBatterySound.Text = appSetting.Default.fullBatteryNotificationMusic;
+            LowBatterySound.Text = appSetting.Default.lowBatteryNotificationMusic;
         }
 
         public void SetVersion(string? ver)
