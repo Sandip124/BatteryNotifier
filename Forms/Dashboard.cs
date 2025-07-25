@@ -36,7 +36,7 @@ namespace BatteryNotifier.Forms
         {
             InitializeComponent();
             SetStyle(
-                ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer ,true);
+                ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer, true);
             UpdateStyles();
             InitializeManagers();
         }
@@ -109,20 +109,13 @@ namespace BatteryNotifier.Forms
             _notificationManager.ShowInAppNotification(NotificationText, status, timeout);
         }
 
-        private int activationCount = 0;
+
         private void Dashboard_Load(object? sender, EventArgs e)
         {
-            activationCount++;
-
-            if (appSetting.Default.startMinimized)
-            {
-                WindowState = FormWindowState.Minimized;
-            }
-            else
-            {
-                WindowState = FormWindowState.Normal;
-            }
+            WindowState = appSetting.Default.startMinimized ? FormWindowState.Minimized : FormWindowState.Normal;
             
+            UpdateTaskbarAndIconVisibility();
+
             SuspendLayout();
             try
             {
@@ -244,20 +237,29 @@ namespace BatteryNotifier.Forms
             _batteryManager.RefreshBatteryStatus(BatteryStatus, BatteryPercentage, RemainingTime, BatteryImage);
             _settingsManager.LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox);
             this.RenderFormPosition(BatteryNotifierIcon);
-
-            if (activationCount > 1)
-            {
-                WindowState = FormWindowState.Normal;    
-            }
-
-            if (!Visible)
-            {
-                Show();
-            }
+            
+            WindowState = FormWindowState.Normal;
+            Show();
+            
+            UpdateTaskbarAndIconVisibility();
 
             _batteryManager.UpdateChargingAnimation(BatteryImage);
 
             ForceGarbageCollection();
+        }
+
+        private void UpdateTaskbarAndIconVisibility()
+        {
+            if (appSetting.Default.PinToNotificationArea)
+            {
+                ShowInTaskbar = false;
+                ShowIcon = false;
+            }
+            else
+            {
+                ShowInTaskbar = true;
+                ShowIcon = true;
+            }
         }
 
         private void FullBatteryNotificationCheckbox_CheckStateChanged(object? sender, EventArgs e)
@@ -281,8 +283,8 @@ namespace BatteryNotifier.Forms
         {
             _settingsManager.UpdatePinToNotificationArea(PinToNotificationArea.Checked);
             this.RenderFormPosition(BatteryNotifierIcon);
-            Show();
             _windowManager.RenderTitleBarCursor(AppHeaderTitle);
+            UpdateTaskbarAndIconVisibility();
         }
 
         private void LaunchAtStartup_CheckedChanged(object? sender, EventArgs e)
@@ -393,36 +395,12 @@ namespace BatteryNotifier.Forms
         {
             _soundManager.StopSound();
         }
-
-
-        protected override void OnDeactivate(EventArgs e)
-        {
-            if (appSetting.Default.PinToNotificationArea)
-            {
-                Hide();
-            }
-            base.OnDeactivate(e);
-        }
+        
 
         private void BatteryNotifierIcon_Click(object? sender, EventArgs e)
         {
-            if (appSetting.Default.PinToNotificationArea)
-            {
-                WindowState = WindowState == FormWindowState.Normal ? FormWindowState.Minimized : FormWindowState.Normal;
-                if (WindowState == FormWindowState.Normal)
-                {
-                    Show();
-                }
-                else
-                {
-                    Hide();
-                }
-            }
-            else
-            {
-                WindowState = FormWindowState.Minimized;
-                Activate();
-            }
+            WindowState = FormWindowState.Normal;
+            Activate();
         }
 
         private void ApplyFontStyle()
