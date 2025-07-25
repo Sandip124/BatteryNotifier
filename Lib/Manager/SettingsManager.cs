@@ -145,13 +145,13 @@ namespace BatteryNotifier.Lib.Manager
 
         public void SaveFullBatterySoundPath(string soundPath)
         {
-            appSetting.Default.fullBatteryNotificationMusic = soundPath;
+            appSetting.Default.fullBatteryNotificationMusic = soundPath.Trim();
             appSetting.Default.Save();
         }
 
         public void SaveLowBatterySoundPath(string soundPath)
         {
-            appSetting.Default.lowBatteryNotificationMusic = soundPath;
+            appSetting.Default.lowBatteryNotificationMusic = soundPath.Trim();
             appSetting.Default.Save();
         }
         

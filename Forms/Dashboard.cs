@@ -50,7 +50,7 @@ namespace BatteryNotifier.Forms
             var backAccentControls = new Control[]
             {
                 AppContainer, AppTabControl, DashboardTab, SettingTab,
-                AppFooter
+                AppFooter, LowBatterySound, FullBatterySound
             };
 
             var backAccent2Controls = new Control[]
@@ -73,7 +73,7 @@ namespace BatteryNotifier.Forms
                 NotificationText, ThemePanel, SystemThemeLabel,
                 LightThemeLabel, DarkThemeLabel, NotificationPanel,
                 FullBatteryNotificationPercentageLabel, PinToNotificationAreaLabel, LaunchAtStartUpLabel,
-                BatteryPercentageLabel, LowBatteryNotificationPercentageLabel
+                BatteryPercentageLabel, LowBatteryNotificationPercentageLabel, LowBatterySound, FullBatterySound
             };
 
             var borderedCustomControls = new FlatTabControl[]
@@ -91,6 +91,12 @@ namespace BatteryNotifier.Forms
             _settingsManager = new SettingsManager();
             _windowManager = new WindowManager(this);
             _contextMenuManager = new ContextMenuManager(_notificationManager, _soundManager, this, NotificationText);
+        }
+
+        private void UpdateNotificationMusicBrowseState()
+        {
+            ResetFullBatterySound.Visible = !string.IsNullOrEmpty(appSetting.Default.fullBatteryNotificationMusic);
+            ResetLowBatterySound.Visible = !string.IsNullOrEmpty(appSetting.Default.lowBatteryNotificationMusic);
         }
 
         public void SetVersion(string? ver)
@@ -113,7 +119,7 @@ namespace BatteryNotifier.Forms
         private void Dashboard_Load(object? sender, EventArgs e)
         {
             WindowState = appSetting.Default.startMinimized ? FormWindowState.Minimized : FormWindowState.Normal;
-            
+
             UpdateTaskbarAndIconVisibility();
 
             SuspendLayout();
@@ -130,6 +136,8 @@ namespace BatteryNotifier.Forms
                     .HandleStartupLaunchSetting(launchAtStartup);
                 _batteryManager.RefreshBatteryStatus(BatteryStatus, BatteryPercentage, RemainingTime, BatteryImage);
 
+                UpdateNotificationMusicBrowseState();
+                
                 ConfigureTimers();
                 AttachEventListeners();
 
@@ -197,6 +205,10 @@ namespace BatteryNotifier.Forms
             BrowseFullBatterySound.Click += BrowseFullBatterySound_Click;
             BrowseLowBatterySound.Click += BrowseLowBatterySound_Click;
 
+            // Reset Music Selection events
+            ResetFullBatterySound.Click += ResetFullBatterySound_Click;
+            ResetLowBatterySound.Click += ResetLowBatterySound_Click;
+
             // Other events
             VersionLabel.Click += VersionLabel_Click;
             BatteryNotifierIcon.BalloonTipClicked += BatteryNotifierIcon_BalloonTipClicked;
@@ -237,10 +249,10 @@ namespace BatteryNotifier.Forms
             _batteryManager.RefreshBatteryStatus(BatteryStatus, BatteryPercentage, RemainingTime, BatteryImage);
             _settingsManager.LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox);
             this.RenderFormPosition(BatteryNotifierIcon);
-            
+
             WindowState = FormWindowState.Normal;
             Show();
-            
+
             UpdateTaskbarAndIconVisibility();
 
             _batteryManager.UpdateChargingAnimation(BatteryImage);
@@ -347,10 +359,29 @@ namespace BatteryNotifier.Forms
             var soundPath = _soundManager.BrowseForSoundFile(NotificationText);
             if (!string.IsNullOrEmpty(soundPath))
             {
-                _settingsManager.SaveFullBatterySoundPath(soundPath);
+                FullBatterySound.Text = soundPath;
             }
 
+            _settingsManager.SaveFullBatterySoundPath(soundPath);
+            UpdateNotificationMusicBrowseState();
+
             ForceGarbageCollection();
+        }
+        
+        private void ResetFullBatterySound_Click(object? sender, EventArgs e)
+        {
+            var soundPath = string.Empty;
+            FullBatterySound.Text = soundPath;
+            _settingsManager.SaveFullBatterySoundPath(soundPath);
+            UpdateNotificationMusicBrowseState();
+        }
+        
+        private void ResetLowBatterySound_Click(object? sender, EventArgs e)
+        {
+            var soundPath = string.Empty;
+            LowBatterySound.Text = soundPath;
+            _settingsManager.SaveLowBatterySoundPath(soundPath);
+            UpdateNotificationMusicBrowseState();
         }
 
         private void BrowseLowBatterySound_Click(object? sender, EventArgs e)
@@ -358,8 +389,11 @@ namespace BatteryNotifier.Forms
             var soundPath = _soundManager.BrowseForSoundFile(NotificationText);
             if (!string.IsNullOrEmpty(soundPath))
             {
-                _settingsManager.SaveLowBatterySoundPath(soundPath);
+                LowBatterySound.Text = soundPath;
             }
+
+            _settingsManager.SaveLowBatterySoundPath(soundPath);
+            UpdateNotificationMusicBrowseState();
 
             ForceGarbageCollection();
         }
@@ -395,7 +429,7 @@ namespace BatteryNotifier.Forms
         {
             _soundManager.StopSound();
         }
-        
+
 
         private void BatteryNotifierIcon_Click(object? sender, EventArgs e)
         {

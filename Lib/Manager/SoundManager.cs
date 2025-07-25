@@ -181,7 +181,7 @@ namespace BatteryNotifier.Lib.Manager
                 return string.Empty;
             }
 
-            return File.Exists(fileName) ? fileName : string.Empty;
+            return File.Exists(fileName) ? fileName.Trim() : string.Empty;
         }
 
         public void Dispose()
