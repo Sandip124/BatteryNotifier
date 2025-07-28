@@ -104,7 +104,21 @@ namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
 
             Pen border = new Pen(mBorderColor);
             TabArea.Inflate(nDelta, nDelta);
-            g.DrawRectangle(border, TabArea);
+            
+            g.DrawPolygon(border, new Point[]
+            {
+                new Point(TabArea.Left + nDelta, TabArea.Top),
+                new Point(TabArea.Right - nDelta, TabArea.Top),
+                new Point(TabArea.Right, TabArea.Top + nDelta),
+                new Point(TabArea.Right, TabArea.Bottom - nDelta),
+                new Point(TabArea.Right - nDelta, TabArea.Bottom),
+                new Point(TabArea.Left + nDelta, TabArea.Bottom),
+                new Point(TabArea.Left, TabArea.Bottom - nDelta),
+                new Point(TabArea.Left, TabArea.Top + nDelta),
+                new Point(TabArea.Left + nDelta, TabArea.Top)
+            });
+            
+            
             border.Dispose();
             //----------------------------
 
@@ -151,11 +165,35 @@ namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
                 TabArea.Offset(1, 1);
                 TabArea.Width -= 2;
                 TabArea.Height -= 2;
-
-                g.DrawRectangle(border, TabArea);
+                
+                g.DrawPolygon(border, new Point[]
+                    {
+                        new Point(TabArea.Left + nDelta, TabArea.Top),
+                        new Point(TabArea.Right - nDelta, TabArea.Top),
+                        new Point(TabArea.Right, TabArea.Top + nDelta),
+                        new Point(TabArea.Right, TabArea.Bottom - nDelta),
+                        new Point(TabArea.Right - nDelta, TabArea.Bottom),
+                        new Point(TabArea.Left + nDelta, TabArea.Bottom),
+                        new Point(TabArea.Left, TabArea.Bottom - nDelta),
+                        new Point(TabArea.Left, TabArea.Top + nDelta),
+                        new Point(TabArea.Left + nDelta, TabArea.Top)
+                    });
+                
                 TabArea.Width -= 1;
                 TabArea.Height -= 1;
-                g.DrawRectangle(border, TabArea);
+                
+                g.DrawPolygon(border, new Point[]
+                {
+                    new Point(TabArea.Left + nDelta, TabArea.Top),
+                    new Point(TabArea.Right - nDelta, TabArea.Top),
+                    new Point(TabArea.Right, TabArea.Top + nDelta),
+                    new Point(TabArea.Right, TabArea.Bottom - nDelta),
+                    new Point(TabArea.Right - nDelta, TabArea.Bottom),
+                    new Point(TabArea.Left + nDelta, TabArea.Bottom),
+                    new Point(TabArea.Left, TabArea.Bottom - nDelta),
+                    new Point(TabArea.Left, TabArea.Top + nDelta),
+                    new Point(TabArea.Left + nDelta, TabArea.Top)
+                });
 
                 border.Dispose();
             }
