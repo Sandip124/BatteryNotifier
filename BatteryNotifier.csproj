@@ -84,6 +84,8 @@
     <Compile Include="Lib\Manager\ThemeManager.cs" />
     <Compile Include="Lib\Manager\WindowManager.cs" />
     <Compile Include="Lib\Providers\FontProvider.cs" />
+    <Compile Include="Lib\Services\BatteryMonitorService.cs" />
+    <Compile Include="Lib\Services\NotificationService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Setting\appSetting.cs" />

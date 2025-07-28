@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
+using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Utils;
 using Squirrel;
 
@@ -14,7 +15,7 @@ namespace BatteryNotifier
         private static Dashboard? _dashboard;
         private static readonly string EventName = "BatteryNotifier.Instance.WaitHandle";
         private static readonly string Version = UtilityHelper.AssemblyVersion;
-
+        
         [STAThread]
         static void Main()
         {
@@ -37,7 +38,7 @@ namespace BatteryNotifier
 #if RELEASE
             if (InternetConnectivityHelper.CheckForInternetConnection())
             {
-                _dashboard.Notify("🤿 Checking for update ...");
+                NotificationService.Instance.PublishNotification("🤿 Checking for update ...");
                 InitializeUpdateManagerAndCheckUpdatesAsync().ConfigureAwait(false);
             }
 #endif
@@ -59,33 +60,34 @@ namespace BatteryNotifier
                         var release = await _updateManager.UpdateApp();
                         if (release != null)
                         {
-                            _dashboard?.Notify($"✅ Battery Notifier {release.Version} downloaded. Restart to apply.");
+                            NotificationService.Instance.PublishNotification($"✅ Battery Notifier {release.Version} downloaded. Restart to apply.");
                         }
                     }
                     else
                     {
-                        _dashboard?.Notify("✌ No Update Available");
+                        NotificationService.Instance.PublishNotification("✌ No Update Available");
                     }
                 }
                 else
                 {
-                    _dashboard?.Notify("🕹 Could not initialize update manager!");
+                    NotificationService.Instance.PublishNotification("🕹 Could not initialize update manager!",NotificationType.Inline);
                 }
             }
             catch (Exception)
             {
-                _dashboard?.Notify("💀 Could not update app!");
+                NotificationService.Instance.PublishNotification("💀 Could not update app!",NotificationType.Inline);
             }
             finally
             {
                 await Task.Delay(1000);
-                _dashboard?.Notify(string.Empty);
+                NotificationService.Instance.PublishNotification(string.Empty);
             }
         }
 
         private static void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
         {
-            _dashboard?.Notify("Unhandled exception occurred.");
+            // use another handler to log the exception
+            //NotificationService.Instance.PublishNotification("Unhandled exception occurred.",NotificationType.Error);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using BatteryNotifier.Constants;
 
 namespace BatteryNotifier.Utils
 {
@@ -14,7 +15,7 @@ namespace BatteryNotifier.Utils
             timer.Tick += Timer_Tick;
         }
 
-        public void Debounce(Action task, int interval)
+        public void Debounce(Action task, int interval = Constant.DefaultNotificationTimeout)
         {
             if (interval < 0) throw new ArgumentOutOfRangeException(nameof(interval), "Interval must be non-negative");
 

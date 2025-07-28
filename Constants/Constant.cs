@@ -5,5 +5,7 @@
         public const string SourceRepositoryUrl = "https://github.com/Sandip124/BatteryNotifier";
         public const string ReleaseUrl = "https://github.com/Sandip124/BatteryNotifier/releases/latest";
 
+        public const int DefaultNotificationTimeout = 3000;
+
     }
 }

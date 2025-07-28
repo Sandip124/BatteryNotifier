@@ -16,8 +16,6 @@ namespace BatteryNotifier.Utils
             var clampedX = Math.Max(workingArea.Left, Math.Min(x, workingArea.Right - form.Width));
             var clampedY = Math.Max(workingArea.Top, Math.Min(y, workingArea.Bottom - form.Height));
             form.Location = new Point(clampedX, clampedY);
-
-            notifyIcon.Visible = true;
         }
     }
 }

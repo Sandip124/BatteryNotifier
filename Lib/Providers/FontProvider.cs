@@ -75,5 +75,6 @@ internal class FontProvider : IDisposable
         _fontHandles.Clear();
 
         _fontsCollection.Dispose();
+        
     }
 }

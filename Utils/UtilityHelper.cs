@@ -55,27 +55,20 @@ namespace BatteryNotifier.Utils
         {
             if (control is not CheckBox checkboxControl)
                 throw new ArgumentException(@"Control must be a CheckBox", nameof(control));
-
-            checkboxControl.Checked = @checked;
-            checkboxControl.Text = @checked ? "On" : "Off";
-        }
-
-        public static void EnableDoubleBuffering(Control ctrl)
-        {
-            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-                ?.SetValue(ctrl, true, null);
-        }
-
-        public static void EnableDoubleBufferingRecursively(Control parent)
-        {
-            foreach (Control ctrl in parent.Controls)
+            
+            SafeInvoke(checkboxControl, () =>
             {
-                EnableDoubleBuffering(ctrl);
-                if (ctrl.HasChildren)
-                {
-                    EnableDoubleBufferingRecursively(ctrl);
-                }
-            }
+                checkboxControl.Checked = @checked;
+                checkboxControl.Text = @checked ? "On" : "Off";
+            });
+        }
+        
+        public static void SafeInvoke(Control control, Action action)
+        {
+            if (control.InvokeRequired)
+                control.Invoke(action);
+            else
+                action();
         }
     }
 }

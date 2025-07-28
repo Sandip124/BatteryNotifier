@@ -7,12 +7,11 @@ using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Theming;
 using BatteryNotifier.Utils;
-using NuGet;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Lib.Manager
 {
-    public class ThemeManager : IDisposable
+    public class ThemeManager(Dashboard dashboard) : IDisposable
     {
         private bool _disposed;
         private bool _isApplyingTheme;
@@ -21,55 +20,20 @@ namespace BatteryNotifier.Lib.Manager
         private readonly HashSet<Control>? accentControls = new();
         private readonly HashSet<Control>? accent2Controls = new();
         private readonly HashSet<Control>? accent3Controls = new();
-        private readonly HashSet<FlatTabControl>? borderdCustomControls = new();
-        private readonly Dashboard dashboard;
+        private readonly HashSet<FlatTabControl>? flatTabCustomControls = new();
 
-        public ThemeManager(Dashboard dashboard)
-        {
-            this.dashboard = dashboard;
-        }
-
-        public ThemeManager RegisterForegroundControls(Control[] controls)
-        {
-            foreach (var control in controls)
-            {
-                foregroundControls?.Add(control);
-            }
-            return this;
-        }
-
-        public ThemeManager RegisterAccentControls(Control[] controls)
-        {
-            foreach (var control in controls)
-            {
-                accentControls?.Add(control);
-            }
-            return this;
-        }
-
-        public ThemeManager RegisterAccent2Controls(Control[] controls)
-        {
-            foreach (var control in controls)
-            {
-                accent2Controls?.Add(control);
-            }
-            return this;
-        }
-
-        public ThemeManager RegisterAccent3Controls(Control[] controls)
-        {
-            foreach (var control in controls)
-            {
-                accent3Controls?.Add(control);
-            }
-            return this;
-        }
+        public ThemeManager RegisterForegroundControls(Control[] controls) =>
+            RegisterControls(controls, foregroundControls);
+        public ThemeManager RegisterAccentControls(Control[] controls) => RegisterControls(controls, accentControls);
+        public ThemeManager RegisterAccent2Controls(Control[] controls) => RegisterControls(controls, accent2Controls);
+        public ThemeManager RegisterAccent3Controls(Control[] controls) => RegisterControls(controls, accent3Controls);
+        public ThemeManager RegisterBorderedCustomControls(FlatTabControl[] controls) => RegisterControls(controls, flatTabCustomControls);
         
-        public ThemeManager RegisterBorderedCustomControls(FlatTabControl[] controls)
+        private ThemeManager RegisterControls<T>(T[] controls,HashSet<T>? controlHolder)
         {
             foreach (var control in controls)
             {
-                borderdCustomControls?.Add(control);
+                controlHolder?.Add(control);
             }
             return this;
         }
@@ -133,55 +97,72 @@ namespace BatteryNotifier.Lib.Manager
             ApplyBackgroundColor(accent2Controls, accent2);
             ApplyBackgroundColor(accent3Controls, accent3);
             ApplyForegroundColor(foregroundControls, foreground);
-            ApplyBorderColor(borderdCustomControls, theme.BorderColor);
+            ApplyBorderColor(flatTabCustomControls, theme.BorderColor);
         }
 
         private void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
         {
+            //TODO: more optimize this 
             var desiredImage = ThemeUtils.IsDarkTheme ? ImageCache.DarkMode : ImageCache.LightMode;
-            if (themePictureBox.Image != desiredImage)
+            
+            UtilityHelper.SafeInvoke(themePictureBox, () =>
             {
-                themePictureBox.Image = desiredImage;
-            }
-
-            if (closeIcon.Image != ImageCache.CloseIconDark)
+                if (themePictureBox.Image != desiredImage)
+                {
+                    themePictureBox.Image = desiredImage;
+                }
+            });
+            
+            UtilityHelper.SafeInvoke(closeIcon, () =>
             {
-                closeIcon.Image = ImageCache.CloseIconDark;
-            }
+                if (closeIcon.Image != ImageCache.CloseIconDark)
+                {
+                    closeIcon.Image = ImageCache.CloseIconDark;
+                }
+            });
         }
 
-        private void ApplyBackgroundColor(HashSet<Control>? controls, Color color)
+        private static void ApplyBackgroundColor(HashSet<Control>? controls, Color color)
         {
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
             {
-                if (control != null && control.IsDisposed == false && control.BackColor != color)
+                if (control is { IsDisposed: false } && control.BackColor != color)
                 {
-                    control.BackColor = color;
+                    UtilityHelper.SafeInvoke(control, () =>
+                    {
+                        control.BackColor = color;
+                    });
                 }
             }
         }
 
-        private void ApplyForegroundColor(HashSet<Control>? controls, Color color)
+        private static void ApplyForegroundColor(HashSet<Control>? controls, Color color)
         {
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
             {
-                if (control != null && control.IsDisposed == false && control.ForeColor != color)
+                if (control is { IsDisposed: false } && control.ForeColor != color)
                 {
-                    control.ForeColor = color;
+                    UtilityHelper.SafeInvoke(control, () =>
+                    {
+                        control.ForeColor = color;
+                    });
                 }
             }
         }
         
-        private void ApplyBorderColor(HashSet<FlatTabControl>? controls, Color color)
+        private static void ApplyBorderColor(HashSet<FlatTabControl>? controls, Color color)
         {
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
             {
-                if (control != null && control.IsDisposed == false && control.ForeColor != color)
+                if (control is { IsDisposed: false } && control.ForeColor != color)
                 {
-                    control.BorderColor = color;
+                    UtilityHelper.SafeInvoke(control, () =>
+                    {
+                        control.BorderColor = color;
+                    });
                 }
             }
         }
@@ -198,8 +179,8 @@ namespace BatteryNotifier.Lib.Manager
                 _disposed = true;
             }
         }
-        
-        static class ImageCache
+
+        private static class ImageCache
         {
             public static readonly Image DarkMode = Resources.DarkMode;
             public static readonly Image LightMode = Resources.LightMode;

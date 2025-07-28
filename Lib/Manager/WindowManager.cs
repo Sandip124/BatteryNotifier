@@ -23,7 +23,10 @@ namespace BatteryNotifier.Lib.Manager
 
         public void RenderTitleBarCursor(Label appHeaderTitle)
         {
-            appHeaderTitle.Cursor = appSetting.Default.PinToNotificationArea ? Cursors.Default : Cursors.SizeAll;
+            UtilityHelper.SafeInvoke(appHeaderTitle, () =>
+            {
+                appHeaderTitle.Cursor = appSetting.Default.PinToNotificationArea ? Cursors.Default : Cursors.SizeAll;
+            });
         }
         
         public void HandleCloseClick()
@@ -65,6 +68,7 @@ namespace BatteryNotifier.Lib.Manager
                 }
                 catch (Exception ex)
                 {
+                    // internal log
                     Console.WriteLine($"Error saving window position: {ex.Message}");
                 }
             }, 1000);

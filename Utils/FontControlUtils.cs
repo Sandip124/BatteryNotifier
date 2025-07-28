@@ -7,23 +7,18 @@ namespace BatteryNotifier.Utils
 {
     internal static class FontControlUtils
     {
-        public static void ApplyRegularFont(this Control control, float? size = null)
+        public static void ApplyRegularFont(this Control control, float? size = null) => ApplyFont(control,size, FontStyle.Regular);
+
+        public static void ApplyBoldFont(this Control control, float? size = null) => ApplyFont(control,size, FontStyle.Bold);
+
+        private static void ApplyFont(this Control control, float? size,FontStyle fontStyle)
         {
-            float targetSize = size ?? control.Font.Size;
+            var targetSize = size ?? control.Font.Size;
 
-            if (!IsSameFont(control.Font, FontStyle.Regular, targetSize))
+            if (!IsSameFont(control.Font, fontStyle, targetSize))
             {
-                control.Font = FontProvider.GetFont(targetSize);
-            }
-        }
-
-        public static void ApplyBoldFont(this Control control, float? size = null)
-        {
-            float targetSize = size ?? control.Font.Size;
-
-            if (!IsSameFont(control.Font, FontStyle.Bold, targetSize))
-            {
-                control.Font = FontProvider.GetFont(targetSize, FontStyle.Bold);
+                UtilityHelper.SafeInvoke(control,
+                    () => { control.Font = FontProvider.GetFont(targetSize, fontStyle); });
             }
         }
 
@@ -34,5 +29,4 @@ namespace BatteryNotifier.Utils
                    Math.Abs(currentFont.Size - targetSize) < 0.01f;
         }
     }
-
 }

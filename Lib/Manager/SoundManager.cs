@@ -4,25 +4,24 @@ using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Utils;
 
 namespace BatteryNotifier.Lib.Manager
 {
     public class SoundManager : IDisposable
     {
-        private readonly SoundPlayer _batteryNotification;
+        private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
+        
+        private readonly SoundPlayer _batteryNotificationPlayer;
         private CancellationTokenSource _cancellationTokenSource;
         private bool _isPlaying;
         private bool _disposed;
         private readonly Debouncer _debouncer;
 
-        private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
-
-        public bool IsPlaying => _isPlaying;
-
         public SoundManager()
         {
-            _batteryNotification = new SoundPlayer();
+            _batteryNotificationPlayer = new SoundPlayer();
             _cancellationTokenSource = new CancellationTokenSource();
             _debouncer = new Debouncer();
         }
@@ -52,55 +51,15 @@ namespace BatteryNotifier.Lib.Manager
             }
             catch (OperationCanceledException)
             {
+                // TODO: handle cancellation gracefully if needed
             }
             catch (Exception ex)
             {
+                // TODO:
                 Console.WriteLine($"Error playing sound: {ex.Message}");
             }
             finally
             {
-                _isPlaying = false;
-            }
-        }
-
-        public void PlaySoundSync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
-            int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)
-        {
-            if (_disposed || _isPlaying) return;
-
-            try
-            {
-                _isPlaying = true;
-
-                SetupSoundSourceSync(source, fallbackSoundSource);
-
-                if (loop)
-                {
-                    Task.Run(async () =>
-                    {
-                        try
-                        {
-                            _batteryNotification.PlayLooping();
-                            await Task.Delay(durationMs, _cancellationTokenSource.Token);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                        }
-                        finally
-                        {
-                            StopSound();
-                        }
-                    }, _cancellationTokenSource.Token);
-                }
-                else
-                {
-                    _batteryNotification.PlaySync();
-                    _isPlaying = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error playing sound sync: {ex.Message}");
                 _isPlaying = false;
             }
         }
@@ -114,24 +73,22 @@ namespace BatteryNotifier.Lib.Manager
         {
             if (!string.IsNullOrEmpty(source) && File.Exists(source))
             {
-                _batteryNotification.SoundLocation = source;
-                _batteryNotification.Stream = null;
+                _batteryNotificationPlayer.SoundLocation = source;
+                _batteryNotificationPlayer.Stream = null;
             }
             else
             {
-                _batteryNotification.SoundLocation = string.Empty;
-                _batteryNotification.Stream = fallbackSoundSource;
+                _batteryNotificationPlayer.SoundLocation = string.Empty;
+                _batteryNotificationPlayer.Stream = fallbackSoundSource;
             }
 
-            _batteryNotification.LoadAsync();
+            _batteryNotificationPlayer.LoadAsync();
         }
 
         private async Task PlayLoopingWithTimeout(int durationMs, CancellationToken cancellationToken)
         {
-            var playTask = Task.Run(() => { _batteryNotification.PlayLooping(); }, cancellationToken);
-
+            var playTask = Task.Run(() => { _batteryNotificationPlayer.PlayLooping(); }, cancellationToken);
             var timeoutTask = Task.Delay(durationMs, cancellationToken);
-
             await Task.WhenAny(playTask, timeoutTask);
         }
 
@@ -141,7 +98,7 @@ namespace BatteryNotifier.Lib.Manager
             {
                 if (!cancellationToken.IsCancellationRequested)
                 {
-                    _batteryNotification.PlaySync();
+                    _batteryNotificationPlayer.PlaySync();
                 }
             }, cancellationToken);
         }
@@ -151,22 +108,23 @@ namespace BatteryNotifier.Lib.Manager
             try
             {
                 _cancellationTokenSource?.Cancel();
-                _batteryNotification?.Stop();
+                _batteryNotificationPlayer?.Stop();
                 _isPlaying = false;
             }
             catch (Exception ex)
             {
+                //TODO: internal notification service can be used to log errors
                 Console.WriteLine($"Error stopping sound: {ex.Message}");
             }
         }
 
-        public string BrowseForSoundFile(Label notificationLabel)
+        public string BrowseForSoundFile()
         {
             using var fileBrowser = new OpenFileDialog
             {
                 DefaultExt = "wav",
-                Filter = "Wave files (*.wav)|*.wav|All files (*.*)|*.*",
-                Title = "Select Sound File"
+                Filter = @"Wave files (*.wav)|*.wav|All files (*.*)|*.*",
+                Title = @"Select Sound File"
             };
 
             if (fileBrowser.ShowDialog() != DialogResult.OK)
@@ -176,8 +134,7 @@ namespace BatteryNotifier.Lib.Manager
 
             if (!UtilityHelper.IsValidWavFile(fileName))
             {
-                notificationLabel.Text = "Only .wav file is supported.";
-                _debouncer.Debounce(() => { notificationLabel.Text = string.Empty; }, 3000);
+                NotificationService.Instance.PublishNotification("Only .wav file is supported.", NotificationType.Inline);
                 return string.Empty;
             }
 
@@ -199,8 +156,8 @@ namespace BatteryNotifier.Lib.Manager
                 _cancellationTokenSource?.Cancel();
                 _cancellationTokenSource?.Dispose();
 
-                _batteryNotification?.Stop();
-                _batteryNotification?.Dispose();
+                _batteryNotificationPlayer?.Stop();
+                _batteryNotificationPlayer?.Dispose();
                 _debouncer.Dispose();
                 _disposed = true;
             }

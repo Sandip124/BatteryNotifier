@@ -18,52 +18,62 @@ namespace BatteryNotifier.Lib.Manager
 
         public SettingsManager LoadCheckboxSettings(CheckBox pinToNotificationArea, CheckBox launchAtStartup)
         {
-            pinToNotificationArea.Checked = appSetting.Default.PinToNotificationArea;
-            launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
-
+            UtilityHelper.SafeInvoke(pinToNotificationArea, () =>
+            {
+                pinToNotificationArea.Checked = appSetting.Default.PinToNotificationArea;
+                launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
+            });
             return this;
         }
 
         public SettingsManager LoadTrackbarSettings(TrackBar fullBatteryTrackbar, TrackBar lowBatteryTrackbar,
             Label fullBatteryPercentageLabel, Label lowBatteryPercentageLabel)
         {
-            fullBatteryTrackbar.Value = appSetting.Default.fullBatteryNotificationValue;
-            fullBatteryPercentageLabel.Text = new StringBuilder().Append("(")
-                .Append(appSetting.Default.fullBatteryNotificationValue)
-                .Append("%)")
-                .ToString();
-            lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
-            lowBatteryPercentageLabel.Text = new StringBuilder().Append("(")
-                .Append(appSetting.Default.lowBatteryNotificationValue)
-                .Append("%)")
-                .ToString();
+            UtilityHelper.SafeInvoke(fullBatteryTrackbar, () =>
+            {
+                fullBatteryTrackbar.Value = appSetting.Default.fullBatteryNotificationValue;
+                fullBatteryPercentageLabel.Text = new StringBuilder().Append("(")
+                    .Append(appSetting.Default.fullBatteryNotificationValue)
+                    .Append("%)")
+                    .ToString();
+                lowBatteryTrackbar.Value = appSetting.Default.lowBatteryNotificationValue;
+                lowBatteryPercentageLabel.Text = new StringBuilder().Append("(")
+                    .Append(appSetting.Default.lowBatteryNotificationValue)
+                    .Append("%)")
+                    .ToString();
+            });
 
             return this;
         }
 
         public SettingsManager LoadSoundSettings(TextBox fullBatterySound, TextBox lowBatterySound)
         {
-            fullBatterySound.Text = appSetting.Default.fullBatteryNotificationMusic;
-            lowBatterySound.Text = appSetting.Default.lowBatteryNotificationMusic;
-
+            UtilityHelper.SafeInvoke(fullBatterySound, () =>
+            {
+                fullBatterySound.Text = appSetting.Default.fullBatteryNotificationMusic;
+                lowBatterySound.Text = appSetting.Default.lowBatteryNotificationMusic;
+            });
             return this;
         }
 
         public SettingsManager LoadThemeSettings(RadioButton systemThemeLabel, RadioButton darkThemeLabel,
             RadioButton lightThemeLabel)
         {
-            if (appSetting.Default.SystemThemeApplied)
+            UtilityHelper.SafeInvoke(systemThemeLabel, () =>
             {
-                systemThemeLabel.Checked = true;
-            }
-            else if (appSetting.Default.darkThemeApplied)
-            {
-                darkThemeLabel.Checked = true;
-            }
-            else
-            {
-                lightThemeLabel.Checked = true;
-            }
+                if (appSetting.Default.SystemThemeApplied)
+                {
+                    systemThemeLabel.Checked = true;
+                }
+                else if (appSetting.Default.darkThemeApplied)
+                {
+                    darkThemeLabel.Checked = true;
+                }
+                else
+                {
+                    lightThemeLabel.Checked = true;
+                }
+            });
 
             return this;
         }
@@ -72,14 +82,11 @@ namespace BatteryNotifier.Lib.Manager
         {
             UtilityHelper.RenderCheckboxState(fullBatteryCheckbox, appSetting.Default.fullBatteryNotification);
             UtilityHelper.RenderCheckboxState(lowBatteryCheckbox, appSetting.Default.lowBatteryNotification);
-
             return this;
         }
 
-        public SettingsManager HandleStartupLaunchSetting(CheckBox launchAtStartup)
+        public SettingsManager HandleStartupLaunchSetting(bool shouldLaunchAtStartUp)
         {
-            var shouldLaunchAtStartUp = launchAtStartup?.Checked ?? false;
-
             try
             {
                 var windowsStartupAppsKey = UtilityHelper.GetWindowsStartupAppsKey();
@@ -105,6 +112,7 @@ namespace BatteryNotifier.Lib.Manager
             }
             catch (Exception ex)
             {
+                // TODO implement logger  and unified notification Service for internal errors
                 Console.WriteLine($"Error handling launch at startup: {ex.Message}");
             }
 
@@ -154,7 +162,7 @@ namespace BatteryNotifier.Lib.Manager
             appSetting.Default.lowBatteryNotificationMusic = soundPath.Trim();
             appSetting.Default.Save();
         }
-        
+
         public void UpdatePinToNotificationArea(bool isChecked)
         {
             appSetting.Default.PinToNotificationArea = isChecked;
