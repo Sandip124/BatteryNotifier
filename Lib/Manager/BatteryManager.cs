@@ -68,7 +68,9 @@ namespace BatteryNotifier.Lib.Manager
 
         public void UpdateChargingAnimation()
         {
-            if (SystemInformation.PowerStatus.BatteryChargeStatus != BatteryChargeStatus.Charging) return;
+            if (SystemInformation.PowerStatus.PowerLineStatus != PowerLineStatus.Online ||
+                SystemInformation.PowerStatus.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery ||
+                SystemInformation.PowerStatus.BatteryChargeStatus == BatteryChargeStatus.Charging) return;
             
             var desiredImage = ThemeUtils.IsDarkTheme
                 ? ImageCache.ChargingAnimatedDark

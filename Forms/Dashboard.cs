@@ -22,9 +22,6 @@ namespace BatteryNotifier.Forms
         private ContextMenuManager _contextMenuManager;
         private readonly Debouncer _debouncer;
 
-        // private const int BATTERY_STATUS_TIMER_INTERVAL = 5000;
-        // private const int NOTIFICATION_CHECK_INTERVAL = 30000;
-
         protected override CreateParams CreateParams
         {
             get
@@ -141,13 +138,18 @@ namespace BatteryNotifier.Forms
 
         private void OnBatteryStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            UpdateBatteryStatusAndAnimation();
+            if (Visible && WindowState != FormWindowState.Minimized)
+            {
+                UpdateBatteryStatusAndAnimation();
+            }
 
-            (string message, NotificationType notificationType,string Tag) notificationInfo;
+            (string message, NotificationType notificationType, string Tag) notificationInfo;
             if (e is { IsCharging: false, IsLowBattery: true })
-                notificationInfo = (message: "🔋 Low Battery, please connect to charger.", NotificationType.Global, Tag: Constant.LowBatteryTag);
+                notificationInfo = (message: "🔋 Low Battery, please connect to charger.", NotificationType.Global,
+                    Tag: Constant.LowBatteryTag);
             else if (e is { IsCharging: true, IsFullBattery: true })
-                notificationInfo = (message: "🔋 Full Battery, please unplug the charger.", NotificationType.Global, Tag: Constant.FullBatteryTag);
+                notificationInfo = (message: "🔋 Full Battery, please unplug the charger.", NotificationType.Global,
+                    Tag: Constant.FullBatteryTag);
             else
                 throw new ArgumentOutOfRangeException(nameof(e));
 
@@ -161,16 +163,16 @@ namespace BatteryNotifier.Forms
 
         private void OnPowerLineStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            UpdateBatteryStatusAndAnimation();
+            if (Visible && WindowState != FormWindowState.Minimized)
+            {
+                UpdateBatteryStatusAndAnimation();
+            }
         }
 
         private void UpdateBatteryStatusAndAnimation()
         {
-            if (Visible && WindowState != FormWindowState.Minimized)
-            {
-                _batteryManager.RefreshBatteryStatus();
-                _batteryManager.UpdateChargingAnimation();
-            }
+            _batteryManager.RefreshBatteryStatus();
+            _batteryManager.UpdateChargingAnimation();
         }
 
 
@@ -495,11 +497,11 @@ namespace BatteryNotifier.Forms
             foreach (var ctrl in regularControls)
                 ctrl.ApplyRegularFont();
         }
-        
+
         protected override void SetVisibleCore(bool value)
         {
             base.SetVisibleCore(value);
-    
+
             if (!value)
             {
                 NotificationService.Instance.ClearNotifications();
