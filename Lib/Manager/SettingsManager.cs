@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using System.Windows.Forms;
+using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Utils;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
@@ -42,6 +43,10 @@ namespace BatteryNotifier.Lib.Manager
                     .Append("%)")
                     .ToString();
             });
+            
+            BatteryMonitorService.Instance.SetThresholds(
+                appSetting.Default.lowBatteryNotificationValue,
+                appSetting.Default.fullBatteryNotificationValue);
 
             return this;
         }
@@ -139,6 +144,10 @@ namespace BatteryNotifier.Lib.Manager
             {
                 appSetting.Default.fullBatteryNotificationValue = value;
                 appSetting.Default.Save();
+                
+                BatteryMonitorService.Instance.SetThresholds(
+                    appSetting.Default.lowBatteryNotificationValue,
+                    appSetting.Default.fullBatteryNotificationValue);
             }, 500);
         }
 
@@ -148,6 +157,9 @@ namespace BatteryNotifier.Lib.Manager
             {
                 appSetting.Default.lowBatteryNotificationValue = value;
                 appSetting.Default.Save();
+                BatteryMonitorService.Instance.SetThresholds(
+                    appSetting.Default.lowBatteryNotificationValue,
+                    appSetting.Default.fullBatteryNotificationValue);
             }, 500);
         }
 

@@ -13,18 +13,11 @@ namespace BatteryNotifier.Lib.Manager
     {
         private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
         
-        private readonly SoundPlayer _batteryNotificationPlayer;
-        private CancellationTokenSource _cancellationTokenSource;
+        private readonly SoundPlayer _batteryNotificationPlayer = new();
+        private CancellationTokenSource _cancellationTokenSource = new();
         private bool _isPlaying;
         private bool _disposed;
-        private readonly Debouncer _debouncer;
-
-        public SoundManager()
-        {
-            _batteryNotificationPlayer = new SoundPlayer();
-            _cancellationTokenSource = new CancellationTokenSource();
-            _debouncer = new Debouncer();
-        }
+        private readonly Debouncer _debouncer = new();
 
         public async Task PlaySoundAsync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
             int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)

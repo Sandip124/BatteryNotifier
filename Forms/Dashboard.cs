@@ -138,10 +138,7 @@ namespace BatteryNotifier.Forms
 
         private void OnBatteryStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            if (Visible && WindowState != FormWindowState.Minimized)
-            {
-                UpdateBatteryStatusAndAnimation();
-            }
+            _batteryManager.RefreshBatteryStatus();
 
             (string message, NotificationType notificationType, string Tag) notificationInfo;
             if (e is { IsCharging: false, IsLowBattery: true })
@@ -163,18 +160,8 @@ namespace BatteryNotifier.Forms
 
         private void OnPowerLineStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            if (Visible && WindowState != FormWindowState.Minimized)
-            {
-                UpdateBatteryStatusAndAnimation();
-            }
-        }
-
-        private void UpdateBatteryStatusAndAnimation()
-        {
             _batteryManager.RefreshBatteryStatus();
-            _batteryManager.UpdateChargingAnimation();
         }
-
 
         private void Dashboard_Load(object? sender, EventArgs e)
         {
@@ -196,7 +183,6 @@ namespace BatteryNotifier.Forms
                     .LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox)
                     .HandleStartupLaunchSetting(launchAtStartup.Checked);
 
-                UpdateBatteryStatusAndAnimation();
                 UpdateNotificationMusicBrowseState();
 
                 AttachEventListeners();

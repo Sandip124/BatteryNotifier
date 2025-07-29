@@ -16,11 +16,11 @@ namespace BatteryNotifier.Lib.Manager
         private bool _disposed;
         private bool _isApplyingTheme;
 
-        private readonly HashSet<Control>? foregroundControls = new();
-        private readonly HashSet<Control>? accentControls = new();
-        private readonly HashSet<Control>? accent2Controls = new();
-        private readonly HashSet<Control>? accent3Controls = new();
-        private readonly HashSet<FlatTabControl>? flatTabCustomControls = new();
+        private readonly HashSet<Control>? foregroundControls = [];
+        private readonly HashSet<Control>? accentControls = [];
+        private readonly HashSet<Control>? accent2Controls = [];
+        private readonly HashSet<Control>? accent3Controls = [];
+        private readonly HashSet<FlatTabControl>? flatTabCustomControls = [];
 
         public ThemeManager RegisterForegroundControls(Control[] controls) =>
             RegisterControls(controls, foregroundControls);
