@@ -136,9 +136,11 @@ namespace BatteryNotifier.Forms
             });
         }
 
+        private bool requirePendingBatteryUiUpdate;
+
         private void OnBatteryStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            _batteryManager.RefreshBatteryStatus();
+           RefreshBatteryStatusIfTabSelected();
 
             (string message, NotificationType notificationType, string Tag) notificationInfo;
             if (e is { IsCharging: false, IsLowBattery: true })
@@ -158,9 +160,24 @@ namespace BatteryNotifier.Forms
             });
         }
 
+        private void RefreshBatteryStatusIfTabSelected()
+        {
+            UtilityHelper.SafeInvoke(AppTabControl, () =>
+            {
+                if (AppTabControl.SelectedTab == DashboardTab)
+                {
+                    _batteryManager.RefreshBatteryStatus();
+                    requirePendingBatteryUiUpdate = false;
+                }else
+                {
+                    requirePendingBatteryUiUpdate = true;
+                }
+            });
+        }
+
         private void OnPowerLineStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            _batteryManager.RefreshBatteryStatus();
+            RefreshBatteryStatusIfTabSelected();
         }
 
         private void Dashboard_Load(object? sender, EventArgs e)
@@ -211,7 +228,10 @@ namespace BatteryNotifier.Forms
             CloseIcon.Click += CloseIcon_Click;
             CloseIcon.MouseEnter += CloseIcon_MouseEnter;
             CloseIcon.MouseLeave += CloseIcon_MouseLeave;
-
+            
+            // Tab change
+            AppTabControl.SelectedIndexChanged += AppTabControl_SelectedIndexChanged;
+            
             // Notification checkbox events
             FullBatteryNotificationCheckbox.CheckedChanged += FullBatteryNotificationCheckbox_CheckStateChanged;
             LowBatteryNotificationCheckbox.CheckedChanged += LowBatteryNotificationCheckbox_CheckStateChanged;
@@ -264,6 +284,15 @@ namespace BatteryNotifier.Forms
         private void CloseIcon_MouseLeave(object? sender, EventArgs e)
         {
             CloseIcon.Image = Resources.closeIconDark;
+        }
+        
+        private void AppTabControl_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            if (AppTabControl.SelectedTab != DashboardTab) return;
+            if (!requirePendingBatteryUiUpdate) return;
+            
+            _batteryManager.RefreshBatteryStatus();
+            requirePendingBatteryUiUpdate = false;
         }
 
         private void Dashboard_Activated(object? sender, EventArgs e)
@@ -496,62 +525,62 @@ namespace BatteryNotifier.Forms
                 ForceGarbageCollection();
             }
         }
-        
+
         private void ForceGarbageCollection()
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
         }
-        
+
         private void DetachEventHandlers()
-{
-    // Form events
-    Activated -= Dashboard_Activated;
-    FormClosed -= Dashboard_FormClosed;
+        {
+            // Form events
+            Activated -= Dashboard_Activated;
+            FormClosed -= Dashboard_FormClosed;
 
-    // Close icon events
-    CloseIcon.Click -= CloseIcon_Click;
-    CloseIcon.MouseEnter -= CloseIcon_MouseEnter;
-    CloseIcon.MouseLeave -= CloseIcon_MouseLeave;
+            // Close icon events
+            CloseIcon.Click -= CloseIcon_Click;
+            CloseIcon.MouseEnter -= CloseIcon_MouseEnter;
+            CloseIcon.MouseLeave -= CloseIcon_MouseLeave;
 
-    // Notification checkbox events
-    FullBatteryNotificationCheckbox.CheckedChanged -= FullBatteryNotificationCheckbox_CheckStateChanged;
-    LowBatteryNotificationCheckbox.CheckedChanged -= LowBatteryNotificationCheckbox_CheckStateChanged;
+            // Notification checkbox events
+            FullBatteryNotificationCheckbox.CheckedChanged -= FullBatteryNotificationCheckbox_CheckStateChanged;
+            LowBatteryNotificationCheckbox.CheckedChanged -= LowBatteryNotificationCheckbox_CheckStateChanged;
 
-    // Window dragging events
-    AppHeaderTitle.MouseDown -= AppHeaderTitle_MouseDown;
-    AppHeaderTitle.MouseMove -= AppHeaderTitle_MouseMove;
-    AppHeaderTitle.MouseUp -= AppHeaderTitle_MouseUp;
+            // Window dragging events
+            AppHeaderTitle.MouseDown -= AppHeaderTitle_MouseDown;
+            AppHeaderTitle.MouseMove -= AppHeaderTitle_MouseMove;
+            AppHeaderTitle.MouseUp -= AppHeaderTitle_MouseUp;
 
-    // Trackbar events
-    lowBatteryTrackbar.Scroll -= LowBatteryTrackbar_Scroll;
-    lowBatteryTrackbar.ValueChanged -= LowBatteryTrackbar_ValueChanged;
-    fullBatteryTrackbar.Scroll -= FullBatteryTrackbar_Scroll;
-    fullBatteryTrackbar.ValueChanged -= FullBatteryTrackbar_ValueChanged;
+            // Trackbar events
+            lowBatteryTrackbar.Scroll -= LowBatteryTrackbar_Scroll;
+            lowBatteryTrackbar.ValueChanged -= LowBatteryTrackbar_ValueChanged;
+            fullBatteryTrackbar.Scroll -= FullBatteryTrackbar_Scroll;
+            fullBatteryTrackbar.ValueChanged -= FullBatteryTrackbar_ValueChanged;
 
-    // Settings events
-    PinToNotificationArea.CheckedChanged -= PinToNotificationArea_CheckedChanged;
-    launchAtStartup.CheckedChanged -= LaunchAtStartup_CheckedChanged;
+            // Settings events
+            PinToNotificationArea.CheckedChanged -= PinToNotificationArea_CheckedChanged;
+            launchAtStartup.CheckedChanged -= LaunchAtStartup_CheckedChanged;
 
-    // Theme events
-    SystemThemeLabel.CheckedChanged -= SystemThemeLabel_CheckedChanged;
-    DarkThemeLabel.CheckedChanged -= DarkThemeLabel_CheckedChanged;
-    LightThemeLabel.CheckedChanged -= LightThemeLabel_CheckedChanged;
+            // Theme events
+            SystemThemeLabel.CheckedChanged -= SystemThemeLabel_CheckedChanged;
+            DarkThemeLabel.CheckedChanged -= DarkThemeLabel_CheckedChanged;
+            LightThemeLabel.CheckedChanged -= LightThemeLabel_CheckedChanged;
 
-    // Sound browser events
-    BrowseFullBatterySound.Click -= BrowseFullBatterySound_Click;
-    BrowseLowBatterySound.Click -= BrowseLowBatterySound_Click;
+            // Sound browser events
+            BrowseFullBatterySound.Click -= BrowseFullBatterySound_Click;
+            BrowseLowBatterySound.Click -= BrowseLowBatterySound_Click;
 
-    // Reset Music Selection events
-    ResetFullBatterySound.Click -= ResetFullBatterySound_Click;
-    ResetLowBatterySound.Click -= ResetLowBatterySound_Click;
+            // Reset Music Selection events
+            ResetFullBatterySound.Click -= ResetFullBatterySound_Click;
+            ResetLowBatterySound.Click -= ResetLowBatterySound_Click;
 
-    // Other events
-    VersionLabel.Click -= VersionLabel_Click;
-    BatteryNotifierIcon.BalloonTipClicked -= BatteryNotifierIcon_BalloonTipClicked;
-    BatteryNotifierIcon.BalloonTipClosed -= BatteryNotifierIcon_BalloonTipClosed;
-    BatteryNotifierIcon.Click -= BatteryNotifierIcon_Click;
-}
+            // Other events
+            VersionLabel.Click -= VersionLabel_Click;
+            BatteryNotifierIcon.BalloonTipClicked -= BatteryNotifierIcon_BalloonTipClicked;
+            BatteryNotifierIcon.BalloonTipClosed -= BatteryNotifierIcon_BalloonTipClosed;
+            BatteryNotifierIcon.Click -= BatteryNotifierIcon_Click;
+        }
 
         private void Dashboard_FormClosed(object? sender, FormClosedEventArgs e)
         {
@@ -569,7 +598,7 @@ namespace BatteryNotifier.Forms
 
                 // Detach all event handlers explicitly
                 DetachEventHandlers();
-                
+
                 // Dispose managers in reverse order of creation
                 _contextMenuManager?.Dispose();
                 _windowManager?.Dispose();
@@ -582,7 +611,7 @@ namespace BatteryNotifier.Forms
 
                 // Clean up services
                 BatteryMonitorService.Instance?.Dispose();
-        
+
                 // Clear notification service state
                 NotificationService.Instance.ClearNotifications();
                 NotificationService.Instance.ClearDeduplicationCache();
