@@ -21,6 +21,8 @@ namespace BatteryNotifier.Lib.Manager
         private Label remainingTimeLabel = remainingTimeLabel;
         private PictureBox batteryImage = batteryImage;
 
+        private Image? _currentImage;
+
         public void RefreshBatteryStatus()
         {
             if (_disposed) throw new ObjectDisposedException(nameof(BatteryManager));
@@ -67,13 +69,28 @@ namespace BatteryNotifier.Lib.Manager
 
             UtilityHelper.SafeInvoke(batteryImage, () =>
             {
-                if (batteryImage.Image != desiredImage)
+                if (batteryImage.Image == desiredImage) return;
+                
+                Image? previousImage = _currentImage;
+                _currentImage = desiredImage;
+
+                batteryImage.SuspendLayout();
+                try
                 {
                     batteryImage.Image = desiredImage;
+
+                    var updateRegion = UtilityHelper.GetImageUpdateRegion(previousImage, desiredImage);
+                    if (!updateRegion.IsEmpty)
+                    {
+                        batteryImage.Invalidate(updateRegion);
+                    }
+                }
+                finally
+                {
+                    batteryImage.ResumeLayout(false);
                 }
             });
         }
-
 
         private void UpdateBatteryChargeRemainingStatus()
         {
@@ -141,7 +158,7 @@ namespace BatteryNotifier.Lib.Manager
                 }
             });
         }
-        
+
         public void Dispose()
         {
             if (_disposed) return;

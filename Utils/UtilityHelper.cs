@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -66,9 +67,48 @@ namespace BatteryNotifier.Utils
         public static void SafeInvoke(Control? control, Action action)
         {
             if (control.InvokeRequired)
-                control.Invoke(action);
+                control.BeginInvoke(action);
             else
                 action();
         }
+        
+        public static void EnableDoubleBuffering(Control ctrl)
+        {
+            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.SetValue(ctrl, true, null);
+        }
+
+        public static void EnableDoubleBufferingRecursively(Control parent)
+        {
+            foreach (Control ctrl in parent.Controls)
+            {
+                EnableDoubleBuffering(ctrl);
+                if (ctrl.HasChildren)
+                {
+                    EnableDoubleBufferingRecursively(ctrl);
+                }
+            }
+        }
+        
+        public static Rectangle GetImageUpdateRegion(Image? oldImage, Image newImage)
+        {
+            // For GIF animations, typically the entire image changes
+            // but you could implement more sophisticated clipping here
+            // based on your specific animation patterns
+        
+            if (oldImage != null && oldImage.Size != newImage.Size)
+            {
+                // Size changed, need full redraw
+                return new Rectangle(0, 0, 
+                    Math.Max(oldImage.Width, newImage.Width),
+                    Math.Max(oldImage.Height, newImage.Height));
+            }
+        
+            // For most GIF animations, return the full image bounds
+            // In more complex scenarios, you could analyze pixel differences
+            return new Rectangle(0, 0, newImage.Width, newImage.Height);
+        }
+        
+        
     }
 }
