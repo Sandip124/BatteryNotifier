@@ -14,7 +14,7 @@ namespace BatteryNotifier.Lib.Manager
         private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
         
         private readonly SoundPlayer _batteryNotificationPlayer = new();
-        private CancellationTokenSource _cancellationTokenSource = new();
+        private CancellationTokenSource? _cancellationTokenSource = new();
         private bool _isPlaying;
         private bool _disposed;
         private readonly Debouncer _debouncer = new();
@@ -22,8 +22,11 @@ namespace BatteryNotifier.Lib.Manager
         public async Task PlaySoundAsync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
             int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)
         {
-            if (_disposed || _isPlaying) return;
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(SoundManager));
 
+            if (_isPlaying) return;
+            
             try
             {
                 _isPlaying = true;
@@ -113,18 +116,31 @@ namespace BatteryNotifier.Lib.Manager
 
         public string BrowseForSoundFile()
         {
-            using var fileBrowser = new OpenFileDialog
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(SoundManager));
+            
+            string fileName;
+
+            using (var fileBrowser = new OpenFileDialog
+                   {
+                       DefaultExt = "wav",
+                       Filter = @"Wave files (*.wav)|*.wav|All files (*.*)|*.*",
+                       Title = @"Select Sound File"
+                   })
             {
-                DefaultExt = "wav",
-                Filter = @"Wave files (*.wav)|*.wav|All files (*.*)|*.*",
-                Title = @"Select Sound File"
-            };
+                if (fileBrowser.ShowDialog() != DialogResult.OK)
+                    return string.Empty;
+                
+                fileName = fileBrowser.FileName;
+            }
 
-            if (fileBrowser.ShowDialog() != DialogResult.OK)
-                return string.Empty;
-
-            var fileName = fileBrowser.FileName;
-
+            // Force a garbage collection to reclaim dialog resources
+            _debouncer.Debounce(() => 
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            });
+            
             if (!UtilityHelper.IsValidWavFile(fileName))
             {
                 NotificationService.Instance.PublishNotification("Only .wav file is supported.", NotificationType.Inline);
@@ -148,10 +164,12 @@ namespace BatteryNotifier.Lib.Manager
 
                 _cancellationTokenSource?.Cancel();
                 _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
 
                 _batteryNotificationPlayer?.Stop();
                 _batteryNotificationPlayer?.Dispose();
-                _debouncer.Dispose();
+                _debouncer?.Dispose();
+        
                 _disposed = true;
             }
         }

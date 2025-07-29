@@ -23,7 +23,8 @@ namespace BatteryNotifier.Lib.Manager
         private readonly ToolStripMenuItem _startMinimizedItem;
         private readonly ToolStripMenuItem _viewSourceItem;
         private readonly ToolStripMenuItem _exitAppItem;
-        
+
+        private NotifyIcon? _attachedNotifyIcon;
         private readonly Dashboard dashboard;
 
         public ContextMenuManager(SoundManager soundManager, Dashboard dashboard)
@@ -49,8 +50,6 @@ namespace BatteryNotifier.Lib.Manager
                 _viewSourceItem,
                 _exitAppItem
             ]);
-            
-            ForceGarbageCollection();
 
             return _contextMenu;
         }
@@ -68,8 +67,6 @@ namespace BatteryNotifier.Lib.Manager
             _startMinimizedItem.Text = new StringBuilder().Append("Start Minimized")
                 .Append(appSetting.Default.startMinimized ? " ✔" : "")
                 .ToString();
-            
-            ForceGarbageCollection();
         }
 
         private ToolStripMenuItem CreateExitApplicationMenuItem()
@@ -81,7 +78,7 @@ namespace BatteryNotifier.Lib.Manager
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.DefaultRegularFont
             };
-            exitAppItem.Click += (s, e) => ExitApp_Click();
+            exitAppItem.Click += ExitApp_Click;
             return exitAppItem;
         }
 
@@ -94,7 +91,7 @@ namespace BatteryNotifier.Lib.Manager
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.DefaultRegularFont
             };
-            viewSourceItem.Click += (s, e) => ViewSource_Click();
+            viewSourceItem.Click += ViewSource_Click;
             return viewSourceItem;
         }
 
@@ -106,7 +103,7 @@ namespace BatteryNotifier.Lib.Manager
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.DefaultRegularFont
             };
-            startMinimizedItem.Click += (s, e) => StartMinimized_Click();
+            startMinimizedItem.Click += StartMinimized_Click;
             return startMinimizedItem;
         }
 
@@ -118,7 +115,7 @@ namespace BatteryNotifier.Lib.Manager
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.DefaultRegularFont
             };
-            lowBatteryNotificationItem.Click += (s, e) => LowBatteryNotification_Click();
+            lowBatteryNotificationItem.Click += LowBatteryNotification_Click;
             return lowBatteryNotificationItem;
         }
 
@@ -130,25 +127,28 @@ namespace BatteryNotifier.Lib.Manager
                 TextAlign = ContentAlignment.MiddleCenter,
                 Font = FontProvider.DefaultRegularFont
             };
-            fullBatteryNotificationItem.Click +=
-                (s, e) => FullBatteryNotification_Click();
+            fullBatteryNotificationItem.Click += FullBatteryNotification_Click;
             return fullBatteryNotificationItem;
         }
 
         public void AttachContextMenu(NotifyIcon notifyIcon)
         {
+            _attachedNotifyIcon = notifyIcon;
             notifyIcon.ContextMenuStrip = InitializeContextMenu();
-            
+
             notifyIcon.Click += NotifyIcon_Click;
             notifyIcon.BalloonTipClicked += NotifyIcon_BalloonTipClicked;
             notifyIcon.BalloonTipClosed += NotifyIcon_BalloonTipClosed;
         }
-        
+
         private void NotifyIcon_Click(object sender, EventArgs e) => BatteryNotifierIcon_Click();
-        private void NotifyIcon_BalloonTipClicked(object sender, EventArgs e) => BatteryNotifierIcon_BalloonTipClicked();
+
+        private void NotifyIcon_BalloonTipClicked(object sender, EventArgs e) =>
+            BatteryNotifierIcon_BalloonTipClicked();
+
         private void NotifyIcon_BalloonTipClosed(object sender, EventArgs e) => BatteryNotifierIcon_BalloonTipClosed();
 
-        private void FullBatteryNotification_Click()
+        private void FullBatteryNotification_Click(object sender, EventArgs e)
         {
             appSetting.Default.fullBatteryNotification = !appSetting.Default.fullBatteryNotification;
             appSetting.Default.Save();
@@ -156,12 +156,12 @@ namespace BatteryNotifier.Lib.Manager
             NotificationService.Instance.PublishNotification(
                 new StringBuilder().Append("🔔 Full Battery Notification ")
                     .Append(appSetting.Default.fullBatteryNotification ? "Enabled" : "Disabled")
-                    .ToString(),NotificationType.Inline);
+                    .ToString(), NotificationType.Inline);
 
             UpdateMenuItemText();
         }
 
-        private void LowBatteryNotification_Click()
+        private void LowBatteryNotification_Click(object sender, EventArgs e)
         {
             appSetting.Default.lowBatteryNotification = !appSetting.Default.lowBatteryNotification;
             appSetting.Default.Save();
@@ -169,12 +169,12 @@ namespace BatteryNotifier.Lib.Manager
             NotificationService.Instance.PublishNotification(
                 new StringBuilder().Append("🔔 Low Battery Notification ")
                     .Append(appSetting.Default.lowBatteryNotification ? "Enabled" : "Disabled")
-                    .ToString(),NotificationType.Inline);
+                    .ToString(), NotificationType.Inline);
 
             UpdateMenuItemText();
         }
 
-        private void StartMinimized_Click()
+        private void StartMinimized_Click(object sender, EventArgs e)
         {
             appSetting.Default.startMinimized = !appSetting.Default.startMinimized;
             appSetting.Default.Save();
@@ -182,18 +182,17 @@ namespace BatteryNotifier.Lib.Manager
             NotificationService.Instance.PublishNotification(
                 new StringBuilder().Append("🔔 Start Minimized ")
                     .Append(appSetting.Default.startMinimized ? "Enabled" : "Disabled")
-                    .ToString(),NotificationType.Inline);
+                    .ToString(), NotificationType.Inline);
 
             UpdateMenuItemText();
-            
         }
 
-        private void ViewSource_Click()
+        private void ViewSource_Click(object sender, EventArgs e)
         {
             UtilityHelper.StartExternalUrlProcess(Constant.SourceRepositoryUrl);
         }
 
-        private void ExitApp_Click()
+        private void ExitApp_Click(object sender, EventArgs e)
         {
             dashboard.Close();
         }
@@ -209,8 +208,6 @@ namespace BatteryNotifier.Lib.Manager
                 dashboard.Show();
                 dashboard.WindowState = FormWindowState.Normal;
             }
-            
-            ForceGarbageCollection();
         }
 
         private void BatteryNotifierIcon_BalloonTipClicked()
@@ -223,11 +220,14 @@ namespace BatteryNotifier.Lib.Manager
         {
             _soundManager.StopSound();
         }
-        
-        private void ForceGarbageCollection()
+
+        private void DetachEventHandlers()
         {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
+            _fullBatteryNotificationItem.Click -= FullBatteryNotification_Click;
+            _lowBatteryNotificationItem.Click -= LowBatteryNotification_Click;
+            _startMinimizedItem.Click -= StartMinimized_Click;
+            _viewSourceItem.Click -= ViewSource_Click;
+            _exitAppItem.Click -= ExitApp_Click;
         }
 
         public void Dispose()
@@ -238,11 +238,22 @@ namespace BatteryNotifier.Lib.Manager
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && disposing)
+            if (_disposed || !disposing) return;
+
+            if (_attachedNotifyIcon != null)
             {
-                _contextMenu?.Dispose();
-                _disposed = true;
+                _attachedNotifyIcon.Click -= NotifyIcon_Click;
+                _attachedNotifyIcon.BalloonTipClicked -= NotifyIcon_BalloonTipClicked;
+                _attachedNotifyIcon.BalloonTipClosed -= NotifyIcon_BalloonTipClosed;
+                _attachedNotifyIcon.ContextMenuStrip = null;
+                _attachedNotifyIcon = null;
             }
+
+            DetachEventHandlers();
+
+            _contextMenu?.Dispose();
+
+            _disposed = true;
         }
     }
 }

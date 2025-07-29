@@ -42,15 +42,7 @@ namespace BatteryNotifier.Lib.Manager
 
         private void ShowBalloonTip(string title, string message)
         {
-            try
-            {
-                notifyIcon.ShowBalloonTip(NOTIFICATION_COOLDOWN_MS, title, message, ToolTipIcon.Info);
-            }
-            catch (Exception ex)
-            {
-                //TODO : use internal notification service to log errors
-                //NotificationService.Instance.PublishNotification($"Error showing balloon tip: {ex.Message}");
-            }
+            notifyIcon.ShowBalloonTip(NOTIFICATION_COOLDOWN_MS, title, message, ToolTipIcon.Info);
         }
 
         private void StopAllNotifications()

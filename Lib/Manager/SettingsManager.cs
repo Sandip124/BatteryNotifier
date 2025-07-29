@@ -19,6 +19,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public SettingsManager LoadCheckboxSettings(CheckBox pinToNotificationArea, CheckBox launchAtStartup)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.SafeInvoke(pinToNotificationArea, () =>
             {
                 pinToNotificationArea.Checked = appSetting.Default.PinToNotificationArea;
@@ -30,6 +32,8 @@ namespace BatteryNotifier.Lib.Manager
         public SettingsManager LoadTrackbarSettings(TrackBar fullBatteryTrackbar, TrackBar lowBatteryTrackbar,
             Label fullBatteryPercentageLabel, Label lowBatteryPercentageLabel)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.SafeInvoke(fullBatteryTrackbar, () =>
             {
                 fullBatteryTrackbar.Value = appSetting.Default.fullBatteryNotificationValue;
@@ -53,6 +57,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public SettingsManager LoadSoundSettings(TextBox fullBatterySound, TextBox lowBatterySound)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.SafeInvoke(fullBatterySound, () =>
             {
                 fullBatterySound.Text = appSetting.Default.fullBatteryNotificationMusic;
@@ -64,6 +70,8 @@ namespace BatteryNotifier.Lib.Manager
         public SettingsManager LoadThemeSettings(RadioButton systemThemeLabel, RadioButton darkThemeLabel,
             RadioButton lightThemeLabel)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.SafeInvoke(systemThemeLabel, () =>
             {
                 if (appSetting.Default.SystemThemeApplied)
@@ -85,6 +93,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public SettingsManager LoadNotificationSettings(CheckBox fullBatteryCheckbox, CheckBox lowBatteryCheckbox)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.RenderCheckboxState(fullBatteryCheckbox, appSetting.Default.fullBatteryNotification);
             UtilityHelper.RenderCheckboxState(lowBatteryCheckbox, appSetting.Default.lowBatteryNotification);
             return this;
@@ -126,6 +136,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public void HandleFullBatteryNotificationChange(CheckBox checkbox)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.RenderCheckboxState(checkbox, checkbox.Checked);
             appSetting.Default.fullBatteryNotification = checkbox.Checked;
             appSetting.Default.Save();
@@ -133,6 +145,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public void HandleLowBatteryNotificationChange(CheckBox checkbox)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
+
             UtilityHelper.RenderCheckboxState(checkbox, checkbox.Checked);
             appSetting.Default.lowBatteryNotification = checkbox.Checked;
             appSetting.Default.Save();

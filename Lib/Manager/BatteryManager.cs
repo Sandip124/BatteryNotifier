@@ -16,9 +16,15 @@ namespace BatteryNotifier.Lib.Manager
         : IDisposable
     {
         private bool _disposed;
+        private Label batteryStatusLabel = batteryStatusLabel;
+        private Label batteryPercentageLabel = batteryPercentageLabel;
+        private Label remainingTimeLabel = remainingTimeLabel;
+        private PictureBox batteryImage = batteryImage;
 
         public void RefreshBatteryStatus()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(BatteryManager));
+
             UtilityHelper.SafeInvoke(batteryStatusLabel, () =>
             {
                 if (BatteryManagerStore.Instance.IsCharging)
@@ -51,6 +57,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public void UpdateChargingAnimation()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(BatteryManager));
+
             if (!BatteryManagerStore.Instance.IsCharging) return;
 
             var desiredImage = ThemeUtils.IsDarkTheme
@@ -69,6 +77,8 @@ namespace BatteryNotifier.Lib.Manager
 
         private void UpdateBatteryChargeRemainingStatus()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(BatteryManager));
+
             UtilityHelper.SafeInvoke(remainingTimeLabel, () =>
             {
                 if (BatteryManagerStore.Instance.BatteryLifeRemaining >= 0)
@@ -84,6 +94,8 @@ namespace BatteryNotifier.Lib.Manager
 
         private void UpdateBatteryPercentage()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(BatteryManager));
+
             UtilityHelper.SafeInvoke(batteryPercentageLabel,
                 () =>
                 {
@@ -96,6 +108,8 @@ namespace BatteryNotifier.Lib.Manager
 
         private void SetBatteryChargeStatus()
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(BatteryManager));
+
             if (BatteryManagerStore.Instance.IsCharging) return;
 
             UtilityHelper.SafeInvoke(batteryStatusLabel, () =>
@@ -127,19 +141,17 @@ namespace BatteryNotifier.Lib.Manager
                 }
             });
         }
-
+        
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
+            if (_disposed) return;
 
-        private void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
-            {
-                _disposed = true;
-            }
+            batteryStatusLabel = null;
+            batteryPercentageLabel = null;
+            remainingTimeLabel = null;
+            batteryImage = null;
+
+            _disposed = true;
         }
     }
 

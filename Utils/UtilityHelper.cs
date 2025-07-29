@@ -63,7 +63,7 @@ namespace BatteryNotifier.Utils
             });
         }
         
-        public static void SafeInvoke(Control control, Action action)
+        public static void SafeInvoke(Control? control, Action action)
         {
             if (control.InvokeRequired)
                 control.Invoke(action);

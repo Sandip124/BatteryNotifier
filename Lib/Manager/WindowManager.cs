@@ -23,6 +23,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public void RenderTitleBarCursor(Label appHeaderTitle)
         {
+            if (_disposed) throw new ObjectDisposedException(nameof(WindowManager));
+
             UtilityHelper.SafeInvoke(appHeaderTitle, () =>
             {
                 appHeaderTitle.Cursor = appSetting.Default.PinToNotificationArea ? Cursors.Default : Cursors.SizeAll;
@@ -88,11 +90,14 @@ namespace BatteryNotifier.Lib.Manager
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && disposing)
-            {
-                _debouncer?.Dispose();
-                _disposed = true;
-            }
+            if (_disposed || !disposing) return;
+
+            _debouncer?.Dispose();
+    
+            _mouseDown = false;
+            _lastLocation = Point.Empty;
+    
+            _disposed = true;
         }
     }
 }

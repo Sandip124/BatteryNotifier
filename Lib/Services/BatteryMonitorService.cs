@@ -18,13 +18,13 @@ public sealed class BatteryMonitorService : IDisposable
     private int _lowBatteryThreshold = 20;
     private int _fullBatteryThreshold = 90;
 
-    private const int BATTERY_LEVEL_CHECK_THRESHOLD = 30000;
+    private const int BATTERY_LEVEL_CHECK_THRESHOLD = 120000;
 
-    public event EventHandler<BatteryStatusEventArgs> BatteryStatusChanged;
-    public event EventHandler<BatteryStatusEventArgs> PowerLineStatusChanged;
+    public event EventHandler<BatteryStatusEventArgs>? BatteryStatusChanged;
+    public event EventHandler<BatteryStatusEventArgs>? PowerLineStatusChanged;
 
-    private BackgroundWorker _backgroundWorker;
-    private ManagementEventWatcher _powerEventWatcher;
+    private BackgroundWorker? _backgroundWorker;
+    private ManagementEventWatcher? _powerEventWatcher;
     private bool _disposed;
 
     private BatteryMonitorService()
@@ -128,7 +128,7 @@ public sealed class BatteryMonitorService : IDisposable
                                                       BatteryChargeStatus.Charging);
         BatteryManagerStore.Instance.SetBatteryState(currentLevel);
         BatteryManagerStore.Instance.SetBatteryLife(currentStatus.BatteryLifeRemaining);
-        BatteryManagerStore.Instance.SetBatteryLifePercentage(Math.Round(currentStatus.BatteryLifePercent*100,0));
+        BatteryManagerStore.Instance.SetBatteryLifePercentage(Math.Round(currentStatus.BatteryLifePercent * 100, 0));
         BatteryManagerStore.Instance.SetHasNoBattery(
             currentStatus.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery);
         BatteryManagerStore.Instance.SetIsUnknown(
@@ -159,20 +159,25 @@ public sealed class BatteryMonitorService : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-
-        _disposed = true;
-
+        
         _backgroundWorker?.CancelAsync();
+        _backgroundWorker?.Dispose();
+        _backgroundWorker = null;
 
-        try
+        if (_powerEventWatcher != null)
         {
+            _powerEventWatcher.EventArrived -= OnWmiPowerEvent;
             _powerEventWatcher?.Stop();
             _powerEventWatcher?.Dispose();
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error disposing WMI watcher: {ex.Message}");
-        }
+
+        _powerEventWatcher = null;
+
+        BatteryStatusChanged = null;
+        PowerLineStatusChanged = null;
+
+        _disposed = true;
+
     }
 }
 

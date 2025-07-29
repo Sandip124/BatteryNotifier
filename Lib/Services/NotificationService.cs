@@ -6,7 +6,7 @@ using BatteryNotifier.Utils;
 
 namespace BatteryNotifier.Lib.Services;
 
-public sealed class NotificationService
+public sealed class NotificationService : IDisposable
 {
     private static readonly Lazy<NotificationService> _instance = 
         new Lazy<NotificationService>(() => new NotificationService());
@@ -23,6 +23,8 @@ public sealed class NotificationService
     private TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
 
     private DateTime _lastCleanup = DateTime.Now;
+    
+    private bool _disposed = false;
     
     public event EventHandler<NotificationMessage>? NotificationReceived;
     
@@ -188,6 +190,19 @@ public sealed class NotificationService
                 return _recentNotifications.Count;
             }
         }
+    }
+    
+     
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        ClearNotifications();
+        ClearDeduplicationCache();
+        
+        NotificationReceived = null;
+        
+        _disposed = true;
     }
 }
 

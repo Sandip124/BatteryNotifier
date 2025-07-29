@@ -9,6 +9,8 @@ namespace BatteryNotifier.Lib.Providers;
 
 internal class FontProvider : IDisposable
 {
+    private bool _disposed;
+    
     [DllImport("gdi32.dll")]
     private static extern IntPtr AddFontMemResourceEx(IntPtr pbFont, uint cbFont, IntPtr pdv, [In] ref uint pcFonts);
 
@@ -44,7 +46,11 @@ internal class FontProvider : IDisposable
 
     public static Font GetFont(float size = 8F, FontStyle style = FontStyle.Regular)
     {
-        return _default.Value.GetOrCreateFont(size, style);
+        var instance = _default.Value;
+        if (instance._disposed)
+            throw new ObjectDisposedException(nameof(FontProvider));
+        
+        return instance.GetOrCreateFont(size, style);
     }
 
     private Font GetOrCreateFont(float size, FontStyle style)
@@ -57,24 +63,37 @@ internal class FontProvider : IDisposable
         }
         return font;
     }
+    
+    public static void Cleanup()
+    {
+        if (_default.IsValueCreated)
+        {
+            _default.Value.Dispose();
+        }
+    }
 
     public void Dispose()
     {
+        if (_disposed)
+            return;
+        
         foreach (var font in _fontCache.Values)
         {
             font.Dispose();
         }
-
         _fontCache.Clear();
 
         foreach (var handle in _fontHandles)
         {
-            RemoveFontMemResourceEx(handle);
+            if (handle != IntPtr.Zero)
+            {
+                RemoveFontMemResourceEx(handle);
+            }
         }
-
         _fontHandles.Clear();
 
         _fontsCollection.Dispose();
-        
+    
+        _disposed = true;
     }
 }

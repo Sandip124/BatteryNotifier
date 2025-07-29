@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Lib.CustomControls.FlatTabControl;
 using BatteryNotifier.Lib.Manager;
+using BatteryNotifier.Lib.Providers;
 using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Utils;
@@ -205,6 +205,7 @@ namespace BatteryNotifier.Forms
         {
             // Form events
             Activated += Dashboard_Activated;
+            FormClosed += Dashboard_FormClosed;
 
             // Close icon events
             CloseIcon.Click += CloseIcon_Click;
@@ -267,7 +268,6 @@ namespace BatteryNotifier.Forms
 
         private void Dashboard_Activated(object? sender, EventArgs e)
         {
-            BatteryStatusTimer.Start();
             _settingsManager.LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox);
             this.RenderFormPosition(BatteryNotifierIcon);
 
@@ -492,30 +492,105 @@ namespace BatteryNotifier.Forms
             {
                 NotificationService.Instance.ClearNotifications();
                 NotificationService.Instance.ClearDeduplicationCache();
+
+                ForceGarbageCollection();
             }
         }
-
+        
         private void ForceGarbageCollection()
         {
             GC.Collect();
             GC.WaitForPendingFinalizers();
+        }
+        
+        private void DetachEventHandlers()
+{
+    // Form events
+    Activated -= Dashboard_Activated;
+    FormClosed -= Dashboard_FormClosed;
+
+    // Close icon events
+    CloseIcon.Click -= CloseIcon_Click;
+    CloseIcon.MouseEnter -= CloseIcon_MouseEnter;
+    CloseIcon.MouseLeave -= CloseIcon_MouseLeave;
+
+    // Notification checkbox events
+    FullBatteryNotificationCheckbox.CheckedChanged -= FullBatteryNotificationCheckbox_CheckStateChanged;
+    LowBatteryNotificationCheckbox.CheckedChanged -= LowBatteryNotificationCheckbox_CheckStateChanged;
+
+    // Window dragging events
+    AppHeaderTitle.MouseDown -= AppHeaderTitle_MouseDown;
+    AppHeaderTitle.MouseMove -= AppHeaderTitle_MouseMove;
+    AppHeaderTitle.MouseUp -= AppHeaderTitle_MouseUp;
+
+    // Trackbar events
+    lowBatteryTrackbar.Scroll -= LowBatteryTrackbar_Scroll;
+    lowBatteryTrackbar.ValueChanged -= LowBatteryTrackbar_ValueChanged;
+    fullBatteryTrackbar.Scroll -= FullBatteryTrackbar_Scroll;
+    fullBatteryTrackbar.ValueChanged -= FullBatteryTrackbar_ValueChanged;
+
+    // Settings events
+    PinToNotificationArea.CheckedChanged -= PinToNotificationArea_CheckedChanged;
+    launchAtStartup.CheckedChanged -= LaunchAtStartup_CheckedChanged;
+
+    // Theme events
+    SystemThemeLabel.CheckedChanged -= SystemThemeLabel_CheckedChanged;
+    DarkThemeLabel.CheckedChanged -= DarkThemeLabel_CheckedChanged;
+    LightThemeLabel.CheckedChanged -= LightThemeLabel_CheckedChanged;
+
+    // Sound browser events
+    BrowseFullBatterySound.Click -= BrowseFullBatterySound_Click;
+    BrowseLowBatterySound.Click -= BrowseLowBatterySound_Click;
+
+    // Reset Music Selection events
+    ResetFullBatterySound.Click -= ResetFullBatterySound_Click;
+    ResetLowBatterySound.Click -= ResetLowBatterySound_Click;
+
+    // Other events
+    VersionLabel.Click -= VersionLabel_Click;
+    BatteryNotifierIcon.BalloonTipClicked -= BatteryNotifierIcon_BalloonTipClicked;
+    BatteryNotifierIcon.BalloonTipClosed -= BatteryNotifierIcon_BalloonTipClosed;
+    BatteryNotifierIcon.Click -= BatteryNotifierIcon_Click;
+}
+
+        private void Dashboard_FormClosed(object? sender, FormClosedEventArgs e)
+        {
+            Dispose();
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
-                _batteryManager?.Dispose();
-                _notificationManager?.Dispose();
-                _themeManager?.Dispose();
-                _settingsManager?.Dispose();
-                _soundManager?.Dispose();
-                _windowManager?.Dispose();
+                // Unsubscribe from events first to prevent callbacks during disposal
+                BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
+                BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
+                NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+
+                // Detach all event handlers explicitly
+                DetachEventHandlers();
+                
+                // Dispose managers in reverse order of creation
                 _contextMenuManager?.Dispose();
+                _windowManager?.Dispose();
+                _soundManager?.Dispose();
+                _settingsManager?.Dispose();
+                _themeManager?.Dispose();
+                _notificationManager?.Dispose();
+                _batteryManager?.Dispose();
                 _debouncer?.Dispose();
 
-                BatteryMonitorService.Instance.Dispose();
+                // Clean up services
+                BatteryMonitorService.Instance?.Dispose();
+        
+                // Clear notification service state
+                NotificationService.Instance.ClearNotifications();
+                NotificationService.Instance.ClearDeduplicationCache();
 
+                // Clean up font resources
+                FontProvider.Cleanup();
+
+                // Dispose designer-generated resources
                 components?.Dispose();
             }
 

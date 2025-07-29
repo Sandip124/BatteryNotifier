@@ -110,7 +110,6 @@ namespace BatteryNotifier.Forms
             this.tableLayoutPanel4 = new System.Windows.Forms.TableLayoutPanel();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.BatteryStatusTimer = new System.Windows.Forms.Timer(this.components);
             this.ShowNotificationTimer = new System.Windows.Forms.Timer(this.components);
             this.tableLayoutPanel5.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox2)).BeginInit();
@@ -1394,7 +1393,6 @@ namespace BatteryNotifier.Forms
         private TableLayoutPanel tableLayoutPanel4;
         private PictureBox pictureBox1;
         private CheckBox checkBox1;
-        private System.Windows.Forms.Timer BatteryStatusTimer;
         private System.Windows.Forms.Timer ShowNotificationTimer;
         private System.Windows.Forms.Panel AppFooter;
         private System.Windows.Forms.Label VersionLabel;

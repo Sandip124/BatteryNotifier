@@ -174,10 +174,15 @@ namespace BatteryNotifier.Lib.Manager
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && disposing)
-            {
-                _disposed = true;
-            }
+            if (_disposed || !disposing) return;
+
+            foregroundControls?.Clear();
+            accentControls?.Clear();
+            accent2Controls?.Clear();
+            accent3Controls?.Clear();
+            flatTabCustomControls?.Clear();
+
+            _disposed = true;
         }
 
         private static class ImageCache
