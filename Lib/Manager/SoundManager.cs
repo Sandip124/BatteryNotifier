@@ -34,7 +34,7 @@ namespace BatteryNotifier.Lib.Manager
                 _cancellationTokenSource?.Cancel();
                 _cancellationTokenSource = new CancellationTokenSource();
 
-                await SetupSoundSource(source, fallbackSoundSource);
+                SetupSoundSource(source, fallbackSoundSource);
 
                 if (loop)
                 {
@@ -60,12 +60,7 @@ namespace BatteryNotifier.Lib.Manager
             }
         }
 
-        private async Task SetupSoundSource(string source, UnmanagedMemoryStream fallbackSoundSource)
-        {
-            await Task.Run(() => SetupSoundSourceSync(source, fallbackSoundSource));
-        }
-
-        private void SetupSoundSourceSync(string source, UnmanagedMemoryStream fallbackSoundSource)
+        private void SetupSoundSource(string source, UnmanagedMemoryStream fallbackSoundSource)
         {
             if (!string.IsNullOrEmpty(source) && File.Exists(source))
             {
