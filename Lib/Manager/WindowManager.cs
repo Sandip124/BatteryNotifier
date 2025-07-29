@@ -27,13 +27,13 @@ namespace BatteryNotifier.Lib.Manager
 
             UtilityHelper.SafeInvoke(appHeaderTitle, () =>
             {
-                appHeaderTitle.Cursor = appSetting.Default.PinToNotificationArea ? Cursors.Default : Cursors.SizeAll;
+                appHeaderTitle.Cursor = appSetting.Default.PinToWindow ? Cursors.Default : Cursors.SizeAll;
             });
         }
         
         public void HandleCloseClick()
         {
-            if (appSetting.Default.PinToNotificationArea)
+            if (appSetting.Default.PinToWindow)
             {
                 dashboard.Hide();
             }
@@ -45,7 +45,7 @@ namespace BatteryNotifier.Lib.Manager
 
         public void HandleMouseDown(MouseEventArgs e)
         {
-            if (appSetting.Default.PinToNotificationArea) return;
+            if (appSetting.Default.PinToWindow) return;
 
             _mouseDown = true;
             _lastLocation = e.Location;
@@ -53,7 +53,7 @@ namespace BatteryNotifier.Lib.Manager
 
         public void HandleMouseMove(MouseEventArgs e)
         {
-            if (appSetting.Default.PinToNotificationArea || !_mouseDown) return;
+            if (appSetting.Default.PinToWindow || !_mouseDown) return;
 
             var xPosition = dashboard.Location.X - _lastLocation.X + e.X;
             var yPosition = dashboard.Location.Y - _lastLocation.Y + e.Y;
@@ -78,7 +78,7 @@ namespace BatteryNotifier.Lib.Manager
 
         public void HandleMouseUp(MouseEventArgs e)
         {
-            if (appSetting.Default.PinToNotificationArea) return;
+            if (appSetting.Default.PinToWindow) return;
             _mouseDown = false;
         }
 

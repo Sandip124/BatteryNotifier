@@ -64,7 +64,7 @@ namespace BatteryNotifier.Forms
 
             var backAccent3Controls = new Control[]
             {
-                PinToNotificationAreaPictureBox, ThemePictureBox, LaunchAtStartUpPictureBox, NotificationSettingLabel,
+                PinToWindowPictureBox, ThemePictureBox, LaunchAtStartUpPictureBox, NotificationSettingLabel,
                 SettingHeader
             };
 
@@ -74,7 +74,7 @@ namespace BatteryNotifier.Forms
                 FullBatteryLabel, LowBatteryLabel, VersionLabel,
                 NotificationText, ThemePanel, SystemThemeLabel,
                 LightThemeLabel, DarkThemeLabel, NotificationPanel,
-                FullBatteryNotificationPercentageLabel, PinToNotificationAreaLabel, LaunchAtStartUpLabel,
+                FullBatteryNotificationPercentageLabel, PinToWindowLabel, LaunchAtStartUpLabel,
                 BatteryPercentageLabel, LowBatteryNotificationPercentageLabel, LowBatterySound, FullBatterySound
             };
 
@@ -192,7 +192,7 @@ namespace BatteryNotifier.Forms
                 _themeManager.ApplyTheme(ThemePictureBox, CloseIcon);
                 _windowManager.RenderTitleBarCursor(AppHeaderTitle);
                 ApplyFontStyle();
-                _settingsManager.LoadCheckboxSettings(PinToNotificationArea, launchAtStartup)
+                _settingsManager.LoadCheckboxSettings(PinToWindow, launchAtStartup)
                     .LoadTrackbarSettings(fullBatteryTrackbar, lowBatteryTrackbar,
                         FullBatteryNotificationPercentageLabel, LowBatteryNotificationPercentageLabel)
                     .LoadThemeSettings(SystemThemeLabel, DarkThemeLabel, LightThemeLabel)
@@ -248,7 +248,7 @@ namespace BatteryNotifier.Forms
             fullBatteryTrackbar.ValueChanged += FullBatteryTrackbar_ValueChanged;
 
             // Settings events
-            PinToNotificationArea.CheckedChanged += PinToNotificationArea_CheckedChanged;
+            PinToWindow.CheckedChanged += PinToWindow_CheckedChanged;
             launchAtStartup.CheckedChanged += LaunchAtStartup_CheckedChanged;
 
             // Theme events
@@ -309,7 +309,7 @@ namespace BatteryNotifier.Forms
 
         private void UpdateTaskbarAndIconVisibility()
         {
-            if (appSetting.Default.PinToNotificationArea)
+            if (appSetting.Default.PinToWindow)
             {
                 ShowInTaskbar = false;
                 ShowIcon = false;
@@ -341,9 +341,9 @@ namespace BatteryNotifier.Forms
             BatteryNotifierIcon.ContextMenuStrip = _contextMenuManager.InitializeContextMenu();
         }
 
-        private void PinToNotificationArea_CheckedChanged(object? sender, EventArgs e)
+        private void PinToWindow_CheckedChanged(object? sender, EventArgs e)
         {
-            _settingsManager.UpdatePinToNotificationArea(PinToNotificationArea.Checked);
+            _settingsManager.UpdatePinToWindow(PinToWindow.Checked);
             this.RenderFormPosition(BatteryNotifierIcon);
             _windowManager.RenderTitleBarCursor(AppHeaderTitle);
             UpdateTaskbarAndIconVisibility();
@@ -504,7 +504,7 @@ namespace BatteryNotifier.Forms
             {
                 BatteryStatus, NotificationSettingLabel, FullBatteryLabel, LowBatteryLabel,
                 AppTabControl, FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox,
-                VersionLabel, PinToNotificationAreaLabel, LaunchAtStartUpLabel, ThemeLabel,
+                VersionLabel, PinToWindowLabel, LaunchAtStartUpLabel, ThemeLabel,
                 SystemThemeLabel, LightThemeLabel, DarkThemeLabel, NotificationPanel,
                 SettingHeader, FullBatteryNotificationSettingLabel, LowBatteryNotificationSettingLabel,
                 FullBatteryNotificationPercentageLabel, LowBatteryNotificationPercentageLabel, NotificationText
@@ -559,7 +559,7 @@ namespace BatteryNotifier.Forms
             fullBatteryTrackbar.ValueChanged -= FullBatteryTrackbar_ValueChanged;
 
             // Settings events
-            PinToNotificationArea.CheckedChanged -= PinToNotificationArea_CheckedChanged;
+            PinToWindow.CheckedChanged -= PinToWindow_CheckedChanged;
             launchAtStartup.CheckedChanged -= LaunchAtStartup_CheckedChanged;
 
             // Theme events

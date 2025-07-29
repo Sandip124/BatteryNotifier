@@ -17,13 +17,13 @@ namespace BatteryNotifier.Lib.Manager
             _debouncer = new Debouncer();
         }
 
-        public SettingsManager LoadCheckboxSettings(CheckBox pinToNotificationArea, CheckBox launchAtStartup)
+        public SettingsManager LoadCheckboxSettings(CheckBox PinToWindow, CheckBox launchAtStartup)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
 
-            UtilityHelper.SafeInvoke(pinToNotificationArea, () =>
+            UtilityHelper.SafeInvoke(PinToWindow, () =>
             {
-                pinToNotificationArea.Checked = appSetting.Default.PinToNotificationArea;
+                PinToWindow.Checked = appSetting.Default.PinToWindow;
                 launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
             });
             return this;
@@ -189,9 +189,9 @@ namespace BatteryNotifier.Lib.Manager
             appSetting.Default.Save();
         }
 
-        public void UpdatePinToNotificationArea(bool isChecked)
+        public void UpdatePinToWindow(bool isChecked)
         {
-            appSetting.Default.PinToNotificationArea = isChecked;
+            appSetting.Default.PinToWindow = isChecked;
             appSetting.Default.Save();
         }
 

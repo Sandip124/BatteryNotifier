@@ -73,9 +73,9 @@ namespace BatteryNotifier.Forms
             this.fullBatteryTrackbar = new System.Windows.Forms.TrackBar();
             this.flowLayoutPanel2 = new System.Windows.Forms.FlowLayoutPanel();
             this.ShowAsWindowPanel = new System.Windows.Forms.Panel();
-            this.PinToNotificationAreaPictureBox = new System.Windows.Forms.PictureBox();
-            this.PinToNotificationAreaLabel = new System.Windows.Forms.Label();
-            this.PinToNotificationArea = new System.Windows.Forms.CheckBox();
+            this.PinToWindowPictureBox = new System.Windows.Forms.PictureBox();
+            this.PinToWindowLabel = new System.Windows.Forms.Label();
+            this.PinToWindow = new System.Windows.Forms.CheckBox();
             this.LaunchAtStartupPanel = new System.Windows.Forms.Panel();
             this.LaunchAtStartUpPictureBox = new System.Windows.Forms.PictureBox();
             this.LaunchAtStartUpLabel = new System.Windows.Forms.Label();
@@ -140,7 +140,7 @@ namespace BatteryNotifier.Forms
             ((System.ComponentModel.ISupportInitialize)(this.fullBatteryTrackbar)).BeginInit();
             this.flowLayoutPanel2.SuspendLayout();
             this.ShowAsWindowPanel.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.PinToNotificationAreaPictureBox)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.PinToWindowPictureBox)).BeginInit();
             this.LaunchAtStartupPanel.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.LaunchAtStartUpPictureBox)).BeginInit();
             this.ThemeConfigurationPanel.SuspendLayout();
@@ -251,7 +251,6 @@ namespace BatteryNotifier.Forms
             // 
             // AppContainer
             // 
-            this.AppContainer.BackColor = System.Drawing.Color.Transparent;
             this.AppContainer.ColumnCount = 1;
             this.AppContainer.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
             this.AppContainer.Controls.Add(this.AppFooter, 0, 2);
@@ -696,11 +695,11 @@ namespace BatteryNotifier.Forms
             this.BrowseLowBatterySound.BackColor = System.Drawing.Color.Transparent;
             this.BrowseLowBatterySound.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
             this.BrowseLowBatterySound.Image = global::BatteryNotifier.Properties.Resources.music_icon;
-            this.BrowseLowBatterySound.Location = new System.Drawing.Point(316, 125);
+            this.BrowseLowBatterySound.Location = new System.Drawing.Point(316, 135);
             this.BrowseLowBatterySound.Margin = new System.Windows.Forms.Padding(0);
             this.BrowseLowBatterySound.Name = "BrowseLowBatterySound";
             this.BrowseLowBatterySound.Padding = new System.Windows.Forms.Padding(2);
-            this.BrowseLowBatterySound.Size = new System.Drawing.Size(28, 29);
+            this.BrowseLowBatterySound.Size = new System.Drawing.Size(28, 28);
             this.BrowseLowBatterySound.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.BrowseLowBatterySound.TabIndex = 29;
             this.BrowseLowBatterySound.TabStop = false;
@@ -714,7 +713,7 @@ namespace BatteryNotifier.Forms
             this.BrowseFullBatterySound.Margin = new System.Windows.Forms.Padding(0);
             this.BrowseFullBatterySound.Name = "BrowseFullBatterySound";
             this.BrowseFullBatterySound.Padding = new System.Windows.Forms.Padding(2);
-            this.BrowseFullBatterySound.Size = new System.Drawing.Size(28, 27);
+            this.BrowseFullBatterySound.Size = new System.Drawing.Size(28, 28);
             this.BrowseFullBatterySound.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.BrowseFullBatterySound.TabIndex = 28;
             this.BrowseFullBatterySound.TabStop = false;
@@ -729,7 +728,7 @@ namespace BatteryNotifier.Forms
             this.ResetLowBatterySound.Margin = new System.Windows.Forms.Padding(0);
             this.ResetLowBatterySound.Name = "ResetLowBatterySound";
             this.ResetLowBatterySound.Padding = new System.Windows.Forms.Padding(2);
-            this.ResetLowBatterySound.Size = new System.Drawing.Size(28, 29);
+            this.ResetLowBatterySound.Size = new System.Drawing.Size(28, 28);
             this.ResetLowBatterySound.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.ResetLowBatterySound.TabStop = false;
             this.ResetLowBatterySound.Visible = false;
@@ -744,7 +743,7 @@ namespace BatteryNotifier.Forms
             this.ResetFullBatterySound.Margin = new System.Windows.Forms.Padding(0);
             this.ResetFullBatterySound.Name = "ResetFullBatterySound";
             this.ResetFullBatterySound.Padding = new System.Windows.Forms.Padding(2);
-            this.ResetFullBatterySound.Size = new System.Drawing.Size(28, 27);
+            this.ResetFullBatterySound.Size = new System.Drawing.Size(28, 28);
             this.ResetFullBatterySound.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.ResetFullBatterySound.TabStop = false;
             this.ResetFullBatterySound.Visible = false;
@@ -846,47 +845,47 @@ namespace BatteryNotifier.Forms
             // ShowAsWindowPanel
             // 
             this.ShowAsWindowPanel.BackColor = System.Drawing.Color.WhiteSmoke;
-            this.ShowAsWindowPanel.Controls.Add(this.PinToNotificationAreaPictureBox);
-            this.ShowAsWindowPanel.Controls.Add(this.PinToNotificationAreaLabel);
-            this.ShowAsWindowPanel.Controls.Add(this.PinToNotificationArea);
+            this.ShowAsWindowPanel.Controls.Add(this.PinToWindowPictureBox);
+            this.ShowAsWindowPanel.Controls.Add(this.PinToWindowLabel);
+            this.ShowAsWindowPanel.Controls.Add(this.PinToWindow);
             this.ShowAsWindowPanel.Location = new System.Drawing.Point(0, 2);
             this.ShowAsWindowPanel.Margin = new System.Windows.Forms.Padding(0, 2, 0, 2);
             this.ShowAsWindowPanel.Name = "ShowAsWindowPanel";
             this.ShowAsWindowPanel.Size = new System.Drawing.Size(357, 31);
             this.ShowAsWindowPanel.TabIndex = 30;
             // 
-            // PinToNotificationAreaPictureBox
+            // PinToWindowPictureBox
             // 
-            this.PinToNotificationAreaPictureBox.BackColor = System.Drawing.Color.Transparent;
-            this.PinToNotificationAreaPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
-            this.PinToNotificationAreaPictureBox.Image = global::BatteryNotifier.Properties.Resources.Window;
-            this.PinToNotificationAreaPictureBox.Location = new System.Drawing.Point(0, 0);
-            this.PinToNotificationAreaPictureBox.Name = "PinToNotificationAreaPictureBox";
-            this.PinToNotificationAreaPictureBox.Size = new System.Drawing.Size(30, 31);
-            this.PinToNotificationAreaPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.PinToNotificationAreaPictureBox.TabIndex = 27;
-            this.PinToNotificationAreaPictureBox.TabStop = false;
+            this.PinToWindowPictureBox.BackColor = System.Drawing.Color.Transparent;
+            this.PinToWindowPictureBox.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Zoom;
+            this.PinToWindowPictureBox.Image = global::BatteryNotifier.Properties.Resources.Window;
+            this.PinToWindowPictureBox.Location = new System.Drawing.Point(0, 0);
+            this.PinToWindowPictureBox.Name = "PinToWindowPictureBox";
+            this.PinToWindowPictureBox.Size = new System.Drawing.Size(30, 31);
+            this.PinToWindowPictureBox.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.PinToWindowPictureBox.TabIndex = 27;
+            this.PinToWindowPictureBox.TabStop = false;
             // 
-            // PinToNotificationAreaLabel
+            // PinToWindowLabel
             // 
-            this.PinToNotificationAreaLabel.AutoSize = true;
-            this.PinToNotificationAreaLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
-            this.PinToNotificationAreaLabel.Location = new System.Drawing.Point(32, 6);
-            this.PinToNotificationAreaLabel.Name = "PinToNotificationAreaLabel";
-            this.PinToNotificationAreaLabel.Size = new System.Drawing.Size(170, 20);
-            this.PinToNotificationAreaLabel.TabIndex = 16;
-            this.PinToNotificationAreaLabel.Text = "Pin to Notification Area";
-            this.PinToNotificationAreaLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.PinToWindowLabel.AutoSize = true;
+            this.PinToWindowLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F);
+            this.PinToWindowLabel.Location = new System.Drawing.Point(32, 6);
+            this.PinToWindowLabel.Name = "PinToWindowLabel";
+            this.PinToWindowLabel.Size = new System.Drawing.Size(170, 20);
+            this.PinToWindowLabel.TabIndex = 16;
+            this.PinToWindowLabel.Text = "Pin to Window";
+            this.PinToWindowLabel.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             // 
-            // PinToNotificationArea
+            // PinToWindow
             // 
-            this.PinToNotificationArea.AutoSize = true;
-            this.PinToNotificationArea.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.PinToNotificationArea.Location = new System.Drawing.Point(329, 10);
-            this.PinToNotificationArea.Name = "PinToNotificationArea";
-            this.PinToNotificationArea.Size = new System.Drawing.Size(15, 14);
-            this.PinToNotificationArea.TabIndex = 17;
-            this.PinToNotificationArea.UseVisualStyleBackColor = true;
+            this.PinToWindow.AutoSize = true;
+            this.PinToWindow.Cursor = System.Windows.Forms.Cursors.Hand;
+            this.PinToWindow.Location = new System.Drawing.Point(329, 10);
+            this.PinToWindow.Name = "PinToWindow";
+            this.PinToWindow.Size = new System.Drawing.Size(15, 14);
+            this.PinToWindow.TabIndex = 17;
+            this.PinToWindow.UseVisualStyleBackColor = true;
             // 
             // LaunchAtStartupPanel
             // 
@@ -1335,7 +1334,7 @@ namespace BatteryNotifier.Forms
             this.flowLayoutPanel2.ResumeLayout(false);
             this.ShowAsWindowPanel.ResumeLayout(false);
             this.ShowAsWindowPanel.PerformLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.PinToNotificationAreaPictureBox)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.PinToWindowPictureBox)).EndInit();
             this.LaunchAtStartupPanel.ResumeLayout(false);
             this.LaunchAtStartupPanel.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.LaunchAtStartUpPictureBox)).EndInit();
@@ -1417,9 +1416,9 @@ namespace BatteryNotifier.Forms
         private System.Windows.Forms.TabPage SettingTab;
         private System.Windows.Forms.FlowLayoutPanel flowLayoutPanel2;
         private System.Windows.Forms.Panel ShowAsWindowPanel;
-        private PictureBox PinToNotificationAreaPictureBox;
-        private Label PinToNotificationAreaLabel;
-        private System.Windows.Forms.CheckBox PinToNotificationArea;
+        private PictureBox PinToWindowPictureBox;
+        private Label PinToWindowLabel;
+        private System.Windows.Forms.CheckBox PinToWindow;
         private System.Windows.Forms.Panel LaunchAtStartupPanel;
         private PictureBox LaunchAtStartUpPictureBox;
         private Label LaunchAtStartUpLabel;

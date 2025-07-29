@@ -96,13 +96,13 @@ namespace BatteryNotifier.Setting {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("True")]
-        public bool PinToNotificationArea {
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool PinToWindow {
             get {
-                return ((bool)(this["PinToNotificationArea"]));
+                return ((bool)(this["PinToWindow"]));
             }
             set {
-                this["PinToNotificationArea"] = value;
+                this["PinToWindow"] = value;
             }
         }
         
