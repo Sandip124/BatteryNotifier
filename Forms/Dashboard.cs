@@ -35,6 +35,8 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
+            UtilityHelper.EnableDoubleBuffering(this);
+            UtilityHelper.EnableDoubleBufferingRecursively(this);
             SetStyle(
                 ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer, true);
             UpdateStyles();
