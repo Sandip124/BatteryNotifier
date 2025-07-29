@@ -76,6 +76,8 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Lib\CustomControls\FlatTabControl\Win32.cs" />
+    <Compile Include="Lib\Logger\BatteryNotifierLogger.cs" />
+    <Compile Include="Lib\Logger\BatteryNotifierLoggerConfig.cs" />
     <Compile Include="Lib\Manager\BatteryManager.cs" />
     <Compile Include="Lib\Manager\ContextMenuManager.cs" />
     <Compile Include="Lib\Manager\NotificationManager.cs" />
@@ -124,7 +126,6 @@
     <Content Include="Assets\Fonts\Inter-Bold.ttf" />
     <Content Include="Assets\Fonts\Inter-Regular.ttf" />
     <Content Include="battery-icon.ico" />
-    <Content Include="batteryNotifier.png" />
     <Content Include="BatteryNotifierBanner.png" />
     <Content Include="BatteryNotifierLogo.png" />
     <Content Include="LICENSE" />
@@ -164,6 +165,12 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="SharpCompress" Version="0.17.1" />
     <PackageReference Include="Splat" Version="1.6.2" />
     <PackageReference Include="squirrel.windows" Version="1.9.1" />

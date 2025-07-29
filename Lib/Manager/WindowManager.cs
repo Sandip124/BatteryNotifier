@@ -2,13 +2,16 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
+using BatteryNotifier.Lib.Logger;
 using BatteryNotifier.Utils;
+using Serilog;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Lib.Manager
 {
     public class WindowManager : IDisposable
     {
+        private readonly ILogger _logger;
         private readonly Debouncer _debouncer;
         private bool _disposed;
         private Point _lastLocation;
@@ -19,6 +22,7 @@ namespace BatteryNotifier.Lib.Manager
         {
             this.dashboard = dashboard;
             _debouncer = new Debouncer();
+            _logger = BatteryNotifierAppLogger.ForContext<WindowManager>();
         }
 
         public void RenderTitleBarCursor(Label appHeaderTitle)
@@ -70,8 +74,7 @@ namespace BatteryNotifier.Lib.Manager
                 }
                 catch (Exception ex)
                 {
-                    // internal log
-                    Console.WriteLine($"Error saving window position: {ex.Message}");
+                    _logger.Error(ex, "Error saving window position.");
                 }
             }, 1000);
         }

@@ -4,20 +4,29 @@ using System.Media;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BatteryNotifier.Lib.Logger;
 using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Utils;
+using Serilog;
 
 namespace BatteryNotifier.Lib.Manager
 {
     public class SoundManager : IDisposable
     {
         private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
+
+        private readonly ILogger _logger;
         
         private readonly SoundPlayer _batteryNotificationPlayer = new();
         private CancellationTokenSource? _cancellationTokenSource = new();
         private bool _isPlaying;
         private bool _disposed;
         private readonly Debouncer _debouncer = new();
+
+        public SoundManager()
+        {
+            _logger = BatteryNotifierAppLogger.ForContext<SoundManager>();
+        }
 
         public async Task PlaySoundAsync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
             int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)
@@ -45,14 +54,13 @@ namespace BatteryNotifier.Lib.Manager
                     await PlayOnceAsync(_cancellationTokenSource.Token);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                // TODO: handle cancellation gracefully if needed
+                _logger.Error(ex," Sound playback was cancelled.");
             }
             catch (Exception ex)
             {
-                // TODO:
-                Console.WriteLine($"Error playing sound: {ex.Message}");
+                _logger.Error(ex," An error occurred while playing sound.");
             }
             finally
             {
@@ -104,8 +112,7 @@ namespace BatteryNotifier.Lib.Manager
             }
             catch (Exception ex)
             {
-                //TODO: internal notification service can be used to log errors
-                Console.WriteLine($"Error stopping sound: {ex.Message}");
+                _logger.Error(ex, "An error occurred while stopping sound playback.");
             }
         }
 
@@ -116,20 +123,17 @@ namespace BatteryNotifier.Lib.Manager
             
             string fileName;
 
-            using (var fileBrowser = new OpenFileDialog
-                   {
-                       DefaultExt = "wav",
-                       Filter = @"Wave files (*.wav)|*.wav|All files (*.*)|*.*",
-                       Title = @"Select Sound File"
-                   })
+            using (var fileBrowser = new OpenFileDialog())
             {
+                fileBrowser.DefaultExt = "wav";
+                fileBrowser.Filter = @"Wave files (*.wav)|*.wav|All files (*.*)|*.*";
+                fileBrowser.Title = @"Select Sound File";
                 if (fileBrowser.ShowDialog() != DialogResult.OK)
                     return string.Empty;
                 
                 fileName = fileBrowser.FileName;
             }
 
-            // Force a garbage collection to reclaim dialog resources
             _debouncer.Debounce(() => 
             {
                 GC.Collect();

@@ -3,7 +3,10 @@ using System.ComponentModel;
 using System.Management;
 using System.Threading;
 using System.Windows.Forms;
+using BatteryNotifier.Lib.Logger;
+using BatteryNotifier.Lib.Manager;
 using BatteryNotifier.Lib.Store;
+using Serilog;
 
 namespace BatteryNotifier.Lib.Services;
 
@@ -23,12 +26,14 @@ public sealed class BatteryMonitorService : IDisposable
     public event EventHandler<BatteryStatusEventArgs>? BatteryStatusChanged;
     public event EventHandler<BatteryStatusEventArgs>? PowerLineStatusChanged;
 
+    private readonly ILogger _logger;
     private BackgroundWorker? _backgroundWorker;
     private ManagementEventWatcher? _powerEventWatcher;
     private bool _disposed;
 
     private BatteryMonitorService()
     {
+        _logger = BatteryNotifierAppLogger.ForContext<BatteryMonitorService>();
         InitializeWmiWatcher();
         StartBatteryLevelMonitor();
     }
@@ -41,18 +46,18 @@ public sealed class BatteryMonitorService : IDisposable
             _powerEventWatcher = new ManagementEventWatcher(query);
             _powerEventWatcher.EventArrived += OnWmiPowerEvent;
             _powerEventWatcher.Start();
-
-            Console.WriteLine("WMI Power event watcher started");
+            
+            _logger.Information("WMI Power event watcher initialized.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Failed to initialize WMI watcher: {ex.Message}");
+            _logger.Error(ex, "Failed to initialize WMI Power event watcher.");
         }
     }
 
     private void OnWmiPowerEvent(object sender, EventArrivedEventArgs e)
     {
-        Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] WMI Power event detected");
+        _logger.Information($"WMI Power event detected at [{DateTime.Now:yyyy-MM-dd HH:mm:ss}]");
         CheckBatteryAndPowerStatus(forceCheck: true);
     }
 
@@ -106,9 +111,8 @@ public sealed class BatteryMonitorService : IDisposable
 
         if (shouldNotify)
         {
-            Console.WriteLine(
-                $@"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Invoked by: {(forceCheck ? "Force Check" : "Background Worker")}, Battery Level: {currentLevel}%, Power Line Status: {currentStatus.PowerLineStatus}");
-
+            _logger.Information($@"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Invoked by: {(forceCheck ? "Force Check" : "Background Worker")}, Battery Level: {currentLevel}%, Power Line Status: {currentStatus.PowerLineStatus}");
+            
             if (powerLineChanged && _lastPowerStatus != null)
             {
                 PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));

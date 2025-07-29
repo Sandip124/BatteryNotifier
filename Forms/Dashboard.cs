@@ -2,17 +2,21 @@
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Lib.CustomControls.FlatTabControl;
+using BatteryNotifier.Lib.Logger;
 using BatteryNotifier.Lib.Manager;
 using BatteryNotifier.Lib.Providers;
 using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Utils;
+using Serilog;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Forms
 {
     public partial class Dashboard : Form
     {
+        private readonly ILogger _logger;
+        
         private BatteryManager _batteryManager;
         private NotificationManager _notificationManager;
         private ThemeManager _themeManager;
@@ -35,6 +39,9 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
+            
+            _logger = BatteryNotifierAppLogger.ForContext<Dashboard>();
+
             UtilityHelper.EnableDoubleBuffering(this);
             UtilityHelper.EnableDoubleBufferingRecursively(this);
             SetStyle(
@@ -210,8 +217,7 @@ namespace BatteryNotifier.Forms
             }
             catch (Exception ex)
             {
-                // use different notification service to log errors
-                //NotificationService.Instance.PublishNotification(ex.Message);
+                _logger.Error(ex, "Error on loading dashboard");
             }
             finally
             {

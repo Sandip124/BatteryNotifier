@@ -1,29 +1,33 @@
 using System;
 using System.Text;
 using System.Windows.Forms;
+using BatteryNotifier.Lib.Logger;
 using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Utils;
+using Serilog;
 using appSetting = BatteryNotifier.Setting.appSetting;
 
 namespace BatteryNotifier.Lib.Manager
 {
     public class SettingsManager : IDisposable
     {
+        private readonly ILogger _logger;
         private readonly Debouncer _debouncer;
         private bool _disposed;
 
         public SettingsManager()
         {
             _debouncer = new Debouncer();
+            _logger = BatteryNotifierAppLogger.ForContext<SettingsManager>();
         }
 
-        public SettingsManager LoadCheckboxSettings(CheckBox PinToWindow, CheckBox launchAtStartup)
+        public SettingsManager LoadCheckboxSettings(CheckBox pinToWindow, CheckBox launchAtStartup)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SettingsManager));
 
-            UtilityHelper.SafeInvoke(PinToWindow, () =>
+            UtilityHelper.SafeInvoke(pinToWindow, () =>
             {
-                PinToWindow.Checked = appSetting.Default.PinToWindow;
+                pinToWindow.Checked = appSetting.Default.PinToWindow;
                 launchAtStartup.Checked = appSetting.Default.LaunchAtStartup;
             });
             return this;
@@ -127,8 +131,7 @@ namespace BatteryNotifier.Lib.Manager
             }
             catch (Exception ex)
             {
-                // TODO implement logger  and unified notification Service for internal errors
-                Console.WriteLine($"Error handling launch at startup: {ex.Message}");
+                _logger.Error(ex,"Error while handling launch at startup setting.");
             }
 
             return this;

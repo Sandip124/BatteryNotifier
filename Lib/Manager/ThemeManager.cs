@@ -102,7 +102,6 @@ namespace BatteryNotifier.Lib.Manager
 
         private void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
         {
-            //TODO: more optimize this 
             var desiredImage = ThemeUtils.IsDarkTheme ? ImageCache.DarkMode : ImageCache.LightMode;
             
             UtilityHelper.SafeInvoke(themePictureBox, () =>
