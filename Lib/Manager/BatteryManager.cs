@@ -1,7 +1,6 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
-using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Utils;
 
@@ -29,37 +28,39 @@ namespace BatteryNotifier.Lib.Manager
             _batteryImage = batteryImage;
         }
 
-        public void RefreshBatteryStatus(BatteryStatusEventArgs e)
+        public void RefreshBatteryStatus()
         {
+            var powerStatus = SystemInformation.PowerStatus;
+            
             UtilityHelper.SafeInvoke(_batteryStatusLabel, () =>
             {
-                if (e.PowerLineStatus == PowerLineStatus.Online &&
-                    e.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery && !e.IsCharging)
+                if (powerStatus.PowerLineStatus == PowerLineStatus.Online &&
+                    powerStatus.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery && powerStatus.BatteryChargeStatus != BatteryChargeStatus.Charging)
                 {
                     _batteryStatusLabel.Text = @"⚡ Charging";
                     _batteryStatusLabel.ForeColor = Color.ForestGreen;
                     UpdateChargingAnimation();
                 }
-                else if (e.PowerLineStatus == PowerLineStatus.Offline ||
-                         e.PowerLineStatus == PowerLineStatus.Unknown)
+                else if (powerStatus.PowerLineStatus == PowerLineStatus.Offline ||
+                         powerStatus.PowerLineStatus == PowerLineStatus.Unknown)
                 {
                     _batteryStatusLabel.Text = @"🙄 Not Charging";
                     _batteryStatusLabel.ForeColor = Color.Gray;
-                    SetBatteryChargeStatus(e);
+                    SetBatteryChargeStatus(powerStatus);
                 }
-                else if (e.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
+                else if (powerStatus.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery)
                 {
                     _batteryStatusLabel.Text = @"💀 Are you running on main power !!";
                     _batteryImage.Image = ImageCache.Unknown;
                 }
-                else if (e.BatteryChargeStatus == BatteryChargeStatus.Unknown)
+                else if (powerStatus.BatteryChargeStatus == BatteryChargeStatus.Unknown)
                 {
                     _batteryStatusLabel.Text = @"😇 Only God knows about this battery !!";
                     _batteryImage.Image = ImageCache.Unknown;
                 }
 
-                UpdateBatteryPercentage(e);
-                UpdateBatteryChargeRemainingStatus(e);
+                UpdateBatteryPercentage(powerStatus);
+                UpdateBatteryChargeRemainingStatus(powerStatus);
             });
 
            
@@ -67,6 +68,8 @@ namespace BatteryNotifier.Lib.Manager
 
         public void UpdateChargingAnimation()
         {
+            if (SystemInformation.PowerStatus.BatteryChargeStatus != BatteryChargeStatus.Charging) return;
+            
             var desiredImage = ThemeUtils.IsDarkTheme
                 ? ImageCache.ChargingAnimatedDark
                 : ImageCache.ChargingAnimated;
@@ -81,37 +84,38 @@ namespace BatteryNotifier.Lib.Manager
         }
 
 
-        private void UpdateBatteryChargeRemainingStatus(BatteryStatusEventArgs e)
+        private void UpdateBatteryChargeRemainingStatus(PowerStatus powerStatus)
         {
             UtilityHelper.SafeInvoke(_remainingTimeLabel, () =>
             {
-                if (e.BatteryLifeRemaining >= 0)
+                if (powerStatus.BatteryLifeRemaining >= 0)
                 {
-                    var timeSpan = TimeSpan.FromSeconds(e.BatteryLifeRemaining);
+                    var timeSpan = TimeSpan.FromSeconds(powerStatus.BatteryLifeRemaining);
                     _remainingTimeLabel.Text = $@"{timeSpan.Hours} hr {timeSpan.Minutes} min remaining";
                     return;
                 }
 
-                _remainingTimeLabel.Text = $@"{e.BatteryLevel}% remaining";
+                _remainingTimeLabel.Text = $@"{Math.Round(powerStatus.BatteryLifePercent *100,0)}% remaining";
             });
         }
 
-        private void UpdateBatteryPercentage(BatteryStatusEventArgs e)
+        private void UpdateBatteryPercentage(PowerStatus powerStatus)
         {
             UtilityHelper.SafeInvoke(_batteryPercentageLabel, () =>
             {
-                var powerPercent = e.BatteryLevel;
+                var powerPercent = (int)(powerStatus.BatteryLifePercent * 100);
                 _batteryPercentageLabel.Text = $@"{(powerPercent <= 100 ? powerPercent.ToString() : "0")}%";
             });
         }
 
-        private void SetBatteryChargeStatus(BatteryStatusEventArgs e)
+        private void SetBatteryChargeStatus(PowerStatus powerStatus)
         {
-            if (e.IsCharging) return;
+            if (powerStatus.BatteryChargeStatus == BatteryChargeStatus.Charging) return;
 
             UtilityHelper.SafeInvoke(_batteryStatusLabel, () =>
             {
-                switch (e.BatteryLevel)
+                var powerPercent = (int)(powerStatus.BatteryLifePercent * 100);
+                switch (powerPercent)
                 {
                     case >= 96:
                         _batteryStatusLabel.Text = @"Full Battery";

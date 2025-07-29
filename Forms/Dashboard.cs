@@ -141,29 +141,34 @@ namespace BatteryNotifier.Forms
 
         private void OnBatteryStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-            if (Visible && WindowState != FormWindowState.Minimized)
-            {
-                _batteryManager.RefreshBatteryStatus(e);
-                _batteryManager.UpdateChargingAnimation();
-            }
+            UpdateBatteryStatusAndAnimation();
 
-            (string message, NotificationType notificationType) notificationInfo;
+            (string message, NotificationType notificationType,string Tag) notificationInfo;
             if (e is { IsCharging: false, IsLowBattery: true })
-                notificationInfo = (message: "🔋 Low Battery, please connect to charger.", NotificationType.Global);
+                notificationInfo = (message: "🔋 Low Battery, please connect to charger.", NotificationType.Global, Tag: Constant.LowBatteryTag);
             else if (e is { IsCharging: true, IsFullBattery: true })
-                notificationInfo = (message: "🔋 Full Battery, please unplug the charger.", NotificationType.Global);
+                notificationInfo = (message: "🔋 Full Battery, please unplug the charger.", NotificationType.Global, Tag: Constant.FullBatteryTag);
             else
                 throw new ArgumentOutOfRangeException(nameof(e));
 
-            NotificationService.Instance.PublishNotification(notificationInfo.message,
-                notificationInfo.notificationType);
+            NotificationService.Instance.PublishNotification(new NotificationMessage()
+            {
+                Message = notificationInfo.message,
+                Type = notificationInfo.notificationType,
+                Tag = notificationInfo.Tag
+            });
         }
 
         private void OnPowerLineStatusChanged(object sender, BatteryStatusEventArgs e)
         {
+            UpdateBatteryStatusAndAnimation();
+        }
+
+        private void UpdateBatteryStatusAndAnimation()
+        {
             if (Visible && WindowState != FormWindowState.Minimized)
             {
-                _batteryManager.RefreshBatteryStatus(e);
+                _batteryManager.RefreshBatteryStatus();
                 _batteryManager.UpdateChargingAnimation();
             }
         }
@@ -189,6 +194,7 @@ namespace BatteryNotifier.Forms
                     .LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox)
                     .HandleStartupLaunchSetting(launchAtStartup.Checked);
 
+                UpdateBatteryStatusAndAnimation();
                 UpdateNotificationMusicBrowseState();
 
                 AttachEventListeners();
@@ -488,6 +494,17 @@ namespace BatteryNotifier.Forms
             };
             foreach (var ctrl in regularControls)
                 ctrl.ApplyRegularFont();
+        }
+        
+        protected override void SetVisibleCore(bool value)
+        {
+            base.SetVisibleCore(value);
+    
+            if (!value)
+            {
+                NotificationService.Instance.ClearNotifications();
+                NotificationService.Instance.ClearDeduplicationCache();
+            }
         }
 
         private void ForceGarbageCollection()

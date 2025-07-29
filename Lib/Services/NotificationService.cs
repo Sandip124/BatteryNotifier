@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 using BatteryNotifier.Utils;
 
@@ -15,6 +16,14 @@ public sealed class NotificationService
     private readonly Queue<NotificationMessage?> _notificationQueue;
     private readonly object _queueLock = new();
     
+    private readonly Dictionary<string, DateTime> _recentNotifications = new Dictionary<string, DateTime>();
+    private readonly object _recentNotificationsLock = new object();
+
+    private TimeSpan DeduplicationInterval { get; set; } = TimeSpan.FromSeconds(30);
+    private TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
+
+    private DateTime _lastCleanup = DateTime.Now;
+    
     public event EventHandler<NotificationMessage>? NotificationReceived;
     
     private NotificationService()
@@ -22,20 +31,34 @@ public sealed class NotificationService
         _notificationQueue = new Queue<NotificationMessage?>();
     }
     
-    public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000)
+    public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000, string tag = null)
     {
         var notification = new NotificationMessage
         {
             Message = message,
-            Timestamp = DateTime.Now,
             Type = type,
-            Duration = duration
+            Duration = duration,
+            Tag = tag
         };
+
+        PublishNotification(notification);
+    }
+
+    public void PublishNotification(NotificationMessage notification)
+    {
+        if (ShouldDiscardDuplicate(notification))
+        {
+            return; 
+        }
         
+        PerformPeriodicCleanup();
+
         lock (_queueLock)
         {
             _notificationQueue.Enqueue(notification);
         }
+
+        RecordNotification(notification);
 
         if (NotificationReceived == null) return;
         if (Application.OpenForms.Count <= 0) return;
@@ -46,6 +69,57 @@ public sealed class NotificationService
         {
             NotificationReceived?.Invoke(this, notification);
         });
+    }
+    
+    private bool ShouldDiscardDuplicate(NotificationMessage notification)
+    {
+        lock (_recentNotificationsLock)
+        {
+            string notificationKey = CreateNotificationKey(notification);
+            
+            DateTime notificationTime = notification.Timestamp;
+            
+            CleanupOldEntries(notificationTime);
+            
+            if (_recentNotifications.TryGetValue(notificationKey, out DateTime lastSeen))
+            {
+                TimeSpan timeSinceLastSeen = notificationTime - lastSeen;
+                
+                if (timeSinceLastSeen < DeduplicationInterval)
+                {
+                    return true;
+                }
+            }
+            
+            return false; 
+        }
+    }
+
+    private void RecordNotification(NotificationMessage notification)
+    {
+        lock (_recentNotificationsLock)
+        {
+            string notificationKey = CreateNotificationKey(notification);
+            _recentNotifications[notificationKey] = notification.Timestamp;
+        }
+    }
+
+    private string CreateNotificationKey(NotificationMessage notification)
+    {
+        return $"{notification.Tag}_{notification.Message}_{notification.Type}".ToLowerInvariant();
+    }
+
+    private void CleanupOldEntries(DateTime currentTime)
+    {
+        var keysToRemove = _recentNotifications
+            .Where(kvp => currentTime - kvp.Value > DeduplicationInterval)
+            .Select(kvp => kvp.Key)
+            .ToList();
+
+        foreach (var key in keysToRemove)
+        {
+            _recentNotifications.Remove(key);
+        }
     }
     
     public NotificationMessage? GetNextNotification()
@@ -74,14 +148,67 @@ public sealed class NotificationService
             _notificationQueue.Clear();
         }
     }
+
+    public void ClearDeduplicationCache()
+    {
+        lock (_recentNotificationsLock)
+        {
+            _recentNotifications.Clear();
+        }
+    }
+    
+    private void PerformPeriodicCleanup()
+    {
+        var now = DateTime.Now;
+        if (now - _lastCleanup > CleanupInterval)
+        {
+            _lastCleanup = now;
+
+            ClearNotifications();
+            ClearDeduplicationCache();
+        }
+    }
+
+    public void SetDeduplicationInterval(TimeSpan interval)
+    {
+        DeduplicationInterval = interval;
+    }
+    
+    public void SetCleanUpInterval(TimeSpan interval)
+    {
+        CleanupInterval = interval;
+    }
+
+    public int RecentNotificationsCount
+    {
+        get
+        {
+            lock (_recentNotificationsLock)
+            {
+                return _recentNotifications.Count;
+            }
+        }
+    }
 }
 
 public class NotificationMessage
 {
     public string Message { get; set; }
-    public DateTime Timestamp { get; set; }
+    public DateTime Timestamp { get; protected set; } = DateTime.Now;
     public NotificationType Type { get; set; }
     public int Duration { get; set; } = 3000;
+    public string Tag { get; set; }
+
+    public override bool Equals(object obj)
+    {
+        if (obj is NotificationMessage other)
+        {
+            return Message == other.Message && 
+                   Tag == other.Tag && 
+                   Type == other.Type;
+        }
+        return false;
+    }
 }
 
 public enum NotificationType

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using BatteryNotifier.Constants;
 using BatteryNotifier.Lib.Services;
 using BatteryNotifier.Properties;
 using BatteryNotifier.Utils;
@@ -11,24 +12,31 @@ namespace BatteryNotifier.Lib.Manager
     public class NotificationManager(SoundManager soundManager, NotifyIcon notifyIcon) : IDisposable
     {
         private const int NOTIFICATION_COOLDOWN_MS = 5000;
-        
+
         private readonly Debouncer _debouncer = new();
         private bool _disposed;
 
         public async Task EmitGlobalNotification(NotificationMessage notificationMessage)
         {
-            if(notificationMessage.Type == NotificationType.Inline) return;
-                
-            if (appSetting.Default.lowBatteryNotification)
+            if (notificationMessage.Type == NotificationType.Inline) return;
+
+            if (notificationMessage.Tag == Constant.LowBatteryTag)
             {
-                ShowBalloonTip( "Low Battery", notificationMessage.Message);
-                await soundManager.PlaySoundAsync(appSetting.Default.lowBatteryNotificationMusic, Resources.LowBatterySound, true);
+                if (appSetting.Default.lowBatteryNotification)
+                {
+                    ShowBalloonTip("Low Battery", notificationMessage.Message);
+                    await soundManager.PlaySoundAsync(appSetting.Default.lowBatteryNotificationMusic,
+                        Resources.LowBatterySound, true);
+                }
             }
-            
-            if (appSetting.Default.fullBatteryNotification)
+            else if (notificationMessage.Tag == Constant.FullBatteryTag)
             {
-                ShowBalloonTip("Full Battery", notificationMessage.Message);
-                await soundManager.PlaySoundAsync(appSetting.Default.fullBatteryNotificationMusic, Resources.LowBatterySound, true);
+                if (appSetting.Default.fullBatteryNotification)
+                {
+                    ShowBalloonTip("Full Battery", notificationMessage.Message);
+                    await soundManager.PlaySoundAsync(appSetting.Default.fullBatteryNotificationMusic,
+                        Resources.BatteryFull, true);
+                }
             }
         }
 

@@ -1,12 +1,12 @@
 using System;
 using System.ComponentModel;
+using System.Management;
 using System.Threading;
 using System.Windows.Forms;
-using Microsoft.Win32;
 
 namespace BatteryNotifier.Lib.Services;
 
-public sealed class BatteryMonitorService
+public sealed class BatteryMonitorService : IDisposable
 {
     private static readonly Lazy<BatteryMonitorService> _instance = 
         new Lazy<BatteryMonitorService>(() => new BatteryMonitorService());
@@ -15,71 +15,99 @@ public sealed class BatteryMonitorService
     
     private PowerStatus? _lastPowerStatus = null;
     private int _lowBatteryThreshold = 20;
-    private int _fullBatteryThreshold = 95;
+    private int _fullBatteryThreshold = 50;
     
-    private const int BATTERY_LEVEL_CHECK_THRESHOLD = 1000;
+    private const int BATTERY_LEVEL_CHECK_THRESHOLD = 30000;
     
     public event EventHandler<BatteryStatusEventArgs> BatteryStatusChanged;
     public event EventHandler<BatteryStatusEventArgs> PowerLineStatusChanged;
     
+    private BackgroundWorker _backgroundWorker;
+    private ManagementEventWatcher _powerEventWatcher;
+    private bool _disposed;
+    
     private BatteryMonitorService()
     {
-        SystemEvents.PowerModeChanged += OnPowerModeChanged;
-        _lastPowerStatus = SystemInformation.PowerStatus;
+        InitializeWmiWatcher();
         StartBatteryLevelMonitor();
+    }
+    
+    private void InitializeWmiWatcher()
+    {
+        try
+        {
+            var query = new WqlEventQuery("SELECT * FROM Win32_PowerManagementEvent");
+            _powerEventWatcher = new ManagementEventWatcher(query);
+            _powerEventWatcher.EventArrived += OnWmiPowerEvent;
+            _powerEventWatcher.Start();
+            
+            Console.WriteLine("WMI Power event watcher started");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to initialize WMI watcher: {ex.Message}");
+        }
+    }
+    
+    private void OnWmiPowerEvent(object sender, EventArrivedEventArgs e)
+    {
+        Console.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] WMI Power event detected");
+        CheckBatteryAndPowerStatus(forceCheck: true);
     }
     
     private void StartBatteryLevelMonitor()
     {
-        var backgroundWorker = new BackgroundWorker
+        _backgroundWorker = new BackgroundWorker
         {
             WorkerSupportsCancellation = true,
-            
         };
         
-        backgroundWorker.DoWork += (sender, e) =>
+        _backgroundWorker.DoWork += (sender, e) =>
         {
-            while (!backgroundWorker.CancellationPending)
+            while (!_backgroundWorker.CancellationPending)
             {
-                CheckBatteryLevel();
+                CheckBatteryAndPowerStatus();
                 Thread.Sleep(BATTERY_LEVEL_CHECK_THRESHOLD);
             }
         };
         
-        backgroundWorker.RunWorkerAsync();
+        _backgroundWorker.RunWorkerAsync();
     }
     
-    private void OnPowerModeChanged(object sender, PowerModeChangedEventArgs e)
+    private void CheckBatteryAndPowerStatus(bool forceCheck = false)
     {
-        var currentStatus = SystemInformation.PowerStatus;
+        if (_disposed) return;
         
-        if (_lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus)
-        {
-            PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-        }
-        
-        BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-        
-        _lastPowerStatus = currentStatus;
-    }
-    
-    private void CheckBatteryLevel()
-    {
         var currentStatus = SystemInformation.PowerStatus;
 
-        if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown) return;
+        if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown) 
+            return;
 
         var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
-        var lastLevel = (int)(_lastPowerStatus?.BatteryLifePercent * 100 ?? 0);
+        var lastLevel = _lastPowerStatus != null ? (int)(_lastPowerStatus.BatteryLifePercent * 100) : 0;
         
-        bool shouldNotify = (currentLevel <= _lowBatteryThreshold &&
-                             currentStatus.BatteryChargeStatus is not BatteryChargeStatus.Charging or BatteryChargeStatus.Low)
-                             || (currentLevel >= _fullBatteryThreshold &&
-                                 currentStatus.BatteryChargeStatus is BatteryChargeStatus.Charging or BatteryChargeStatus.High)
-                             || Math.Abs(currentLevel - lastLevel) >= 5;
+        bool powerLineChanged = _lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
+        
+        bool batteryLevelChanged = Math.Abs(currentLevel - lastLevel) >= 5;
+        
+        bool isLowBattery = currentLevel <= _lowBatteryThreshold && 
+                           currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
+        
+        bool isFullBattery = currentLevel >= _fullBatteryThreshold &&
+                             ((currentStatus.BatteryChargeStatus & BatteryChargeStatus.Charging) ==
+                              BatteryChargeStatus.Charging || currentStatus.BatteryChargeStatus == BatteryChargeStatus.High);
+        
+        bool shouldNotify = forceCheck || powerLineChanged || batteryLevelChanged || isLowBattery || isFullBattery || _lastPowerStatus == null;
         
         if (shouldNotify)
         {
+            Console.WriteLine($@"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Invoked by: {(forceCheck ? "Force Check" : "Background Worker")}, Battery Level: {currentLevel}%, Power Line Status: {currentStatus.PowerLineStatus}");
+
+            if (powerLineChanged && _lastPowerStatus != null)
+            {
+                PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+            }
+            
             BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
             _lastPowerStatus = currentStatus;
         }
@@ -108,7 +136,21 @@ public sealed class BatteryMonitorService
     
     public void Dispose()
     {
-        SystemEvents.PowerModeChanged -= OnPowerModeChanged;
+        if (_disposed) return;
+        
+        _disposed = true;
+        
+        _backgroundWorker?.CancelAsync();
+        
+        try
+        {
+            _powerEventWatcher?.Stop();
+            _powerEventWatcher?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error disposing WMI watcher: {ex.Message}");
+        }
     }
 }
 
