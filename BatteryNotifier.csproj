@@ -158,10 +158,8 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DeltaCompressionDotNet" Version="1.1.0" />
     <PackageReference Include="Lib.Extensions.System.ComponentModel" Version="22.4.12" />
-    <PackageReference Include="Mono.Cecil" Version="0.9.6.1" />
-    <PackageReference Include="NuGet.CommandLine" Version="6.8.0">
+    <PackageReference Include="NuGet.CommandLine" Version="6.14.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -171,9 +169,8 @@
     <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
     <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="SharpCompress" Version="0.17.1" />
-    <PackageReference Include="Splat" Version="1.6.2" />
-    <PackageReference Include="squirrel.windows" Version="1.9.1" />
+    <PackageReference Include="SharpCompress" Version="0.40.0" />
+    <PackageReference Include="squirrel.windows" Version="2.0.1" />
     <PackageReference Include="System.Management" Version="9.0.7" />
   </ItemGroup>
   <ItemGroup>
