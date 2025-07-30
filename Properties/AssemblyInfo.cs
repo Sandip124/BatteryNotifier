@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("Battery Notifier")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("A beautiful and efficient Windows desktop application that provides smart battery notifications with optimized performance and reliable WMI-based monitoring.")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("BatteryNotifier.Properties")]
-[assembly: AssemblyCopyright("copyright @ Battery Notifier")]
+[assembly: AssemblyCompany("Sandip Chaudhary")]
+[assembly: AssemblyProduct("Battery Notifier")]
+[assembly: AssemblyCopyright("Copyright © 2025 Sandip Chaudhary")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -29,4 +29,4 @@ using System.Runtime.InteropServices;
 //      Revision
 //
 [assembly: AssemblyVersion("3.1.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("3.1.0.0")]
