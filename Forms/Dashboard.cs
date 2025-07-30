@@ -16,7 +16,7 @@ namespace BatteryNotifier.Forms
     public partial class Dashboard : Form
     {
         private readonly ILogger _logger;
-        
+
         private BatteryManager _batteryManager;
         private NotificationManager _notificationManager;
         private ThemeManager _themeManager;
@@ -25,6 +25,7 @@ namespace BatteryNotifier.Forms
         private WindowManager _windowManager;
         private ContextMenuManager _contextMenuManager;
         private readonly Debouncer _debouncer;
+        private ThemeChangeService _themeService;
 
         protected override CreateParams CreateParams
         {
@@ -39,7 +40,7 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-            
+
             _logger = BatteryNotifierAppLogger.ForContext<Dashboard>();
 
             UtilityHelper.EnableDoubleBuffering(this);
@@ -112,6 +113,9 @@ namespace BatteryNotifier.Forms
 
             // Subscribe to notifications
             NotificationService.Instance.NotificationReceived += OnNotificationReceived;
+
+            _themeService = new ThemeChangeService();
+            _themeService.ThemeChanged += OnThemeChanged;
         }
 
         private void UpdateNotificationMusicBrowseState()
@@ -149,7 +153,7 @@ namespace BatteryNotifier.Forms
 
         private void OnBatteryStatusChanged(object sender, BatteryStatusEventArgs e)
         {
-           RefreshBatteryStatusIfTabSelected();
+            RefreshBatteryStatusIfTabSelected();
 
             (string message, NotificationType notificationType, string Tag) notificationInfo;
             if (e is { IsCharging: false, IsLowBattery: true })
@@ -177,7 +181,8 @@ namespace BatteryNotifier.Forms
                 {
                     _batteryManager.RefreshBatteryStatus();
                     requirePendingBatteryUiUpdate = false;
-                }else
+                }
+                else
                 {
                     requirePendingBatteryUiUpdate = true;
                 }
@@ -236,10 +241,10 @@ namespace BatteryNotifier.Forms
             CloseIcon.Click += CloseIcon_Click;
             CloseIcon.MouseEnter += CloseIcon_MouseEnter;
             CloseIcon.MouseLeave += CloseIcon_MouseLeave;
-            
+
             // Tab change
             AppTabControl.SelectedIndexChanged += AppTabControl_SelectedIndexChanged;
-            
+
             // Notification checkbox events
             FullBatteryNotificationCheckbox.CheckedChanged += FullBatteryNotificationCheckbox_CheckStateChanged;
             LowBatteryNotificationCheckbox.CheckedChanged += LowBatteryNotificationCheckbox_CheckStateChanged;
@@ -293,12 +298,12 @@ namespace BatteryNotifier.Forms
         {
             CloseIcon.Image = Resources.closeIconDark;
         }
-        
+
         private void AppTabControl_SelectedIndexChanged(object? sender, EventArgs e)
         {
             if (AppTabControl.SelectedTab != DashboardTab) return;
             if (!requirePendingBatteryUiUpdate) return;
-            
+
             _batteryManager.RefreshBatteryStatus();
             requirePendingBatteryUiUpdate = false;
         }
@@ -380,6 +385,17 @@ namespace BatteryNotifier.Forms
         private void LowBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
         {
             _settingsManager.HandleLowBatteryTrackbarChange(lowBatteryTrackbar.Value);
+        }
+
+        private void OnThemeChanged(object sender, ThemeChangedEventArgs e)
+        {
+            if (!appSetting.Default.SystemThemeApplied) return;
+            
+            UtilityHelper.SafeInvoke(ThemePictureBox, () =>
+            {
+                _themeManager.ApplyTheme(ThemePictureBox, CloseIcon);
+                _batteryManager.UpdateChargingAnimation();
+            });
         }
 
         private void SystemThemeLabel_CheckedChanged(object? sender, EventArgs e)
@@ -623,6 +639,8 @@ namespace BatteryNotifier.Forms
                 // Clear notification service state
                 NotificationService.Instance.ClearNotifications();
                 NotificationService.Instance.ClearDeduplicationCache();
+
+                _themeService?.Dispose();
 
                 // Clean up font resources
                 FontProvider.Cleanup();

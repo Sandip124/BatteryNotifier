@@ -88,6 +88,7 @@
     <Compile Include="Lib\Providers\FontProvider.cs" />
     <Compile Include="Lib\Services\BatteryMonitorService.cs" />
     <Compile Include="Lib\Services\NotificationService.cs" />
+    <Compile Include="Lib\Services\ThemeChangeService.cs" />
     <Compile Include="Lib\Store\BatteryManagerStore.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
