@@ -40,25 +40,19 @@ namespace BatteryNotifier.Forms
         public Dashboard()
         {
             InitializeComponent();
-
-            _logger = BatteryNotifierAppLogger.ForContext<Dashboard>();
-
             UtilityHelper.EnableDoubleBuffering(this);
             UtilityHelper.EnableDoubleBufferingRecursively(this);
             SetStyle(
                 ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.DoubleBuffer, true);
             UpdateStyles();
-            _debouncer = new Debouncer();
             InitializeManagers();
             InitializeServices();
+            _logger = BatteryNotifierAppLogger.ForContext<Dashboard>();
+            _debouncer = new Debouncer();
         }
 
         private void InitializeManagers()
         {
-            _batteryManager = new BatteryManager(BatteryStatus, BatteryPercentage, RemainingTime, BatteryImage);
-            _soundManager = new SoundManager();
-            _notificationManager = new NotificationManager(_soundManager, BatteryNotifierIcon);
-
             var backAccentControls = new Control[]
             {
                 AppContainer, AppTabControl, DashboardTab, SettingTab,
@@ -100,6 +94,9 @@ namespace BatteryNotifier.Forms
                 .RegisterForegroundControls(foreControls)
                 .RegisterBorderedCustomControls(borderedCustomControls);
 
+            _batteryManager = new BatteryManager(BatteryStatus, BatteryPercentage, RemainingTime, BatteryImage);
+            _soundManager = new SoundManager();
+            _notificationManager = new NotificationManager(_soundManager, BatteryNotifierIcon);
             _settingsManager = new SettingsManager();
             _windowManager = new WindowManager(this);
             _contextMenuManager = new ContextMenuManager(_soundManager, this);
@@ -226,7 +223,6 @@ namespace BatteryNotifier.Forms
             }
             finally
             {
-                ForceGarbageCollection();
                 ResumeLayout(false);
             }
         }
@@ -317,7 +313,6 @@ namespace BatteryNotifier.Forms
             Show();
 
             UpdateTaskbarAndIconVisibility();
-            ForceGarbageCollection();
         }
 
         private void UpdateTaskbarAndIconVisibility()
@@ -369,12 +364,18 @@ namespace BatteryNotifier.Forms
 
         private void FullBatteryTrackbar_Scroll(object? sender, EventArgs e)
         {
-            FullBatteryNotificationPercentageLabel.Text = $@"({fullBatteryTrackbar.Value}%)";
+            if (fullBatteryTrackbar.Value != appSetting.Default.fullBatteryNotificationValue)
+            {
+                FullBatteryNotificationPercentageLabel.Text = $@"({fullBatteryTrackbar.Value}%)";
+            }
         }
 
         private void LowBatteryTrackbar_Scroll(object? sender, EventArgs e)
         {
-            LowBatteryNotificationPercentageLabel.Text = $@"({lowBatteryTrackbar.Value}%)";
+            if (lowBatteryTrackbar.Value != appSetting.Default.lowBatteryNotificationValue)
+            {
+                LowBatteryNotificationPercentageLabel.Text = $@"({lowBatteryTrackbar.Value}%)";
+            }
         }
 
         private void FullBatteryTrackbar_ValueChanged(object? sender, EventArgs e)
@@ -390,7 +391,7 @@ namespace BatteryNotifier.Forms
         private void OnThemeChanged(object sender, ThemeChangedEventArgs e)
         {
             if (!appSetting.Default.SystemThemeApplied) return;
-            
+
             UtilityHelper.SafeInvoke(ThemePictureBox, () =>
             {
                 _themeManager.ApplyTheme(ThemePictureBox, CloseIcon);
@@ -401,34 +402,49 @@ namespace BatteryNotifier.Forms
         private void SystemThemeLabel_CheckedChanged(object? sender, EventArgs e)
         {
             SuspendLayout();
-            _themeManager.SetSystemTheme().ApplyTheme(ThemePictureBox, CloseIcon);
-            _batteryManager.UpdateChargingAnimation();
-            NotificationService.Instance.PublishNotification("Battery Notifier theme is synced with system theme.",
-                NotificationType.Inline);
-            ForceGarbageCollection();
-            ResumeLayout(true);
+            try
+            {
+                _themeManager.SetSystemTheme().ApplyTheme(ThemePictureBox, CloseIcon);
+                _batteryManager.UpdateChargingAnimation();
+                NotificationService.Instance.PublishNotification("Battery Notifier theme is synced with system theme.",
+                    NotificationType.Inline);
+            }
+            finally
+            {
+                ResumeLayout(false);
+            }
         }
 
         private void DarkThemeLabel_CheckedChanged(object? sender, EventArgs e)
         {
             SuspendLayout();
-            _themeManager.SetDarkTheme().ApplyTheme(ThemePictureBox, CloseIcon);
-            _batteryManager.UpdateChargingAnimation();
-            NotificationService.Instance.PublishNotification("Battery Notifier is on dark mode 🌙.",
-                NotificationType.Inline);
-            ForceGarbageCollection();
-            ResumeLayout(true);
+            try
+            {
+                _themeManager.SetDarkTheme().ApplyTheme(ThemePictureBox, CloseIcon);
+                _batteryManager.UpdateChargingAnimation();
+                NotificationService.Instance.PublishNotification("Battery Notifier is on dark mode 🌙.",
+                    NotificationType.Inline);
+            }
+            finally
+            {
+                ResumeLayout(false);
+            }
         }
 
         private void LightThemeLabel_CheckedChanged(object? sender, EventArgs e)
         {
             SuspendLayout();
-            _themeManager.SetLightTheme().ApplyTheme(ThemePictureBox, CloseIcon);
-            _batteryManager.UpdateChargingAnimation();
-            NotificationService.Instance.PublishNotification("Battery Notifier is on light mode 🔆.",
-                NotificationType.Inline);
-            ForceGarbageCollection();
-            ResumeLayout(true);
+            try
+            {
+                _themeManager.SetLightTheme().ApplyTheme(ThemePictureBox, CloseIcon);
+                _batteryManager.UpdateChargingAnimation();
+                NotificationService.Instance.PublishNotification("Battery Notifier is on light mode 🔆.",
+                    NotificationType.Inline);
+            }
+            finally
+            {
+                ResumeLayout(false);
+            }
         }
 
         private void BrowseFullBatterySound_Click(object? sender, EventArgs e)
@@ -441,8 +457,6 @@ namespace BatteryNotifier.Forms
 
             _settingsManager.SaveFullBatterySoundPath(soundPath);
             UpdateNotificationMusicBrowseState();
-
-            ForceGarbageCollection();
         }
 
         private void ResetFullBatterySound_Click(object? sender, EventArgs e)
@@ -471,8 +485,6 @@ namespace BatteryNotifier.Forms
 
             _settingsManager.SaveLowBatterySoundPath(soundPath);
             UpdateNotificationMusicBrowseState();
-
-            ForceGarbageCollection();
         }
 
         private void AppHeaderTitle_MouseDown(object? sender, MouseEventArgs e)
@@ -488,7 +500,6 @@ namespace BatteryNotifier.Forms
         private void AppHeaderTitle_MouseUp(object? sender, MouseEventArgs e)
         {
             _windowManager.HandleMouseUp(e);
-            ForceGarbageCollection();
         }
 
         private void VersionLabel_Click(object? sender, EventArgs e)
@@ -541,13 +552,12 @@ namespace BatteryNotifier.Forms
         {
             base.SetVisibleCore(value);
 
-            if (!value)
-            {
-                NotificationService.Instance.ClearNotifications();
-                NotificationService.Instance.ClearDeduplicationCache();
+            if (value) return;
+            
+            NotificationService.Instance.ClearNotifications();
+            NotificationService.Instance.ClearDeduplicationCache();
 
-                ForceGarbageCollection();
-            }
+            ForceGarbageCollection();
         }
 
         private void ForceGarbageCollection()
@@ -615,15 +625,12 @@ namespace BatteryNotifier.Forms
         {
             if (disposing)
             {
-                // Unsubscribe from events first to prevent callbacks during disposal
                 BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
                 BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
                 NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
 
-                // Detach all event handlers explicitly
                 DetachEventHandlers();
 
-                // Dispose managers in reverse order of creation
                 _contextMenuManager?.Dispose();
                 _windowManager?.Dispose();
                 _soundManager?.Dispose();
@@ -633,19 +640,15 @@ namespace BatteryNotifier.Forms
                 _batteryManager?.Dispose();
                 _debouncer?.Dispose();
 
-                // Clean up services
                 BatteryMonitorService.Instance?.Dispose();
 
-                // Clear notification service state
                 NotificationService.Instance.ClearNotifications();
                 NotificationService.Instance.ClearDeduplicationCache();
 
                 _themeService?.Dispose();
 
-                // Clean up font resources
                 FontProvider.Cleanup();
 
-                // Dispose designer-generated resources
                 components?.Dispose();
             }
 
