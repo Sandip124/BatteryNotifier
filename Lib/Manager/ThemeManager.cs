@@ -87,20 +87,14 @@ namespace BatteryNotifier.Lib.Manager
         private void ApplyThemeColors(BaseTheme? theme)
         {
             if (theme == null) return;
-            
-            var accent = theme.AccentColor;
-            var accent2 = theme.Accent2Color;
-            var accent3 = theme.Accent3Color;
-            var foreground = theme.ForegroundColor;
-
-            ApplyBackgroundColor(accentControls, accent);
-            ApplyBackgroundColor(accent2Controls, accent2);
-            ApplyBackgroundColor(accent3Controls, accent3);
-            ApplyForegroundColor(foregroundControls, foreground);
+            ApplyBackgroundColor(accentControls, theme.AccentColor);
+            ApplyBackgroundColor(accent2Controls, theme.Accent2Color);
+            ApplyBackgroundColor(accent3Controls, theme.Accent3Color);
+            ApplyForegroundColor(foregroundControls, theme.ForegroundColor);
             ApplyBorderColor(flatTabCustomControls, theme.BorderColor);
         }
 
-        private void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
+        private static void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
         {
             var desiredImage = ThemeUtils.IsDarkTheme ? ImageCache.DarkMode : ImageCache.LightMode;
             
@@ -156,7 +150,7 @@ namespace BatteryNotifier.Lib.Manager
             if (controls == null || controls.Count == 0) return;
             foreach (var control in controls)
             {
-                if (control is { IsDisposed: false } && control.ForeColor != color)
+                if (control is { IsDisposed: false } && control.BorderColor != color)
                 {
                     UtilityHelper.SafeInvoke(control, () =>
                     {
