@@ -445,7 +445,7 @@ namespace BatteryNotifier.Forms
 
         private void BrowseFullBatterySound_Click(object? sender, EventArgs e)
         {
-            var soundPath = _soundManager.BrowseForSoundFile();
+            var soundPath = _soundManager.BrowseForSoundFile(appSetting.Default.fullBatteryNotificationMusic);
             if (!string.IsNullOrEmpty(soundPath))
             {
                 FullBatterySound.Text = soundPath;
@@ -473,7 +473,7 @@ namespace BatteryNotifier.Forms
 
         private void BrowseLowBatterySound_Click(object? sender, EventArgs e)
         {
-            var soundPath = _soundManager.BrowseForSoundFile();
+            var soundPath = _soundManager.BrowseForSoundFile(appSetting.Default.lowBatteryNotificationMusic);
             if (!string.IsNullOrEmpty(soundPath))
             {
                 LowBatterySound.Text = soundPath;

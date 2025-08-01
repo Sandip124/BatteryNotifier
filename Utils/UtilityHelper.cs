@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Win32;
+using NAudio.Wave;
 
 namespace BatteryNotifier.Utils
 {
@@ -49,21 +50,33 @@ namespace BatteryNotifier.Utils
         public static bool IsValidWavFile(string fileName)
         {
             if (string.IsNullOrEmpty(fileName)) return false;
-            return fileName.EndsWith(".wav", StringComparison.OrdinalIgnoreCase);
+
+            var hasValidExtension = fileName.EndsWith(".wav", StringComparison.OrdinalIgnoreCase);
+            if (!hasValidExtension) return false;
+
+            try
+            {
+                using var reader = new WaveFileReader(fileName);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         public static void RenderCheckboxState(Control control, bool @checked)
         {
             if (control is not CheckBox checkboxControl)
                 throw new ArgumentException(@"Control must be a CheckBox", nameof(control));
-            
+
             SafeInvoke(checkboxControl, () =>
             {
                 checkboxControl.Checked = @checked;
                 checkboxControl.Text = @checked ? "On" : "Off";
             });
         }
-        
+
         public static void SafeInvoke(Control? control, Action action)
         {
             if (control.InvokeRequired)
@@ -71,10 +84,11 @@ namespace BatteryNotifier.Utils
             else
                 action();
         }
-        
+
         public static void EnableDoubleBuffering(Control ctrl)
         {
-            typeof(Control).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            typeof(Control).GetProperty("DoubleBuffered",
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 ?.SetValue(ctrl, true, null);
         }
 
@@ -89,26 +103,24 @@ namespace BatteryNotifier.Utils
                 }
             }
         }
-        
+
         public static Rectangle GetImageUpdateRegion(Image? oldImage, Image newImage)
         {
             // For GIF animations, typically the entire image changes
             // but you could implement more sophisticated clipping here
             // based on your specific animation patterns
-        
+
             if (oldImage != null && oldImage.Size != newImage.Size)
             {
                 // Size changed, need full redraw
-                return new Rectangle(0, 0, 
+                return new Rectangle(0, 0,
                     Math.Max(oldImage.Width, newImage.Width),
                     Math.Max(oldImage.Height, newImage.Height));
             }
-        
+
             // For most GIF animations, return the full image bounds
             // In more complex scenarios, you could analyze pixel differences
             return new Rectangle(0, 0, newImage.Width, newImage.Height);
         }
-        
-        
     }
 }

@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using BatteryNotifier.Lib.Logger;
 using BatteryNotifier.Lib.Services;
+using BatteryNotifier.Setting;
 using BatteryNotifier.Utils;
+using NAudio.Wave;
 using Serilog;
 
 namespace BatteryNotifier.Lib.Manager
@@ -116,37 +118,46 @@ namespace BatteryNotifier.Lib.Manager
             }
         }
 
-        public string BrowseForSoundFile()
+        public string BrowseForSoundFile(string soundFilePath)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(SoundManager));
-            
-            string fileName;
 
-            using (var fileBrowser = new OpenFileDialog())
+            string outputFileName = soundFilePath;
+
+            try
             {
-                fileBrowser.DefaultExt = "wav";
-                fileBrowser.Filter = @"Wave files (*.wav)|*.wav|All files (*.*)|*.*";
-                fileBrowser.Title = @"Select Sound File";
-                if (fileBrowser.ShowDialog() != DialogResult.OK)
-                    return string.Empty;
+                using var fileBrowser = new OpenFileDialog();
                 
-                fileName = fileBrowser.FileName;
-            }
+                fileBrowser.DefaultExt = "wav";
+                fileBrowser.Filter =
+                    @"Audio files (*.wav;*.mp3;*.m4a;*.wma)|*.wav;*.mp3;*.m4a;*.wma|Wave files (*.wav)|*.wav|MP3 files (*.mp3)|*.mp3|All files (*.*)|*.*";
+                fileBrowser.Title = @"Select Sound File";
+                if (fileBrowser.ShowDialog() == DialogResult.OK)
+                {
+                    var newFileName = fileBrowser.FileName;
 
-            _debouncer.Debounce(() => 
+                    if (!UtilityHelper.IsValidWavFile(newFileName))
+                    {
+                        outputFileName = Path.ChangeExtension(newFileName, ".wav");
+                    
+                        using var reader = new MediaFoundationReader(newFileName);
+                        WaveFileWriter.CreateWaveFile(outputFileName, reader);
+                    }
+                    else
+                    {
+                        outputFileName = newFileName;
+                    }
+                }
+            }
+            catch (Exception e)
             {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-            });
-            
-            if (!UtilityHelper.IsValidWavFile(fileName))
-            {
-                NotificationService.Instance.PublishNotification("Only .wav file is supported.", NotificationType.Inline);
+                _logger.Error(e, " An error occurred while browsing for sound file.");
+                NotificationService.Instance.PublishNotification("💀 Error while browsing for sound file!",
+                    NotificationType.Inline);
                 return string.Empty;
             }
-
-            return File.Exists(fileName) ? fileName.Trim() : string.Empty;
+            return !string.IsNullOrEmpty(outputFileName) && File.Exists(outputFileName) ? outputFileName : string.Empty;
         }
 
         public void Dispose()
@@ -157,20 +168,19 @@ namespace BatteryNotifier.Lib.Manager
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed && disposing)
-            {
-                StopSound();
+            if (_disposed || !disposing) return;
+            
+            StopSound();
 
-                _cancellationTokenSource?.Cancel();
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = null;
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = null;
 
-                _batteryNotificationPlayer?.Stop();
-                _batteryNotificationPlayer?.Dispose();
-                _debouncer?.Dispose();
+            _batteryNotificationPlayer?.Stop();
+            _batteryNotificationPlayer?.Dispose();
+            _debouncer?.Dispose();
         
-                _disposed = true;
-            }
+            _disposed = true;
         }
     }
 }
