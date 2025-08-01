@@ -181,35 +181,6 @@ namespace BatteryNotifier.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LightMode {
-            get {
-                object obj = ResourceManager.GetObject("LightMode", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
-        internal static System.Drawing.Bitmap logo_charging {
-            get {
-                object obj = ResourceManager.GetObject("logo_charging", resourceCulture);
-                return ((System.Drawing.Bitmap)(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.IO.UnmanagedMemoryStream similar to System.IO.MemoryStream.
-        /// </summary>
-        internal static System.IO.UnmanagedMemoryStream long_pop {
-            get {
-                return ResourceManager.GetStream("long_pop", resourceCulture);
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Drawing.Bitmap.
-        /// </summary>
         internal static System.Drawing.Bitmap Low {
             get {
                 object obj = ResourceManager.GetObject("Low", resourceCulture);
@@ -242,6 +213,16 @@ namespace BatteryNotifier.Properties {
         internal static System.Drawing.Bitmap Normal {
             get {
                 object obj = ResourceManager.GetObject("Normal", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap RemoveIcon {
+            get {
+                object obj = ResourceManager.GetObject("RemoveIcon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

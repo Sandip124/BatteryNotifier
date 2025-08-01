@@ -1,11 +1,11 @@
 using System;
 using System.ComponentModel;
-using System.Drawing;
-using System.Windows.Forms;
-using System.Drawing.Design;
 using System.ComponentModel.Design;
+using System.Drawing;
+using System.Drawing.Design;
+using System.Windows.Forms;
 
-namespace BatteryNotifier.CustomControls.FlatTabControl
+namespace BatteryNotifier.Lib.CustomControls.FlatTabControl
 {
 
     //https://www.codeproject.com/Articles/12185/A-NET-Flat-TabControl-CustomDraw
@@ -26,8 +26,8 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
         private bool bUpDown; // true when the button UpDown is required
         private ImageList leftRightImages = null;
         private const int nMargin = 5;
-        private Color mBackColor = SystemColors.Control;
-        private Color mBorderColor = SystemColors.ControlText;
+        private Color mBackColor = Color.Transparent;
+        private Color mBorderColor = Color.Transparent;
 
         public FlatTabControl()
         {
@@ -37,7 +37,7 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
             // double buffering
             SetStyle(ControlStyles.UserPaint, true);
             SetStyle(ControlStyles.AllPaintingInWmPaint, true);
-            SetStyle(ControlStyles.DoubleBuffer, true);
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
             SetStyle(ControlStyles.ResizeRedraw, true);
             SetStyle(ControlStyles.SupportsTransparentBackColor, true);
 
@@ -104,7 +104,21 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
 
             Pen border = new Pen(mBorderColor);
             TabArea.Inflate(nDelta, nDelta);
-            g.DrawRectangle(border, TabArea);
+            
+            g.DrawPolygon(border, new Point[]
+            {
+                new Point(TabArea.Left + nDelta, TabArea.Top),
+                new Point(TabArea.Right - nDelta, TabArea.Top),
+                new Point(TabArea.Right, TabArea.Top + nDelta),
+                new Point(TabArea.Right, TabArea.Bottom - nDelta),
+                new Point(TabArea.Right - nDelta, TabArea.Bottom),
+                new Point(TabArea.Left + nDelta, TabArea.Bottom),
+                new Point(TabArea.Left, TabArea.Bottom - nDelta),
+                new Point(TabArea.Left, TabArea.Top + nDelta),
+                new Point(TabArea.Left + nDelta, TabArea.Top)
+            });
+            
+            
             border.Dispose();
             //----------------------------
 
@@ -151,11 +165,35 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
                 TabArea.Offset(1, 1);
                 TabArea.Width -= 2;
                 TabArea.Height -= 2;
-
-                g.DrawRectangle(border, TabArea);
+                
+                g.DrawPolygon(border, new Point[]
+                    {
+                        new Point(TabArea.Left + nDelta, TabArea.Top),
+                        new Point(TabArea.Right - nDelta, TabArea.Top),
+                        new Point(TabArea.Right, TabArea.Top + nDelta),
+                        new Point(TabArea.Right, TabArea.Bottom - nDelta),
+                        new Point(TabArea.Right - nDelta, TabArea.Bottom),
+                        new Point(TabArea.Left + nDelta, TabArea.Bottom),
+                        new Point(TabArea.Left, TabArea.Bottom - nDelta),
+                        new Point(TabArea.Left, TabArea.Top + nDelta),
+                        new Point(TabArea.Left + nDelta, TabArea.Top)
+                    });
+                
                 TabArea.Width -= 1;
                 TabArea.Height -= 1;
-                g.DrawRectangle(border, TabArea);
+                
+                g.DrawPolygon(border, new Point[]
+                {
+                    new Point(TabArea.Left + nDelta, TabArea.Top),
+                    new Point(TabArea.Right - nDelta, TabArea.Top),
+                    new Point(TabArea.Right, TabArea.Top + nDelta),
+                    new Point(TabArea.Right, TabArea.Bottom - nDelta),
+                    new Point(TabArea.Right - nDelta, TabArea.Bottom),
+                    new Point(TabArea.Left + nDelta, TabArea.Bottom),
+                    new Point(TabArea.Left, TabArea.Bottom - nDelta),
+                    new Point(TabArea.Left, TabArea.Top + nDelta),
+                    new Point(TabArea.Left + nDelta, TabArea.Top)
+                });
 
                 border.Dispose();
             }
@@ -493,14 +531,14 @@ namespace BatteryNotifier.CustomControls.FlatTabControl
         }
 
         [Browsable(true)]
-        public Color MyBackColor
+        public override Color BackColor
         {
             get { return mBackColor; }
             set { mBackColor = value; Invalidate(); }
         }
 
         [Browsable(true)]
-        public Color MyBorderColor
+        public Color BorderColor
         {
             get { return mBorderColor; }
             set { mBorderColor = value; Invalidate(); }

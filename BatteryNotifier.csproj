@@ -68,23 +68,30 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Constants\Constant.cs" />
-    <Compile Include="CustomControls\FlatTabControl\FlatTabControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="CustomControls\FlatTabControl\Win32.cs" />
-    <Compile Include="CustomTimer\CustomTimer.cs" />
-    <Compile Include="Debouncer\Debouncer.cs" />
     <Compile Include="Forms\Dashboard.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\Dashboard.Designer.cs" />
-    <Compile Include="Helpers\ApplyFontHelper.cs" />
-    <Compile Include="Helpers\UtilityHelper.cs" />
-    <Compile Include="Helpers\WindowHelper.cs" />
+    <Compile Include="Lib\CustomControls\FlatTabControl\FlatTabControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Lib\CustomControls\FlatTabControl\Win32.cs" />
+    <Compile Include="Lib\Logger\BatteryNotifierLogger.cs" />
+    <Compile Include="Lib\Logger\BatteryNotifierLoggerConfig.cs" />
+    <Compile Include="Lib\Manager\BatteryManager.cs" />
+    <Compile Include="Lib\Manager\ContextMenuManager.cs" />
+    <Compile Include="Lib\Manager\NotificationManager.cs" />
+    <Compile Include="Lib\Manager\SoundManager.cs" />
+    <Compile Include="Lib\Manager\SettingsManager.cs" />
+    <Compile Include="Lib\Manager\ThemeManager.cs" />
+    <Compile Include="Lib\Manager\WindowManager.cs" />
+    <Compile Include="Lib\Providers\FontProvider.cs" />
+    <Compile Include="Lib\Services\BatteryMonitorService.cs" />
+    <Compile Include="Lib\Services\NotificationService.cs" />
+    <Compile Include="Lib\Services\ThemeChangeService.cs" />
+    <Compile Include="Lib\Store\BatteryManagerStore.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Providers\FontProvider.cs" />
-    <Compile Include="Providers\ThemeProvider.cs" />
     <Compile Include="Setting\appSetting.cs" />
     <Compile Include="Setting\appSetting.Designer.cs">
       <DependentUpon>appSetting.settings</DependentUpon>
@@ -94,8 +101,13 @@
     <Compile Include="Theming\BaseTheme.cs" />
     <Compile Include="Theming\DarkTheme.cs" />
     <Compile Include="Theming\LightTheme.cs" />
-    <EmbeddedResource Include="CustomControls\FlatTabControl\FlatTabControl.resx" />
+    <Compile Include="Utils\FontControlUtils.cs" />
+    <Compile Include="Utils\Debouncer.cs" />
+    <Compile Include="Utils\ThemeUtils.cs" />
+    <Compile Include="Utils\UtilityHelper.cs" />
+    <Compile Include="Utils\WindowControlHelper.cs" />
     <EmbeddedResource Include="Forms\Dashboard.resx" />
+    <EmbeddedResource Include="Lib\CustomControls\FlatTabControl\FlatTabControl.resx" />
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
@@ -115,15 +127,12 @@
     <Content Include="Assets\Fonts\Inter-Bold.ttf" />
     <Content Include="Assets\Fonts\Inter-Regular.ttf" />
     <Content Include="battery-icon.ico" />
-    <Content Include="batteryNotifier.png" />
     <Content Include="BatteryNotifierBanner.png" />
     <Content Include="BatteryNotifierLogo.png" />
     <Content Include="LICENSE" />
     <Content Include="README.md" />
     <Content Include="ReleaseSpec.nuspec" />
     <Content Include="Resources\BatteryFull.wav" />
-    <Content Include="Resources\batteryNotifierIcon.ico" />
-    <Content Include="Resources\batteryNotifiyerIcon.ico" />
     <Content Include="Resources\battery_icon.ico" />
     <Content Include="Resources\ChargingBatteryAnimated.gif" />
     <Content Include="Resources\ChargingBatteryAnimatedDark1.gif" />
@@ -136,11 +145,6 @@
     <Content Include="Resources\icon.png" />
     <Content Include="Resources\launchatstartup.png" />
     <Content Include="Resources\LightMode.png" />
-    <Content Include="Resources\logo.png" />
-    <Content Include="Resources\logo_charging.ico" />
-    <Content Include="Resources\logo_charging.png" />
-    <Content Include="Resources\logo_charging1.png" />
-    <Content Include="Resources\long-pop.wav" />
     <Content Include="Resources\Low.png" />
     <Content Include="Resources\LowBatterynotification.png" />
     <Content Include="Resources\LowBatterySound.wav" />
@@ -155,16 +159,21 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DeltaCompressionDotNet" Version="1.1.0" />
     <PackageReference Include="Lib.Extensions.System.ComponentModel" Version="22.4.12" />
-    <PackageReference Include="Mono.Cecil" Version="0.9.6.1" />
-    <PackageReference Include="NuGet.CommandLine" Version="6.8.0">
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="NuGet.CommandLine" Version="6.14.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="SharpCompress" Version="0.17.1" />
-    <PackageReference Include="Splat" Version="1.6.2" />
-    <PackageReference Include="squirrel.windows" Version="1.9.1" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="SharpCompress" Version="0.40.0" />
+    <PackageReference Include="squirrel.windows" Version="2.0.1" />
+    <PackageReference Include="System.Management" Version="9.0.7" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.7.2">
@@ -183,7 +192,7 @@
     <NugetTools>$(PkgNuGet_CommandLine)\tools</NugetTools>
     <SquirrelTools>$(Pkgsquirrel_windows)\tools</SquirrelTools>
     <NuspecFile>$(SolutionDir)ReleaseSpec.nuspec</NuspecFile>
-    <Version>3.0.0</Version>
+    <Version>3.1.0</Version>
   </PropertyGroup>
   <Target Name="GenerateRelease" AfterTargets="AfterBuild" Condition="$(Configuration) == Release">
     <XmlPeek XmlInputPath="$(NuspecFile)" Query="/package/metadata/id/text()">

@@ -1,0 +1,106 @@
+using System;
+using System.Drawing;
+using System.Windows.Forms;
+using BatteryNotifier.Forms;
+using BatteryNotifier.Lib.Logger;
+using BatteryNotifier.Utils;
+using Serilog;
+using appSetting = BatteryNotifier.Setting.appSetting;
+
+namespace BatteryNotifier.Lib.Manager
+{
+    public class WindowManager : IDisposable
+    {
+        private readonly ILogger _logger;
+        private readonly Debouncer _debouncer;
+        private bool _disposed;
+        private Point _lastLocation;
+        private bool _mouseDown;
+        private readonly Dashboard dashboard;
+
+        public WindowManager(Dashboard dashboard)
+        {
+            this.dashboard = dashboard;
+            _debouncer = new Debouncer();
+            _logger = BatteryNotifierAppLogger.ForContext<WindowManager>();
+        }
+
+        public void RenderTitleBarCursor(Label appHeaderTitle)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(WindowManager));
+
+            UtilityHelper.SafeInvoke(appHeaderTitle, () =>
+            {
+                appHeaderTitle.Cursor = appSetting.Default.PinToWindow ? Cursors.Default : Cursors.SizeAll;
+            });
+        }
+        
+        public void HandleCloseClick()
+        {
+            if (appSetting.Default.PinToWindow)
+            {
+                dashboard.Hide();
+            }
+            else
+            {
+                dashboard.WindowState = FormWindowState.Minimized;
+            }
+        }
+
+        public void HandleMouseDown(MouseEventArgs e)
+        {
+            if (appSetting.Default.PinToWindow) return;
+
+            _mouseDown = true;
+            _lastLocation = e.Location;
+        }
+
+        public void HandleMouseMove(MouseEventArgs e)
+        {
+            if (appSetting.Default.PinToWindow || !_mouseDown) return;
+
+            var xPosition = dashboard.Location.X - _lastLocation.X + e.X;
+            var yPosition = dashboard.Location.Y - _lastLocation.Y + e.Y;
+            dashboard.Location = new Point(xPosition, yPosition);
+            dashboard.Update();
+
+            _debouncer.Debounce(() =>
+            {
+                try
+                {
+                    appSetting.Default.WindowPositionX = xPosition;
+                    appSetting.Default.WindowPositionY = yPosition;
+                    appSetting.Default.Save();
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "Error saving window position.");
+                }
+            }, 1000);
+        }
+
+        public void HandleMouseUp(MouseEventArgs e)
+        {
+            if (appSetting.Default.PinToWindow) return;
+            _mouseDown = false;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed || !disposing) return;
+
+            _debouncer?.Dispose();
+    
+            _mouseDown = false;
+            _lastLocation = Point.Empty;
+    
+            _disposed = true;
+        }
+    }
+}

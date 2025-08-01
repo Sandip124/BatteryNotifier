@@ -1,119 +1,143 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
-using System.Threading.Tasks;
+using BatteryNotifier.Lib.Logger;
+using BatteryNotifier.Lib.Services;
+using BatteryNotifier.Utils;
 using Squirrel;
-using BatteryNotifier.Helpers;
-using System.Threading;
 
 namespace BatteryNotifier
 {
     internal static class Program
     {
-        public static UpdateManager? UpdateManager;
-
-        private static Form? MainForm;
-
-        private static string? version = UtilityHelper.AssemblyVersion;
-
+        private static UpdateManager? _updateManager;
+        private static Dashboard? _dashboard;
         private static readonly string EventName = "BatteryNotifier.Instance.WaitHandle";
-
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
+        private static readonly string Version = UtilityHelper.AssemblyVersion;
+        
         [STAThread]
         static void Main()
         {
             try
             {
-                AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(OnUnhandledExpection);
+                BatteryNotifierLoggerConfig.InitializeLogger();
+                BatteryNotifierAppLogger.LogStartup();
 
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
 
-                using (EventWaitHandle eventWaitHandle = new EventWaitHandle(false, EventResetMode.AutoReset, EventName, out bool createdNew))
-                {
-                    if (createdNew)
-                    {
+                // Log application information
+                BatteryNotifierAppLogger.Info("Application Version: {Version}", Application.ProductVersion);
+                BatteryNotifierAppLogger.Info("OS Version: {OS}", Environment.OSVersion);
+                BatteryNotifierAppLogger.Info("CLR Version: {CLR}", Environment.Version);
+                BatteryNotifierAppLogger.Info("Working Directory: {WorkingDir}", Environment.CurrentDirectory);
 
-                        MainForm = new Dashboard();
-                        var dashboard = MainForm as Dashboard;
-#if RELEASE
+                Application.ThreadException += Application_ThreadException;
+                AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
 
-                    if (InternetConnectivityHelper.CheckForInternetConnection())
+                using var eventWaitHandle =
+                    new EventWaitHandle(false, EventResetMode.AutoReset, EventName, out bool createdNew);
+
+                if (!createdNew)
                 {
-                    dashboard?.Notify("🤿 Checking for update ...");
-                    Task.Run( () =>InitUpdateManager()).Wait();
-                    Task UpdateTask = new(CheckForUpdates);
-                    UpdateTask.Start();
-                    version = UpdateManager?.CurrentlyInstalledVersion().ToString();
+                    MessageBox.Show(@"Another instance of Battery Notifier is already running.", @"Instance Running",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
                 }
-#endif
-                        dashboard?.SetVersion(version);
 
-                        Application.Run(dashboard);
+                _dashboard = new Dashboard();
+                _dashboard.SetVersion(Version);
+
+#if RELEASE
+            if (InternetConnectivityHelper.CheckForInternetConnection())
+            {
+                NotificationService.Instance.PublishNotification("🤿 Checking for update ...");
+                InitializeUpdateManagerAndCheckUpdatesAsync().ConfigureAwait(false);
+            }
+#endif
+
+                Application.Run(_dashboard);
+            }
+            catch (Exception ex)
+            {
+                BatteryNotifierAppLogger.Fatal(ex, "Critical error during application startup");
+                MessageBox.Show($@"A critical error occurred during startup:\n{ex.Message}", 
+                    @"Battery Notifier Application Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                BatteryNotifierAppLogger.LogShutdown();
+                BatteryNotifierLoggerConfig.ShutdownLogger();
+            }
+        }
+
+        private static async Task InitializeUpdateManagerAndCheckUpdatesAsync()
+        {
+            try
+            {
+                _updateManager = await UpdateManager.GitHubUpdateManager(Constants.Constant.SourceRepositoryUrl);
+
+                if (_updateManager is not null)
+                {
+                    var updateInfo = await _updateManager.CheckForUpdate();
+                    if (updateInfo.ReleasesToApply.Count > 0)
+                    {
+                        var release = await _updateManager.UpdateApp();
+                        if (release != null)
+                        {
+                            NotificationService.Instance.PublishNotification($"✅ Battery Notifier {release.Version} downloaded. Restart to apply.");
+                        }
                     }
                     else
                     {
-                        (MainForm as Dashboard)?.Notify("Another instance of Battery Notifier is already running.");
-                    }
-                }
-
-            }
-            catch (Exception e)
-            {
-                (MainForm as Dashboard)?.Notify(e.Message);
-            }
-
-        }
-
-        public static async Task InitUpdateManager()
-        {
-            try
-            {
-                UpdateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceRepositoryUrl}");
-            }
-            catch (Exception)
-            {
-                (MainForm as Dashboard)?.Notify("🕹 Could not initialize update manager!");
-            }
-        }
-
-        static async void CheckForUpdates()
-        {
-            try
-            {
-                var updateInfo = await UpdateManager?.CheckForUpdate()!;
-
-                if (updateInfo.ReleasesToApply.Count > 0)
-                {
-                    var releaseEntry = await UpdateManager.UpdateApp();
-
-                    if (releaseEntry != null)
-                    {
-                        (MainForm as Dashboard)?.Notify($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply.");
+                        NotificationService.Instance.PublishNotification("✌ No Update Available");
                     }
                 }
                 else
                 {
-                    (MainForm as Dashboard)?.Notify("✌ No Update Available");
+                    NotificationService.Instance.PublishNotification("🕹 Could not initialize update manager!",NotificationType.Inline);
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                (MainForm as Dashboard)?.Notify("💀 Could not update app!");
+                BatteryNotifierAppLogger.Fatal(ex, "Error checking for updates");
+                NotificationService.Instance.PublishNotification("💀 Could not update app!",NotificationType.Inline);
             }
             finally
             {
-                Thread.Sleep(1000);
-                (MainForm as Dashboard)?.Notify(string.Empty);
+                await Task.Delay(1000);
+                NotificationService.Instance.PublishNotification(string.Empty);
             }
         }
 
-        static void OnUnhandledExpection(object? sender, UnhandledExceptionEventArgs args)
+        private static void OnUnhandledException(object? sender, UnhandledExceptionEventArgs e)
         {
-            (MainForm as Dashboard)?.Notify("Unhandled exception occured.");
+            var ex = e.ExceptionObject as Exception;
+            BatteryNotifierAppLogger.Fatal(ex, "Unhandled domain exception occurred. Terminating: {IsTerminating}", e.IsTerminating);
+            
+            MessageBox.Show(
+                $@"A critical error occurred:\n{ex?.Message ?? "Unknown error"}",
+                @"Battery Notifier Critical Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
+        
+        private static void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        {
+            BatteryNotifierAppLogger.Error(e.Exception, "Unhandled thread exception occurred");
+            
+            var result = MessageBox.Show(
+                $@"An unexpected error occurred:\n{e.Exception.Message}\n\nDo you want to continue?",
+                @"Battery Notifier Application Error",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Error);
 
+            if (result == DialogResult.No)
+            {
+                Application.Exit();
+            }
+        }
     }
 }
