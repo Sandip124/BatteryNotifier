@@ -270,11 +270,9 @@ namespace BatteryNotifier.Forms
             // 
             // AppFooter
             // 
-            this.AppFooter.BackColor = System.Drawing.Color.AliceBlue;
             this.AppFooter.Controls.Add(this.VersionLabel);
             this.AppFooter.Controls.Add(this.NotificationText);
             this.AppFooter.Dock = System.Windows.Forms.DockStyle.Right;
-            this.AppFooter.ForeColor = System.Drawing.Color.Crimson;
             this.AppFooter.Location = new System.Drawing.Point(0, 405);
             this.AppFooter.Margin = new System.Windows.Forms.Padding(0);
             this.AppFooter.Name = "AppFooter";
@@ -287,7 +285,6 @@ namespace BatteryNotifier.Forms
             this.VersionLabel.Cursor = System.Windows.Forms.Cursors.Hand;
             this.VersionLabel.Dock = System.Windows.Forms.DockStyle.Right;
             this.VersionLabel.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Bold);
-            this.VersionLabel.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.VersionLabel.Location = new System.Drawing.Point(300, 0);
             this.VersionLabel.Name = "VersionLabel";
             this.VersionLabel.RightToLeft = System.Windows.Forms.RightToLeft.Yes;

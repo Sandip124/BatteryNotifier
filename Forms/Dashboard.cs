@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using BatteryNotifier.Constants;
 using BatteryNotifier.Lib.CustomControls.FlatTabControl;
@@ -200,7 +201,7 @@ namespace BatteryNotifier.Forms
             SuspendLayout();
             try
             {
-                _themeManager.ApplyTheme(ThemePictureBox, CloseIcon);
+                _themeManager.ApplyTheme();
                 _windowManager.RenderTitleBarCursor(AppHeaderTitle);
                 ApplyFontStyle();
                 _settingsManager.LoadCheckboxSettings(PinToWindow, launchAtStartup)
@@ -230,8 +231,8 @@ namespace BatteryNotifier.Forms
         private void AttachEventListeners()
         {
             // Form events
-            Activated += Dashboard_Activated;
             FormClosed += Dashboard_FormClosed;
+            Shown += Dashboard_Shown;
 
             // Close icon events
             CloseIcon.Click += CloseIcon_Click;
@@ -279,6 +280,12 @@ namespace BatteryNotifier.Forms
             BatteryNotifierIcon.BalloonTipClosed += BatteryNotifierIcon_BalloonTipClosed;
         }
 
+        private void Dashboard_Shown(object sender, EventArgs e)
+        {
+            _settingsManager.LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox);
+            this.RenderFormPosition(BatteryNotifierIcon);
+        }
+
 
         private void CloseIcon_Click(object? sender, EventArgs e)
         {
@@ -302,17 +309,6 @@ namespace BatteryNotifier.Forms
 
             _batteryManager.RefreshBatteryStatus();
             requirePendingBatteryUiUpdate = false;
-        }
-
-        private void Dashboard_Activated(object? sender, EventArgs e)
-        {
-            _settingsManager.LoadNotificationSettings(FullBatteryNotificationCheckbox, LowBatteryNotificationCheckbox);
-            this.RenderFormPosition(BatteryNotifierIcon);
-
-            WindowState = FormWindowState.Normal;
-            Show();
-
-            UpdateTaskbarAndIconVisibility();
         }
 
         private void UpdateTaskbarAndIconVisibility()
@@ -394,7 +390,7 @@ namespace BatteryNotifier.Forms
 
             UtilityHelper.SafeInvoke(ThemePictureBox, () =>
             {
-                _themeManager.ApplyTheme(ThemePictureBox, CloseIcon);
+                _themeManager.ApplyTheme();
                 _batteryManager.UpdateChargingAnimation();
             });
         }
@@ -404,7 +400,7 @@ namespace BatteryNotifier.Forms
             SuspendLayout();
             try
             {
-                _themeManager.SetSystemTheme().ApplyTheme(ThemePictureBox, CloseIcon);
+                _themeManager.SetSystemTheme().ApplyTheme();
                 _batteryManager.UpdateChargingAnimation();
                 NotificationService.Instance.PublishNotification("Battery Notifier theme is synced with system theme.",
                     NotificationType.Inline);
@@ -420,7 +416,7 @@ namespace BatteryNotifier.Forms
             SuspendLayout();
             try
             {
-                _themeManager.SetDarkTheme().ApplyTheme(ThemePictureBox, CloseIcon);
+                _themeManager.SetDarkTheme().ApplyTheme();
                 _batteryManager.UpdateChargingAnimation();
                 NotificationService.Instance.PublishNotification("Battery Notifier is on dark mode 🌙.",
                     NotificationType.Inline);
@@ -436,7 +432,7 @@ namespace BatteryNotifier.Forms
             SuspendLayout();
             try
             {
-                _themeManager.SetLightTheme().ApplyTheme(ThemePictureBox, CloseIcon);
+                _themeManager.SetLightTheme().ApplyTheme();
                 _batteryManager.UpdateChargingAnimation();
                 NotificationService.Instance.PublishNotification("Battery Notifier is on light mode 🔆.",
                     NotificationType.Inline);
@@ -521,7 +517,6 @@ namespace BatteryNotifier.Forms
 
         private void BatteryNotifierIcon_Click(object? sender, EventArgs e)
         {
-            WindowState = FormWindowState.Normal;
             Activate();
         }
 
@@ -547,30 +542,12 @@ namespace BatteryNotifier.Forms
             foreach (var ctrl in regularControls)
                 ctrl.ApplyRegularFont();
         }
-
-        protected override void SetVisibleCore(bool value)
-        {
-            base.SetVisibleCore(value);
-
-            if (value) return;
-            
-            NotificationService.Instance.ClearNotifications();
-            NotificationService.Instance.ClearDeduplicationCache();
-
-            ForceGarbageCollection();
-        }
-
-        private void ForceGarbageCollection()
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-        }
-
+        
         private void DetachEventHandlers()
         {
             // Form events
-            Activated -= Dashboard_Activated;
             FormClosed -= Dashboard_FormClosed;
+            Shown -= Dashboard_Shown;
 
             // Close icon events
             CloseIcon.Click -= CloseIcon_Click;

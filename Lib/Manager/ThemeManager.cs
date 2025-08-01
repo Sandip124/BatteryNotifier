@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using BatteryNotifier.Forms;
 using BatteryNotifier.Lib.CustomControls.FlatTabControl;
-using BatteryNotifier.Properties;
 using BatteryNotifier.Theming;
 using BatteryNotifier.Utils;
 using appSetting = BatteryNotifier.Setting.appSetting;
@@ -24,17 +24,21 @@ namespace BatteryNotifier.Lib.Manager
 
         public ThemeManager RegisterForegroundControls(Control[] controls) =>
             RegisterControls(controls, foregroundControls);
+
         public ThemeManager RegisterAccentControls(Control[] controls) => RegisterControls(controls, accentControls);
         public ThemeManager RegisterAccent2Controls(Control[] controls) => RegisterControls(controls, accent2Controls);
         public ThemeManager RegisterAccent3Controls(Control[] controls) => RegisterControls(controls, accent3Controls);
-        public ThemeManager RegisterBorderedCustomControls(FlatTabControl[] controls) => RegisterControls(controls, flatTabCustomControls);
-        
-        private ThemeManager RegisterControls<T>(T[] controls,HashSet<T>? controlHolder)
+
+        public ThemeManager RegisterBorderedCustomControls(FlatTabControl[] controls) =>
+            RegisterControls(controls, flatTabCustomControls);
+
+        private ThemeManager RegisterControls<T>(T[] controls, HashSet<T>? controlHolder)
         {
             foreach (var control in controls)
             {
                 controlHolder?.Add(control);
             }
+
             return this;
         }
 
@@ -62,24 +66,29 @@ namespace BatteryNotifier.Lib.Manager
             return this;
         }
 
-        public void ApplyTheme(PictureBox pictureBox, PictureBox closeIcon)
+        [DllImport("user32.dll")]
+        private static extern int SendMessage(IntPtr hWnd, int wMsg, bool wParam, int lParam);
+        private const int WM_SETREDRAW = 11;
+
+        public void ApplyTheme()
         {
             if (_disposed || _isApplyingTheme)
             {
                 return;
             }
-            
+
             _isApplyingTheme = true;
+            SendMessage(dashboard.Handle, WM_SETREDRAW, false, 0);
             dashboard.SuspendLayout();
-            
+
             try
             {
                 ApplyThemeColors(ThemeUtils.GetTheme());
-                ApplyThemeImages(pictureBox, closeIcon);
             }
             finally
             {
-                dashboard.ResumeLayout(false);
+                dashboard.ResumeLayout(true);
+                SendMessage(dashboard.Handle, WM_SETREDRAW, true, 0);
                 _isApplyingTheme = false;
             }
         }
@@ -87,78 +96,54 @@ namespace BatteryNotifier.Lib.Manager
         private void ApplyThemeColors(BaseTheme? theme)
         {
             if (theme == null) return;
-            ApplyBackgroundColor(accentControls, theme.AccentColor);
-            ApplyBackgroundColor(accent2Controls, theme.Accent2Color);
-            ApplyBackgroundColor(accent3Controls, theme.Accent3Color);
-            ApplyForegroundColor(foregroundControls, theme.ForegroundColor);
-            ApplyBorderColor(flatTabCustomControls, theme.BorderColor);
-        }
 
-        private static void ApplyThemeImages(PictureBox themePictureBox, PictureBox closeIcon)
-        {
-            var desiredImage = ThemeUtils.IsDarkTheme ? ImageCache.DarkMode : ImageCache.LightMode;
-            
-            UtilityHelper.SafeInvoke(themePictureBox, () =>
-            {
-                if (themePictureBox.Image != desiredImage)
-                {
-                    themePictureBox.Image = desiredImage;
-                }
-            });
-            
-            UtilityHelper.SafeInvoke(closeIcon, () =>
-            {
-                if (closeIcon.Image != ImageCache.CloseIconDark)
-                {
-                    closeIcon.Image = ImageCache.CloseIconDark;
-                }
-            });
-        }
+            var controlThemeMap = new Dictionary<Control, ThemeProperties>();
 
-        private static void ApplyBackgroundColor(HashSet<Control>? controls, Color color)
-        {
-            if (controls == null || controls.Count == 0) return;
-            foreach (var control in controls)
+            AddControlsToMap(controlThemeMap, accentControls, new ThemeProperties { BackColor = theme.AccentColor });
+            AddControlsToMap(controlThemeMap, accent2Controls, new ThemeProperties { BackColor = theme.Accent2Color });
+            AddControlsToMap(controlThemeMap, accent3Controls, new ThemeProperties { BackColor = theme.Accent3Color });
+            AddControlsToMap(controlThemeMap, foregroundControls,
+                new ThemeProperties { ForeColor = theme.ForegroundColor });
+            AddControlsToMap(controlThemeMap, flatTabCustomControls,
+                new ThemeProperties { BorderColor = theme.BorderColor });
+
+            // Disable redraw for batch update
+            SendMessage(dashboard.Handle, WM_SETREDRAW, false, 0);
+            dashboard.SuspendLayout();
+
+            try
             {
-                if (control is { IsDisposed: false } && control.BackColor != color)
+                foreach (var kvp in controlThemeMap)
                 {
-                    UtilityHelper.SafeInvoke(control, () =>
+                    var control = kvp.Key;
+                    if (control is { IsDisposed: false })
                     {
-                        control.BackColor = color;
-                    });
+                        UtilityHelper.SafeInvoke(control, () =>
+                        {
+                            var themeProps = kvp.Value;
+
+                            if (themeProps.BackColor.HasValue && control.BackColor != themeProps.BackColor.Value)
+                                control.BackColor = themeProps.BackColor.Value;
+
+                            if (themeProps.ForeColor.HasValue && control.ForeColor != themeProps.ForeColor.Value)
+                                control.ForeColor = themeProps.ForeColor.Value;
+
+                            if (themeProps.BorderColor.HasValue && control is FlatTabControl flatTab &&
+                                flatTab.BorderColor != themeProps.BorderColor.Value)
+                                flatTab.BorderColor = themeProps.BorderColor.Value;
+                        });
+                    }
                 }
+            }
+            finally
+            {
+                dashboard.ResumeLayout(true);
+                // Re-enable redraw and invalidate the dashboard to refresh UI
+                SendMessage(dashboard.Handle, WM_SETREDRAW, true, 0);
+                dashboard.Invalidate(true);
             }
         }
 
-        private static void ApplyForegroundColor(HashSet<Control>? controls, Color color)
-        {
-            if (controls == null || controls.Count == 0) return;
-            foreach (var control in controls)
-            {
-                if (control is { IsDisposed: false } && control.ForeColor != color)
-                {
-                    UtilityHelper.SafeInvoke(control, () =>
-                    {
-                        control.ForeColor = color;
-                    });
-                }
-            }
-        }
-        
-        private static void ApplyBorderColor(HashSet<FlatTabControl>? controls, Color color)
-        {
-            if (controls == null || controls.Count == 0) return;
-            foreach (var control in controls)
-            {
-                if (control is { IsDisposed: false } && control.BorderColor != color)
-                {
-                    UtilityHelper.SafeInvoke(control, () =>
-                    {
-                        control.BorderColor = color;
-                    });
-                }
-            }
-        }
         public void Dispose()
         {
             Dispose(true);
@@ -178,13 +163,36 @@ namespace BatteryNotifier.Lib.Manager
             _disposed = true;
         }
 
-        private static class ImageCache
+        private static void AddControlsToMap(Dictionary<Control, ThemeProperties> map, IEnumerable<Control>? controls,
+            ThemeProperties props)
         {
-            public static readonly Image DarkMode = Resources.DarkMode;
-            public static readonly Image LightMode = Resources.LightMode;
-            public static readonly Image CloseIconDark = Resources.closeIconDark;
+            if (controls == null) return;
+            
+            foreach (var control in controls)
+            {
+                if (map.ContainsKey(control))
+                {
+                    map[control].Merge(props);
+                }
+                else
+                {
+                    map[control] = props;
+                }
+            }
+        }
+
+        public class ThemeProperties
+        {
+            public Color? BackColor { get; set; }
+            public Color? ForeColor { get; set; }
+            public Color? BorderColor { get; set; }
+
+            public void Merge(ThemeProperties other)
+            {
+                BackColor = BackColor ?? other.BackColor;
+                ForeColor = ForeColor ?? other.ForeColor;
+                BorderColor = BorderColor ?? other.BorderColor;
+            }
         }
     }
-    
-    
 }
