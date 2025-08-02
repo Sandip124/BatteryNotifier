@@ -2,7 +2,7 @@
 <package>
   <metadata>
     <id>BatteryNotifier</id>
-    <version>3.1.0</version>
+    <version>3.1.1</version>
     <title>Battery Notifier</title>
     <authors>Sandip Chaudhary</authors>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>

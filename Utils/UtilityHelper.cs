@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Globalization;
+using System.Net;
 using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -121,6 +123,33 @@ namespace BatteryNotifier.Utils
             // For most GIF animations, return the full image bounds
             // In more complex scenarios, you could analyze pixel differences
             return new Rectangle(0, 0, newImage.Width, newImage.Height);
+        }
+        
+        //https://stackoverflow.com/questions/2031824/what-is-the-best-way-to-check-for-internet-connectivity-using-net
+        public static bool CheckForInternetConnection(int timeoutMs = 10000, string? url = null)
+        {
+            try
+            {
+                url ??= CultureInfo.InstalledUICulture switch
+                {
+                    { Name: var n } when n.StartsWith("fa") => // Iran
+                        "http://www.aparat.com",
+                    { Name: var n } when n.StartsWith("zh") => // China
+                        "http://www.baidu.com",
+                    _ =>
+                        "http://www.gstatic.com/generate_204",
+                };
+
+                var request = (HttpWebRequest)WebRequest.Create(url);
+                request.KeepAlive = false;
+                request.Timeout = timeoutMs;
+                using var response = (HttpWebResponse)request.GetResponse();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

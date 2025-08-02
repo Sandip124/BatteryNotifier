@@ -15,7 +15,7 @@ namespace BatteryNotifier
         private static UpdateManager? _updateManager;
         private static Dashboard? _dashboard;
         private static readonly string EventName = "BatteryNotifier.Instance.WaitHandle";
-        private static readonly string Version = UtilityHelper.AssemblyVersion;
+        private static string _version = UtilityHelper.AssemblyVersion;
         
         [STAThread]
         static void Main()
@@ -48,16 +48,16 @@ namespace BatteryNotifier
                 }
 
                 _dashboard = new Dashboard();
-                _dashboard.SetVersion(Version);
+               
 
 #if RELEASE
-            if (InternetConnectivityHelper.CheckForInternetConnection())
+            if (UtilityHelper.CheckForInternetConnection())
             {
                 NotificationService.Instance.PublishNotification("🤿 Checking for update ...");
-                InitializeUpdateManagerAndCheckUpdatesAsync().ConfigureAwait(false);
+                Task.Run(async () => await InitializeAndCheckForUpdatesAsync());
             }
 #endif
-
+                _dashboard.SetVersion(_version);
                 Application.Run(_dashboard);
             }
             catch (Exception ex)
@@ -72,32 +72,62 @@ namespace BatteryNotifier
                 BatteryNotifierLoggerConfig.ShutdownLogger();
             }
         }
-
-        private static async Task InitializeUpdateManagerAndCheckUpdatesAsync()
+        
+        private static async Task InitializeAndCheckForUpdatesAsync()
         {
             try
             {
-                _updateManager = await UpdateManager.GitHubUpdateManager(Constants.Constant.SourceRepositoryUrl);
-
-                if (_updateManager is not null)
+                await InitUpdateManager();
+                
+                if (_updateManager != null)
                 {
-                    var updateInfo = await _updateManager.CheckForUpdate();
-                    if (updateInfo.ReleasesToApply.Count > 0)
+                    await CheckForUpdates();
+                }
+            }
+            catch (Exception ex)
+            {
+                NotificationService.Instance.PublishNotification("💀 Could not initialize update manager!", NotificationType.Inline);
+                BatteryNotifierAppLogger.Error(ex, "Error during update initialization or check");
+            }
+        }
+
+        private static async Task InitUpdateManager()
+        {
+            try
+            {
+                _updateManager = await UpdateManager.GitHubUpdateManager($@"{Constants.Constant.SourceRepositoryUrl}");
+                _version = _updateManager?.CurrentlyInstalledVersion()?.ToString() ?? _version;
+            }
+            catch (Exception)
+            {
+                NotificationService.Instance.PublishNotification("🕹 Could not initialize update manager!",NotificationType.Inline);
+                throw;
+            }
+        }
+
+        private static async Task CheckForUpdates()
+        {
+            try
+            {
+                if (_updateManager == null)
+                {
+                    NotificationService.Instance.PublishNotification("🕹 Could not initialize update manager!",NotificationType.Inline);
+                    BatteryNotifierAppLogger.Error("Update manager is not initialized.");
+                    return;
+                }
+
+                var updateInfo = await _updateManager.CheckForUpdate();
+                if (updateInfo.ReleasesToApply.Count > 0)
+                {
+                    var releaseEntry = await _updateManager.UpdateApp();
+                    if (releaseEntry != null)
                     {
-                        var release = await _updateManager.UpdateApp();
-                        if (release != null)
-                        {
-                            NotificationService.Instance.PublishNotification($"✅ Battery Notifier {release.Version} downloaded. Restart to apply.");
-                        }
-                    }
-                    else
-                    {
-                        NotificationService.Instance.PublishNotification("✌ No Update Available");
+                        NotificationService.Instance.PublishNotification($"✅ Battery Notifier {releaseEntry.Version} downloaded. Restart to apply.");
                     }
                 }
                 else
                 {
-                    NotificationService.Instance.PublishNotification("🕹 Could not initialize update manager!",NotificationType.Inline);
+                    NotificationService.Instance.PublishNotification("✌ No Update Available");
                 }
             }
             catch (Exception ex)
@@ -108,7 +138,7 @@ namespace BatteryNotifier
             finally
             {
                 await Task.Delay(1000);
-                NotificationService.Instance.PublishNotification(string.Empty);
+                NotificationService.Instance.PublishNotification(string.Empty, NotificationType.Inline);
             }
         }
 
@@ -124,7 +154,7 @@ namespace BatteryNotifier
                 MessageBoxIcon.Error);
         }
         
-        private static void Application_ThreadException(object sender, System.Threading.ThreadExceptionEventArgs e)
+        private static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
         {
             BatteryNotifierAppLogger.Error(e.Exception, "Unhandled thread exception occurred");
             

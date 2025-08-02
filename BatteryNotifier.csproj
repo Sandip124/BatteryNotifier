@@ -28,7 +28,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
-    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <ApplicationVersion>3.1.1</ApplicationVersion>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
@@ -192,7 +192,7 @@
     <NugetTools>$(PkgNuGet_CommandLine)\tools</NugetTools>
     <SquirrelTools>$(Pkgsquirrel_windows)\tools</SquirrelTools>
     <NuspecFile>$(SolutionDir)ReleaseSpec.nuspec</NuspecFile>
-    <Version>3.1.0</Version>
+    <Version>3.1.1</Version>
   </PropertyGroup>
   <Target Name="GenerateRelease" AfterTargets="AfterBuild" Condition="$(Configuration) == Release">
     <XmlPeek XmlInputPath="$(NuspecFile)" Query="/package/metadata/id/text()">
