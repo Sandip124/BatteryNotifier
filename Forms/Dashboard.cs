@@ -33,7 +33,9 @@ namespace BatteryNotifier.Forms
             get
             {
                 var cp = base.CreateParams;
+                cp.ExStyle |= 0x02000000;
                 cp.Style |= 0x20000;
+                cp.ClassStyle |= 0x8;
                 return cp;
             }
         }
