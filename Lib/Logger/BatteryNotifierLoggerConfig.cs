@@ -28,7 +28,7 @@ public static class BatteryNotifierLoggerConfig
             .Enrich.WithThreadId()
             .Enrich.WithProcessId()
             .Enrich.WithProperty("Application", "BatteryNotifier")
-            .Enrich.WithProperty("Version", Application.ProductVersion ?? "3.0.0")
+            .Enrich.WithProperty("Version", Application.ProductVersion ?? "3.1.0")
             .Enrich.WithProperty("MachineName", Environment.MachineName)
 
             // File sink - Main application logs (high performance with buffering)
