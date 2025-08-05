@@ -1,0 +1,83 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             x:Class="BatteryNotifier.Avalonia.Views.HomeView"
+             x:DataType="vm:HomeViewModel"
+             >
+    <Grid RowDefinitions="Auto,*,Auto">
+        <Border Grid.Row="0" Padding="10,8">
+            <Grid RowDefinitions="Auto" ColumnDefinitions="36,*,Auto"
+                  VerticalAlignment="Center">
+                <Image Grid.Column="0" Margin="0 0,8,0"
+                       Source="/Assets/BatteryNotifierLogo.png">
+                </Image>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16" FontWeight="Bold">Battery Notifier </TextBlock>
+                <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2" Background="Transparent" CornerRadius="8" Padding="6"
+                        Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.Nut}, Width=16, Height=16}" />
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1" ColumnDefinitions="*">
+            <Border Margin="5">
+                <Border.Background >
+                    <RadialGradientBrush GradientOrigin="200,200" RadiusX="200" RadiusY="200">
+                        <GradientStop Color="#224394EB" Offset="0" />
+                        <GradientStop Color="Transparent" Offset="1" />
+                    </RadialGradientBrush>
+                </Border.Background>
+                
+                 <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
+
+                            <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+                                <Image Height="140" Source="/Assets/Sufficient.png"></Image>
+                                <TextBlock TextAlignment="Center" FontSize="42" FontWeight="Bold" Padding="0 ,2"> 91%</TextBlock>
+                                <TextBlock TextAlignment="Center" Foreground="Green">⚡ Charging</TextBlock>
+                                <TextBlock TextAlignment="Center" Padding="0,2"> 2 Hours Remaining</TextBlock>
+                            </StackPanel>
+
+                            <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True">
+                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*" Background="#121212">
+                                    <TextBlock Grid.Row="0" Padding="10,8"> Quick Setting</TextBlock>
+                                    <Grid Margin="10" Grid.Row="1" RowDefinitions="Auto,8,Auto" ColumnDefinitions="*">
+                                        <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
+                                              VerticalAlignment="Center">
+                                            <Image Grid.Column="0" Margin="0 0,8,0"
+                                                   Source="/Assets/BatteryNotifierLogo.png">
+                                            </Image>
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification </TextBlock>
+                                            <Border Grid.Column="2" Width="40">
+                                                <ToggleSwitch />
+                                            </Border>
+                                        </Grid>
+                                        <Grid Row="2" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
+                                              VerticalAlignment="Center">
+                                            <Image Grid.Column="0" Margin="0 0,8,0"
+                                                   Source="/Assets/BatteryNotifierLogo.png">
+                                            </Image>
+                                            <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification </TextBlock>
+                                            <Border Grid.Column="2" Width="40">
+                                                <ToggleSwitch />
+                                            </Border>
+                                        </Grid>
+
+                                    </Grid>
+                                </Grid>
+                            </Border>
+                        </Grid>
+            </Border>
+
+        </Grid>
+
+        <Border Grid.Row="2" Padding="10,8">
+            <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12">Welcome to battery notifier... </TextBlock>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12">v3.1.1 </TextBlock>
+            </Grid>
+        </Border>
+
+    </Grid>
+</UserControl>

@@ -1,11 +1,12 @@
+using Avalonia;
 using Avalonia.Controls;
-using BatteryNotifier.Avalonia.ViewModels;
+using Avalonia.Markup.Xaml;
 
 namespace BatteryNotifier.Avalonia.Views;
 
-public partial class MainWindow : Window
+public partial class HomeView : UserControl
 {
-    public MainWindow()
+    public HomeView()
     {
         InitializeComponent();
     }

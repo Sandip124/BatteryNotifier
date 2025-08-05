@@ -17,10 +17,6 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-#if DEBUG
-            // Enable DevTools
-            this.AttachDevTools();
-#endif
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),

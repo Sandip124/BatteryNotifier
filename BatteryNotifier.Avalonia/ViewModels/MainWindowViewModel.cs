@@ -1,9 +1,38 @@
-﻿namespace BatteryNotifier.Avalonia.ViewModels;
+﻿using System;
+using ReactiveUI;
+
+namespace BatteryNotifier.Avalonia.ViewModels;
 
 public class MainWindowViewModel : ViewModelBase
 {
-#pragma warning disable CA1822 // Mark members as static
-    public string Greeting => "Welcome to Avalonia!";
-    public string Version  => $"v{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "unknown"}";
-#pragma warning restore CA1822 // Mark members as static
+    private ViewModelBase _currentView;
+
+    public MainWindowViewModel()
+    {
+        // Start with main view
+        CurrentView = CreateMainViewModel();
+    }
+
+    public ViewModelBase CurrentView
+    {
+        get => _currentView;
+        set => this.RaiseAndSetIfChanged(ref _currentView, value);
+    }
+
+    private HomeViewModel CreateMainViewModel()
+    {
+        var mainVm = new HomeViewModel();
+        mainVm.NavigateToSettings.Subscribe(_ => NavigateToSettings());
+        return mainVm;
+    }
+
+    private void NavigateToSettings()
+    {
+        CurrentView = new SettingsViewModel(NavigateToMain);
+    }
+
+    private void NavigateToMain()
+    {
+        CurrentView = CreateMainViewModel();
+    }
 }
