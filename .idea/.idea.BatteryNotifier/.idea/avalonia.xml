@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AvaloniaProject">
+    <option name="projectPerEditor">
+      <map>
+        <entry key="BatteryNotifier.Avalonia/App.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+        <entry key="BatteryNotifier.Avalonia/Resources/IconResources.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+        <entry key="BatteryNotifier.Avalonia/Views/MainWindow.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+      </map>
+    </option>
+  </component>
+</project>
