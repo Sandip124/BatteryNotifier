@@ -16,8 +16,10 @@
                        Source="/Assets/BatteryNotifierLogo.png">
                 </Image>
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16" FontWeight="Bold">Battery Notifier </TextBlock>
-                <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2" Background="Transparent" CornerRadius="8" Padding="6"
-                        Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.Nut}, Width=16, Height=16}" />
+
+                <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2" 
+                        Theme="{StaticResource PrimaryButton}"
+                        Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.GearSix}, Width=16, Height=16}" />
             </Grid>
         </Border>
 

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="BatteryNotifier.Avalonia.App"
              xmlns:local="using:BatteryNotifier.Avalonia"
+             xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
              RequestedThemeVariant="Default">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -14,5 +15,54 @@
         <StyleInclude Source="avares://IconPacks.Avalonia/Icons.axaml" />
 
     </Application.Styles>
-    
+
+    <Application.Resources>
+        <ControlTheme x:Key="PrimaryButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Padding" Value="6" />
+            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Left"></Setter>
+            <Setter Property="VerticalAlignment" Value="Center"></Setter>
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+
+            <Setter Property="Template">
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalAlignment}"
+                            Cursor="{TemplateBinding Cursor}"
+                            CornerRadius="{TemplateBinding CornerRadius}"
+                            ClipToBounds="True">
+                        <ContentPresenter
+                            Foreground="{TemplateBinding Foreground}"
+                            Content="{TemplateBinding Content}"
+                             />
+                    </Border>
+                </ControlTemplate>  
+            </Setter>
+
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#121212" />
+                <Setter Property="Foreground" Value="White" />
+            </Style>
+        </ControlTheme>
+        
+        <ControlTheme x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+            <Setter Property="Background" Value="#373737" />
+            
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="#4B4848" />
+                <Setter Property="Foreground" Value="White" />
+            </Style>
+        </ControlTheme>
+      
+        
+    </Application.Resources>
+
 </Application>
