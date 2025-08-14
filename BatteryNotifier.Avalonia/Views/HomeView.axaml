@@ -6,8 +6,7 @@
              xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="BatteryNotifier.Avalonia.Views.HomeView"
-             x:DataType="vm:HomeViewModel"
-             >
+             x:DataType="vm:HomeViewModel">
     <Grid RowDefinitions="Auto,*,Auto">
         <Border Grid.Row="0" Padding="10,8">
             <Grid RowDefinitions="Auto" ColumnDefinitions="36,*,Auto"
@@ -17,7 +16,7 @@
                 </Image>
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16" FontWeight="Bold">Battery Notifier </TextBlock>
 
-                <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2" 
+                <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2"
                         Theme="{StaticResource PrimaryButton}"
                         Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.GearSix}, Width=16, Height=16}" />
             </Grid>
@@ -25,51 +24,60 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="*">
             <Border Margin="5">
-                <Border.Background >
+                <Border.Background>
                     <RadialGradientBrush GradientOrigin="200,200" RadiusX="200" RadiusY="200">
                         <GradientStop Color="#224394EB" Offset="0" />
                         <GradientStop Color="Transparent" Offset="1" />
                     </RadialGradientBrush>
                 </Border.Background>
-                
-                 <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
 
-                            <StackPanel Grid.Row="0" HorizontalAlignment="Center">
-                                <Image Height="140" Source="/Assets/Sufficient.png"></Image>
-                                <TextBlock TextAlignment="Center" FontSize="42" FontWeight="Bold" Padding="0 ,2"> 91%</TextBlock>
-                                <TextBlock TextAlignment="Center" Foreground="Green">⚡ Charging</TextBlock>
-                                <TextBlock TextAlignment="Center" Padding="0,2"> 2 Hours Remaining</TextBlock>
-                            </StackPanel>
+                <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
 
-                            <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True">
-                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*" Background="#121212">
-                                    <TextBlock Grid.Row="0" Padding="10,8"> Quick Setting</TextBlock>
-                                    <Grid Margin="10" Grid.Row="1" RowDefinitions="Auto,8,Auto" ColumnDefinitions="*">
-                                        <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
-                                              VerticalAlignment="Center">
-                                            <Image Grid.Column="0" Margin="0 0,8,0"
-                                                   Source="/Assets/BatteryNotifierLogo.png">
-                                            </Image>
-                                            <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification </TextBlock>
-                                            <Border Grid.Column="2" Width="40">
-                                                <ToggleSwitch />
-                                            </Border>
-                                        </Grid>
-                                        <Grid Row="2" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
-                                              VerticalAlignment="Center">
-                                            <Image Grid.Column="0" Margin="0 0,8,0"
-                                                   Source="/Assets/BatteryNotifierLogo.png">
-                                            </Image>
-                                            <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification </TextBlock>
-                                            <Border Grid.Column="2" Width="40">
-                                                <ToggleSwitch />
-                                            </Border>
-                                        </Grid>
+                    <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+                        <Image Height="140" Source="/Assets/Sufficient.png"></Image>
+                        <TextBlock TextAlignment="Center" FontSize="42" FontWeight="Bold" Padding="0 ,2"> 91%</TextBlock>
+                        <TextBlock TextAlignment="Center" Foreground="Green">⚡ Charging</TextBlock>
+                        <TextBlock TextAlignment="Center" Padding="0,2"> 2 Hours Remaining</TextBlock>
+                    </StackPanel>
 
-                                    </Grid>
+                    <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True">
+                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*" Background="#121212">
+                            <TextBlock Grid.Row="0" Padding="10,8"> Quick Setting</TextBlock>
+                            <!-- <Border Grid.Row="0" Padding="10,8"> -->
+                            <!--     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"> -->
+                            <!--         <iconPacks:PackIconPhosphorIcons Kind="Sliders" -->
+                            <!--                                          VerticalAlignment="Center" -->
+                            <!--                                          Width="14" -->
+                            <!--                                          Height="14" /> -->
+                            <!--         <TextBlock Margin="6,0,0,0">Quick Settings</TextBlock> -->
+                            <!--     </StackPanel> -->
+                            <!-- </Border> -->
+                            <Grid Margin="10" Grid.Row="1" RowDefinitions="Auto,8,Auto" ColumnDefinitions="*">
+                                <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="42,*,Auto"
+                                      VerticalAlignment="Center">
+                                    <Image Grid.Column="0" Margin="0 0,8,0"
+                                           Source="/Assets/FullBattery.png">
+                                    </Image>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification </TextBlock>
+                                    <Border Grid.Column="2" Width="40">
+                                        <ToggleSwitch />
+                                    </Border>
                                 </Grid>
-                            </Border>
+                                <Grid Row="2" RowDefinitions="Auto" ColumnDefinitions="42,*,Auto"
+                                      VerticalAlignment="Center">
+                                    <Image Grid.Column="0" Margin="0 0,8,0"
+                                           Source="/Assets/LowBattery.png">
+                                    </Image>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification </TextBlock>
+                                    <Border Grid.Column="2" Width="40">
+                                        <ToggleSwitch />
+                                    </Border>
+                                </Grid>
+
+                            </Grid>
                         </Grid>
+                    </Border>
+                </Grid>
             </Border>
 
         </Grid>
