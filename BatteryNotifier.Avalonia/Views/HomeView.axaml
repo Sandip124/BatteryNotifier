@@ -7,7 +7,18 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="BatteryNotifier.Avalonia.Views.HomeView"
              x:DataType="vm:HomeViewModel">
-    <Grid RowDefinitions="Auto,*,Auto">
+    <Border>
+        <!-- <Border.Background> -->
+        <!--     <RadialGradientBrush GradientOrigin="200,200" RadiusX="200" RadiusY="200" SpreadMethod="Pad"> -->
+        <!--         <RadialGradientBrush.Transform> -->
+        <!--             <TranslateTransform X="0" Y="-100" /> -->
+        <!--         </RadialGradientBrush.Transform> -->
+        <!--         <GradientStop Color="#224394EB" Offset="0" /> -->
+        <!--         <GradientStop Color="Transparent" Offset="1" /> -->
+        <!--     </RadialGradientBrush> -->
+        <!-- </Border.Background> -->
+        
+          <Grid RowDefinitions="Auto,*,Auto">
         <Border Grid.Row="0" Padding="10,8">
             <Grid RowDefinitions="Auto" ColumnDefinitions="36,*,Auto"
                   VerticalAlignment="Center">
@@ -24,34 +35,28 @@
 
         <Grid Grid.Row="1" ColumnDefinitions="*">
             <Border Margin="5">
-                <Border.Background>
-                    <RadialGradientBrush GradientOrigin="200,200" RadiusX="200" RadiusY="200">
-                        <GradientStop Color="#224394EB" Offset="0" />
-                        <GradientStop Color="Transparent" Offset="1" />
-                    </RadialGradientBrush>
-                </Border.Background>
-
                 <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
 
                     <StackPanel Grid.Row="0" HorizontalAlignment="Center">
                         <Image Height="140" Source="/Assets/Sufficient.png"></Image>
                         <TextBlock TextAlignment="Center" FontSize="42" FontWeight="Bold" Padding="0 ,2"> 91%</TextBlock>
-                        <TextBlock TextAlignment="Center" Foreground="Green">⚡ Charging</TextBlock>
+                        <TextBlock TextAlignment="Center" Foreground="#15C245">
+                            <StackPanel  Orientation="Horizontal" VerticalAlignment="Center" 
+                                         HorizontalAlignment="Center">
+                                <iconPacks:PackIconPhosphorIcons Kind="LightningFill"
+                                                                 VerticalAlignment="Center"
+                                                                 HorizontalAlignment="Center"
+                                                                 Width="14"
+                                                                 Height="14" />
+                                <TextBlock Margin="4,0,0,0">Charging</TextBlock>
+                            </StackPanel>
+                        </TextBlock>
                         <TextBlock TextAlignment="Center" Padding="0,2"> 2 Hours Remaining</TextBlock>
                     </StackPanel>
 
                     <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True">
                         <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*" Background="#121212">
                             <TextBlock Grid.Row="0" Padding="10,8"> Quick Setting</TextBlock>
-                            <!-- <Border Grid.Row="0" Padding="10,8"> -->
-                            <!--     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"> -->
-                            <!--         <iconPacks:PackIconPhosphorIcons Kind="Sliders" -->
-                            <!--                                          VerticalAlignment="Center" -->
-                            <!--                                          Width="14" -->
-                            <!--                                          Height="14" /> -->
-                            <!--         <TextBlock Margin="6,0,0,0">Quick Settings</TextBlock> -->
-                            <!--     </StackPanel> -->
-                            <!-- </Border> -->
                             <Grid Margin="10" Grid.Row="1" RowDefinitions="Auto,8,Auto" ColumnDefinitions="*">
                                 <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="42,*,Auto"
                                       VerticalAlignment="Center">
@@ -90,4 +95,6 @@
         </Border>
 
     </Grid>
+    </Border>
+  
 </UserControl>

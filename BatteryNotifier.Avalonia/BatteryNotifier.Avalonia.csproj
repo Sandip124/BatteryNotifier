@@ -27,4 +27,9 @@
         <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.2" />
         <PackageReference Include="IconPacks.Avalonia" Version="1.1.0" />
     </ItemGroup>
+
+
+    <ItemGroup>
+      <ProjectReference Include="..\BatteryNotifier.Core\BatteryNotifier.Core.csproj" />
+    </ItemGroup>
 </Project>

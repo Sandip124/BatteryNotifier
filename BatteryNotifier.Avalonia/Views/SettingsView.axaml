@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
              xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
-             xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -14,7 +13,7 @@
                                 <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto">
                                     <Button Command="{Binding BackCommand}" Grid.Row="0" 
                                             Theme="{StaticResource PrimaryButton}"
-                                            Foreground="#0C51A2">
+                                            Foreground="#4CA6FF">
                                         <StackPanel  Orientation="Horizontal" VerticalAlignment="Center" 
                                                     HorizontalAlignment="Center">
                                             <iconPacks:PackIconPhosphorIcons Kind="CaretLeft"
@@ -49,20 +48,6 @@
 
                                             <Border Grid.Row="1" Padding="10,8">
                                                 <StackPanel>
-                                                    <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                                                        <!-- Language -->
-                                                        <TextBlock Grid.Column="0"
-                                                                   VerticalAlignment="Center">
-                                                            Language :
-                                                        </TextBlock>
-                                                        <ComboBox Grid.Column="1"  BorderThickness="0" SelectedIndex="1">
-                                                            <ComboBoxItem>English</ComboBoxItem>
-                                                            <ComboBoxItem>Danish</ComboBoxItem>
-                                                            <ComboBoxItem>Nepali</ComboBoxItem>
-                                                            <ComboBoxItem>Hindi</ComboBoxItem>
-                                                            <ComboBoxItem>Japanese</ComboBoxItem>
-                                                        </ComboBox>
-                                                    </Grid>
 
                                                     <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
                                                         <!-- Theme -->
@@ -99,7 +84,7 @@
                                                         <!-- Add to Start Menu -->
                                                         <TextBlock Grid.Column="0"
                                                                    VerticalAlignment="Center">
-                                                            Add Battery Notifier to Start Menu :
+                                                           Pin to Notification Area :
                                                         </TextBlock>
                                                         <Border Grid.Column="1" Width="40">
                                                             <ToggleSwitch />
@@ -141,15 +126,8 @@
                                                     <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
                                                           VerticalAlignment="Center">
                                                         <Image Grid.Column="0" Margin="0 0,8,0"
-                                                               Source="/Assets/BatteryNotifierLogo.png">
+                                                               Source="/Assets/FullBattery.png">
                                                         </Image>
-                                                        <!-- <Border Grid.Column="0" > -->
-                                                        <!--     <iconPacks:PackIconPhosphorIcons Kind="BatteryFullBold" -->
-                                                        <!--         VerticalAlignment="Center" -->
-                                                        <!--         Width="24" -->
-                                                        <!--         Height="24" -->
-                                                        <!--         Foreground="#26F750"/> -->
-                                                        <!-- </Border> -->
                                                        
                                                         <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification </TextBlock>
                                                         <Border Grid.Column="2" Width="40">
@@ -173,15 +151,8 @@
                                                     <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
                                                           VerticalAlignment="Center">
                                                         <Image Grid.Column="0" Margin="0 0,8,0"
-                                                               Source="/Assets/BatteryNotifierLogo.png">
+                                                               Source="/Assets/LowBattery.png">
                                                         </Image>
-                                                        <!-- <Border Grid.Column="0" > -->
-                                                        <!--     <iconPacks:PackIconPhosphorIcons Kind="BatteryLowBold" -->
-                                                        <!--         VerticalAlignment="Center" -->
-                                                        <!--         Width="24" -->
-                                                        <!--         Height="24" -->
-                                                        <!--         Foreground="#F7263B"/> -->
-                                                        <!-- </Border> -->
                                                         <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification </TextBlock>
                                                         <Border Grid.Column="2" Width="40">
                                                             <ToggleSwitch />

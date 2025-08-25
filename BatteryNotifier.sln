@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatteryNotifier", "BatteryN
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatteryNotifier.Avalonia", "BatteryNotifier.Avalonia\BatteryNotifier.Avalonia.csproj", "{537B4883-6E99-412F-BE37-5B0D562F56E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BatteryNotifier.Core", "BatteryNotifier.Core\BatteryNotifier.Core.csproj", "{78F311D8-505A-434D-A166-B2F36311791C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{537B4883-6E99-412F-BE37-5B0D562F56E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{537B4883-6E99-412F-BE37-5B0D562F56E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{537B4883-6E99-412F-BE37-5B0D562F56E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78F311D8-505A-434D-A166-B2F36311791C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78F311D8-505A-434D-A166-B2F36311791C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78F311D8-505A-434D-A166-B2F36311791C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78F311D8-505A-434D-A166-B2F36311791C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
