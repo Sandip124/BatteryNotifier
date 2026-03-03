@@ -1,59 +1,65 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Utils;
+using NAudio.Wave;
 using Serilog;
 
 namespace BatteryNotifier.Core.Managers
 {
     public class SoundManager : IDisposable
     {
-        private const int DEFAULT_MUSIC_PLAYING_DURATION_MS = 30000;
+        private const int DefaultPlayDurationMs = 30000;
 
         private readonly ILogger _logger;
-        
-        private readonly SoundPlayer _batteryNotificationPlayer = new();
-        private CancellationTokenSource? _cancellationTokenSource = new();
+        private readonly Debouncer _debouncer = new();
+        private CancellationTokenSource? _cancellationTokenSource;
         private bool _isPlaying;
         private bool _disposed;
-        private readonly Debouncer _debouncer = new();
 
         public SoundManager()
         {
             _logger = BatteryNotifierAppLogger.ForContext<SoundManager>();
         }
 
-        public async Task PlaySoundAsync(string source, UnmanagedMemoryStream fallbackSoundSource, bool loop = false,
-            int durationMs = DEFAULT_MUSIC_PLAYING_DURATION_MS)
+        public async Task PlaySoundAsync(string? source, bool loop = false,
+            int durationMs = DefaultPlayDurationMs)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(SoundManager));
-
+            if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
             if (_isPlaying) return;
-            
+            if (string.IsNullOrEmpty(source) || !File.Exists(source)) return;
+
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource = new CancellationTokenSource();
+            var token = _cancellationTokenSource.Token;
+
+            _isPlaying = true;
             try
             {
-                _isPlaying = true;
-
-                _cancellationTokenSource?.Cancel();
-                _cancellationTokenSource = new CancellationTokenSource();
-
-                SetupSoundSource(source, fallbackSoundSource);
-
-                if (loop)
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    await PlayLoopingWithTimeout(durationMs, _cancellationTokenSource.Token);
+                    await PlayWithNAudio(source, loop, durationMs, token);
                 }
-                else
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 {
-                    await PlayOnceAsync(_cancellationTokenSource.Token);
+                    await PlayWithAfplay(source, loop, durationMs, token);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    await PlayWithAplay(source, loop, durationMs, token);
                 }
             }
-            catch (OperationCanceledException ex)
+            catch (OperationCanceledException)
             {
-                _logger.Error(ex," Sound playback was cancelled.");
+                // Cancelled — expected
             }
             catch (Exception ex)
             {
-                _logger.Error(ex," An error occurred while playing sound.");
+                _logger.Error(ex, "An error occurred while playing sound.");
             }
             finally
             {
@@ -61,38 +67,89 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 
-        private void SetupSoundSource(string source, UnmanagedMemoryStream fallbackSoundSource)
+        private async Task PlayWithNAudio(string source, bool loop, int durationMs, CancellationToken token)
         {
-            if (!string.IsNullOrEmpty(source) && File.Exists(source))
+            using var audioFile = new AudioFileReader(source);
+            using var outputDevice = new WaveOutEvent();
+
+            outputDevice.Init(audioFile);
+            outputDevice.Play();
+
+            var timeout = Task.Delay(durationMs, token);
+
+            if (loop)
             {
-                _batteryNotificationPlayer.SoundLocation = source;
-                _batteryNotificationPlayer.Stream = null;
+                outputDevice.PlaybackStopped += (s, e) =>
+                {
+                    if (!token.IsCancellationRequested && _isPlaying)
+                    {
+                        audioFile.Position = 0;
+                        outputDevice.Play();
+                    }
+                };
+                await timeout;
             }
             else
             {
-                _batteryNotificationPlayer.SoundLocation = string.Empty;
-                _batteryNotificationPlayer.Stream = fallbackSoundSource;
+                var playbackDone = new TaskCompletionSource<bool>();
+                outputDevice.PlaybackStopped += (s, e) => playbackDone.TrySetResult(true);
+                await Task.WhenAny(playbackDone.Task, timeout);
             }
 
-            _batteryNotificationPlayer.LoadAsync();
+            outputDevice.Stop();
         }
 
-        private async Task PlayLoopingWithTimeout(int durationMs, CancellationToken cancellationToken)
+        private async Task PlayWithAfplay(string source, bool loop, int durationMs, CancellationToken token)
         {
-            var playTask = Task.Run(() => { _batteryNotificationPlayer.PlayLooping(); }, cancellationToken);
-            var timeoutTask = Task.Delay(durationMs, cancellationToken);
-            await Task.WhenAny(playTask, timeoutTask);
-        }
-
-        private async Task PlayOnceAsync(CancellationToken cancellationToken)
-        {
-            await Task.Run(() =>
+            var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
+            do
             {
-                if (!cancellationToken.IsCancellationRequested)
+                await RunProcess("afplay", $"\"{source}\"", token);
+            } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
+        }
+
+        private async Task PlayWithAplay(string source, bool loop, int durationMs, CancellationToken token)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
+            do
+            {
+                // Try paplay first (PulseAudio), fall back to aplay (ALSA)
+                try
                 {
-                    _batteryNotificationPlayer.PlaySync();
+                    await RunProcess("paplay", $"\"{source}\"", token);
                 }
-            }, cancellationToken);
+                catch
+                {
+                    await RunProcess("aplay", $"\"{source}\"", token);
+                }
+            } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
+        }
+
+        private static async Task RunProcess(string command, string arguments, CancellationToken token)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = command,
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+            var tcs = new TaskCompletionSource<bool>();
+            process.Exited += (s, e) => tcs.TrySetResult(true);
+
+            process.Start();
+
+            using var reg = token.Register(() =>
+            {
+                try { process.Kill(); } catch { }
+                tcs.TrySetCanceled();
+            });
+
+            await tcs.Task;
         }
 
         public void StopSound()
@@ -100,7 +157,6 @@ namespace BatteryNotifier.Core.Managers
             try
             {
                 _cancellationTokenSource?.Cancel();
-                _batteryNotificationPlayer?.Stop();
                 _isPlaying = false;
             }
             catch (Exception ex)
@@ -118,17 +174,13 @@ namespace BatteryNotifier.Core.Managers
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed || !disposing) return;
-            
-            StopSound();
 
+            StopSound();
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
-
-            _batteryNotificationPlayer?.Stop();
-            _batteryNotificationPlayer?.Dispose();
             _debouncer?.Dispose();
-        
+
             _disposed = true;
         }
     }

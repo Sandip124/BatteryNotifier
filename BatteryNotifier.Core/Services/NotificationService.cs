@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace BatteryNotifier.Core.Services;
 
 public sealed class NotificationService : IDisposable
@@ -7,16 +9,21 @@ public sealed class NotificationService : IDisposable
     
     public static NotificationService Instance => _instance.Value;
     
-    private readonly Queue<NotificationMessage?> _notificationQueue;
+    private readonly PriorityQueue<NotificationMessage, int> _notificationQueue;
     private readonly object _queueLock = new();
-    
+
     private readonly Dictionary<string, DateTime> _recentNotifications = new Dictionary<string, DateTime>();
     private readonly object _recentNotificationsLock = new object();
 
+    private readonly Dictionary<string, NotificationMessage> _pendingNotifications = new Dictionary<string, NotificationMessage>();
+    private readonly object _pendingLock = new object();
+
     private TimeSpan DeduplicationInterval { get; set; } = TimeSpan.FromSeconds(30);
     private TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
+    private TimeSpan ThrottleInterval { get; set; } = TimeSpan.FromSeconds(2);
 
     private DateTime _lastCleanup = DateTime.Now;
+    private DateTime _lastNotificationTime = DateTime.MinValue;
     
     private bool _disposed = false;
     
@@ -24,10 +31,10 @@ public sealed class NotificationService : IDisposable
     
     private NotificationService()
     {
-        _notificationQueue = new Queue<NotificationMessage?>();
+        _notificationQueue = new PriorityQueue<NotificationMessage, int>();
     }
     
-    public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000, string tag = null)
+    public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000, string? tag = null)
     {
         var notification = new NotificationMessage
         {
@@ -44,21 +51,60 @@ public sealed class NotificationService : IDisposable
     {
         if (ShouldDiscardDuplicate(notification))
         {
-            return; 
+            return;
         }
-        
+
         PerformPeriodicCleanup();
 
+        var now = DateTime.Now;
+        var timeSinceLastNotification = now - _lastNotificationTime;
+
+        if (timeSinceLastNotification < ThrottleInterval && notification.Priority < NotificationPriority.Critical)
+        {
+            lock (_pendingLock)
+            {
+                var key = CreateNotificationKey(notification);
+                _pendingNotifications[key] = notification;
+            }
+            return;
+        }
+
+        EnqueueAndEmit(notification);
+    }
+
+    private void EnqueueAndEmit(NotificationMessage notification)
+    {
         lock (_queueLock)
         {
-            _notificationQueue.Enqueue(notification);
+            int priority = -(int)notification.Priority;
+            _notificationQueue.Enqueue(notification, priority);
         }
 
         RecordNotification(notification);
+        _lastNotificationTime = DateTime.Now;
 
         if (NotificationReceived == null) return;
-        
+
         NotificationReceived?.Invoke(this, notification);
+    }
+
+    public void FlushPendingNotifications()
+    {
+        lock (_pendingLock)
+        {
+            if (_pendingNotifications.Count == 0) return;
+
+            var highestPriorityNotification = _pendingNotifications.Values
+                .OrderByDescending(n => n.Priority)
+                .FirstOrDefault();
+
+            if (highestPriorityNotification != null)
+            {
+                EnqueueAndEmit(highestPriorityNotification);
+            }
+
+            _pendingNotifications.Clear();
+        }
     }
     
     private bool ShouldDiscardDuplicate(NotificationMessage notification)
@@ -119,6 +165,11 @@ public sealed class NotificationService : IDisposable
             return _notificationQueue.Count > 0 ? _notificationQueue.Dequeue() : null;
         }
     }
+
+    public void SetThrottleInterval(TimeSpan interval)
+    {
+        ThrottleInterval = interval;
+    }
     
     public int PendingCount
     {
@@ -139,6 +190,14 @@ public sealed class NotificationService : IDisposable
         }
     }
 
+    public void ClearPendingNotifications()
+    {
+        lock (_pendingLock)
+        {
+            _pendingNotifications.Clear();
+        }
+    }
+
     public void ClearDeduplicationCache()
     {
         lock (_recentNotificationsLock)
@@ -155,6 +214,7 @@ public sealed class NotificationService : IDisposable
             _lastCleanup = now;
 
             ClearNotifications();
+            ClearPendingNotifications();
             ClearDeduplicationCache();
         }
     }
@@ -184,30 +244,32 @@ public sealed class NotificationService : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        
+
         ClearNotifications();
+        ClearPendingNotifications();
         ClearDeduplicationCache();
-        
+
         NotificationReceived = null;
-        
+
         _disposed = true;
     }
 }
 
 public class NotificationMessage
 {
-    public string Message { get; set; }
+    public string Message { get; set; } = string.Empty;
     public DateTime Timestamp { get; protected set; } = DateTime.Now;
     public NotificationType Type { get; set; }
     public int Duration { get; set; } = 3000;
-    public string Tag { get; set; }
+    public string? Tag { get; set; }
+    public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (obj is NotificationMessage other)
         {
-            return Message == other.Message && 
-                   Tag == other.Tag && 
+            return Message == other.Message &&
+                   Tag == other.Tag &&
                    Type == other.Type;
         }
         return false;
@@ -218,4 +280,12 @@ public enum NotificationType
 {
     Global,
     Inline,
+}
+
+public enum NotificationPriority
+{
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3
 }

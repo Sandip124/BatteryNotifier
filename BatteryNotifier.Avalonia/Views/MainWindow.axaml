@@ -3,21 +3,116 @@
         xmlns:vm="using:BatteryNotifier.Avalonia.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
         x:Class="BatteryNotifier.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Width="400" Height="500"
         CanResize="False"
-        ShowInTaskbar="True"
+        SystemDecorations="None"
         Background="#0C0C0C"
         WindowStartupLocation="CenterScreen"
-        ExtendClientAreaTitleBarHeightHint="0"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaToDecorationsHint="True"
+        Topmost="{Binding IsTopmost}"
         Icon="/Assets/battery-notifier-logo.ico"
         Title="Battery Notifier">
-    
+
     <Border Padding="4">
-        <ContentControl Content="{Binding CurrentView}" />
+      <Grid>
+
+        <!-- Home screen (visible when not in settings) -->
+        <Grid RowDefinitions="Auto,*,Auto"
+              IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <!-- Header (drag region) -->
+            <Border Grid.Row="0" Padding="10,8" PointerPressed="OnHeaderDrag">
+                <Grid ColumnDefinitions="36,*,Auto" VerticalAlignment="Center">
+                    <Image Grid.Column="0" Margin="0,0,8,0"
+                           Source="/Assets/BatteryNotifierLogo.png" />
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="16" FontWeight="Bold">Battery Notifier</TextBlock>
+                    <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2"
+                            Theme="{StaticResource PrimaryButton}"
+                            Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.GearSix}, Width=16, Height=16}" />
+                </Grid>
+            </Border>
+
+            <!-- Battery Status -->
+            <Grid Grid.Row="1" ColumnDefinitions="*">
+                <Border Margin="5">
+                    <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
+
+                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image Height="140" Source="{Binding BatteryImage}" />
+                            <TextBlock TextAlignment="Center" FontSize="42" FontWeight="Bold" Padding="0,2"
+                                       Text="{Binding BatteryPercentage, StringFormat='{}{0:F0}%'}" />
+
+                            <!-- Charging indicator -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                        IsVisible="{Binding IsCharging}">
+                                <iconPacks:PackIconPhosphorIcons Kind="LightningFill"
+                                                                 VerticalAlignment="Center"
+                                                                 HorizontalAlignment="Center"
+                                                                 Foreground="#15C245"
+                                                                 Width="14" Height="14" />
+                                <TextBlock Margin="4,0,0,0" VerticalAlignment="Center"
+                                           Foreground="#15C245" Text="{Binding BatteryStatus}" />
+                            </StackPanel>
+
+                            <!-- Discharging status -->
+                            <TextBlock TextAlignment="Center"
+                                       IsVisible="{Binding IsCharging, Converter={x:Static BoolConverters.Not}}"
+                                       Text="{Binding BatteryStatus}" />
+
+                            <TextBlock TextAlignment="Center" Padding="0,2"
+                                       Text="{Binding TimeRemaining}" />
+                        </StackPanel>
+
+                        <!-- Quick Settings -->
+                        <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True">
+                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*" Background="#121212">
+                                <TextBlock Grid.Row="0" Padding="10,8">Quick Settings</TextBlock>
+                                <Grid Margin="10" Grid.Row="1" RowDefinitions="Auto,8,Auto" ColumnDefinitions="*">
+
+                                    <Grid Grid.Row="0" ColumnDefinitions="42,*,Auto" VerticalAlignment="Center">
+                                        <Image Grid.Column="0" Margin="0,0,8,0"
+                                               Source="/Assets/FullBattery.png" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification</TextBlock>
+                                        <ToggleSwitch Grid.Column="2"
+                                                      IsChecked="{Binding FullBatteryNotification}"
+                                                      OnContent="" OffContent=""
+                                                      Margin="0" Padding="0" />
+                                    </Grid>
+
+                                    <Grid Grid.Row="2" ColumnDefinitions="42,*,Auto" VerticalAlignment="Center">
+                                        <Image Grid.Column="0" Margin="0,0,8,0"
+                                               Source="/Assets/LowBattery.png" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification</TextBlock>
+                                        <ToggleSwitch Grid.Column="2"
+                                                      IsChecked="{Binding LowBatteryNotification}"
+                                                      OnContent="" OffContent=""
+                                                      Margin="0" Padding="0" />
+                                    </Grid>
+
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Footer -->
+            <Border Grid.Row="2" Padding="10,8">
+                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12">Battery Notifier</TextBlock>
+                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12">v3.2.0</TextBlock>
+                </Grid>
+            </Border>
+
+        </Grid>
+
+        <!-- Settings screen (overlays home when CurrentView is set) -->
+        <ContentControl Content="{Binding CurrentView}"
+                        IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+      </Grid>
     </Border>
 </Window>

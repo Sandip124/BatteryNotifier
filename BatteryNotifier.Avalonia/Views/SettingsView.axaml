@@ -4,177 +4,213 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
              xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
-             mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
              x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
-    
-        <Grid RowDefinitions="Auto,*">
-                            <Border Grid.Row="0" Padding="10,8">
-                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto">
-                                    <Button Command="{Binding BackCommand}" Grid.Row="0" 
-                                            Theme="{StaticResource PrimaryButton}"
-                                            Foreground="#4CA6FF">
-                                        <StackPanel  Orientation="Horizontal" VerticalAlignment="Center" 
-                                                    HorizontalAlignment="Center">
-                                            <iconPacks:PackIconPhosphorIcons Kind="CaretLeft"
-                                                                             VerticalAlignment="Center"
-                                                                             HorizontalAlignment="Center"
-                                                                             Width="10"
-                                                                             Height="10" />
-                                            <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
+
+    <UserControl.Styles>
+        <Style Selector="Button.theme-active">
+            <Setter Property="Background" Value="#3878C5" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0" Padding="10,8">
+            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="Auto">
+                <Button Command="{Binding BackCommand}" Grid.Row="0"
+                        Theme="{StaticResource PrimaryButton}"
+                        Foreground="#4CA6FF">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                HorizontalAlignment="Center">
+                        <iconPacks:PackIconPhosphorIcons Kind="CaretLeft"
+                                                         VerticalAlignment="Center"
+                                                         HorizontalAlignment="Center"
+                                                         Width="10" Height="10" />
+                        <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
+                    </StackPanel>
+                </Button>
+                <TextBlock Grid.Row="1" VerticalAlignment="Center" FontSize="16" FontWeight="Bold"
+                           Margin="8,0,0,0">Settings</TextBlock>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Padding="10,10">
+            <StackPanel Spacing="10">
+
+                <!-- Appearance & Behaviour -->
+                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        Background="#121212">
+                    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
+                        <Border Grid.Row="0" Padding="10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <iconPacks:PackIconPhosphorIcons Kind="Sliders"
+                                    VerticalAlignment="Center" Width="14" Height="14" />
+                                <TextBlock Margin="6,0,0,0">Appearance &amp; Behaviour</TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Padding="10,8">
+                            <StackPanel Spacing="8">
+
+                                <!-- Theme -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center">Theme:</TextBlock>
+                                    <Border Grid.Column="1" CornerRadius="4" BorderBrush="#9C9C9C"
+                                            BorderThickness="1" ClipToBounds="True">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Classes.theme-active="{Binding IsLightTheme}"
+                                                    Command="{Binding SetLightThemeCommand}"
+                                                    Theme="{StaticResource PrimaryButton}"
+                                                    CornerRadius="4,0,0,4">Light</Button>
+                                            <Button Classes.theme-active="{Binding IsSystemTheme}"
+                                                    Command="{Binding SetSystemThemeCommand}"
+                                                    Theme="{StaticResource PrimaryButton}"
+                                                    CornerRadius="0">System</Button>
+                                            <Button Classes.theme-active="{Binding IsDarkTheme}"
+                                                    Command="{Binding SetDarkThemeCommand}"
+                                                    Theme="{StaticResource PrimaryButton}"
+                                                    CornerRadius="0,4,4,0">Dark</Button>
                                         </StackPanel>
-                                    </Button>
-                                    <TextBlock Grid.Row="1" VerticalAlignment="Center" FontSize="16" FontWeight="Bold"
-                                               Margin="8,0,0,0">
-                                        Settings
-                                    </TextBlock>
+                                    </Border>
                                 </Grid>
-                            </Border>
 
-                            <ScrollViewer Grid.Row="1" Padding="10, 10">
-                                <StackPanel>
-                                    <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                                            Background="#121212">
-                                        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
-                                            <Border Grid.Row="0" Padding="10">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <iconPacks:PackIconPhosphorIcons Kind="Sliders"
-                                                        VerticalAlignment="Center"
-                                                        Width="14"
-                                                        Height="14" />
-                                                    <TextBlock Margin="6,0,0,0">Appearance &amp; Behaviour</TextBlock>
-                                                </StackPanel>
-                                            </Border>
+                                <!-- Launch at Startup -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center">Launch at system startup:</TextBlock>
+                                    <ToggleSwitch Grid.Column="1"
+                                                  IsChecked="{Binding LaunchAtStartup}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
 
-                                            <Border Grid.Row="1" Padding="10,8">
-                                                <StackPanel>
+                                <!-- Always on Top / Pin to Window -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center">Always on top:</TextBlock>
+                                    <ToggleSwitch Grid.Column="1"
+                                                  IsChecked="{Binding PinToWindow}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
 
-                                                    <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                                                        <!-- Theme -->
-                                                        <TextBlock Grid.Column="0"
-                                                                   VerticalAlignment="Center">
-                                                            Theme :
-                                                        </TextBlock>
-                                                        <Border Grid.Column="1" CornerRadius="4" BorderBrush="#9C9C9C"
-                                                                BorderThickness="1" ClipToBounds="True" >
-                                                            <StackPanel Orientation="Horizontal"
-                                                                        HorizontalAlignment="Center"
-                                                                        VerticalAlignment="Stretch">
-                                                                <Button Theme="{StaticResource PrimaryButton}">Light</Button>
-                                                                <Button Background="#3878C5" CornerRadius="0" Foreground="White" Theme="{StaticResource PrimaryButton}">
-                                                                    System
-                                                                </Button>
-                                                                <Button Theme="{StaticResource PrimaryButton}">Dark</Button>
-                                                            </StackPanel>
-                                                        </Border>
-                                                    </Grid>
+                                <!-- Start Minimized -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center">Start minimized to tray:</TextBlock>
+                                    <ToggleSwitch Grid.Column="1"
+                                                  IsChecked="{Binding StartMinimized}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
 
-                                                    <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                                                        <!-- System Startup -->
-                                                        <TextBlock Grid.Column="0"
-                                                                   VerticalAlignment="Center">
-                                                            Launch at system startup :
-                                                        </TextBlock>
-                                                        <Border Grid.Column="1" Width="40">
-                                                            <ToggleSwitch />
-                                                        </Border>
-                                                    </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
 
-                                                    <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                                                        <!-- Add to Start Menu -->
-                                                        <TextBlock Grid.Column="0"
-                                                                   VerticalAlignment="Center">
-                                                           Pin to Notification Area :
-                                                        </TextBlock>
-                                                        <Border Grid.Column="1" Width="40">
-                                                            <ToggleSwitch />
-                                                        </Border>
-                                                    </Grid>
+                <!-- Notifications & Sounds -->
+                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        Background="#121212" Margin="0,0,0,50">
+                    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
+                        <Border Grid.Row="0" Padding="10">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <iconPacks:PackIconPhosphorIcons Kind="BellSimple"
+                                    VerticalAlignment="Center" Width="14" Height="14" />
+                                <TextBlock Margin="6,0,0,0">Notifications &amp; Sounds</TextBlock>
+                            </StackPanel>
+                        </Border>
 
+                        <Border Grid.Row="1" Padding="10,8">
+                            <StackPanel Spacing="8">
 
-                                                    <Grid RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-                                                        <!-- Update Battery Notifier Automatically -->
-                                                        <TextBlock Grid.Column="0"
-                                                                   VerticalAlignment="Center">
-                                                            Update Battery Notifier Automatically :
-                                                        </TextBlock>
-                                                        <Border Grid.Column="1" Width="40">
-                                                            <ToggleSwitch />
-                                                        </Border>
-                                                    </Grid>
-                                                </StackPanel>
-                                            </Border>
-                                        </Grid>
-                                    </Border>
-                                    
-                                     <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                                            Background="#121212" Margin="0,10,0,50">
-                                        <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
-                                            <Border Grid.Row="0" Padding="10">
-                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <iconPacks:PackIconPhosphorIcons Kind="BellSimple"
-                                                        VerticalAlignment="Center"
-                                                        Width="14"
-                                                        Height="14" />
-                                                    <TextBlock Margin="6,0,0,0">Notifications &amp; Sounds</TextBlock>
-                                                </StackPanel>
-                                            </Border>
+                                <!-- Full Battery Notification -->
+                                <Grid ColumnDefinitions="32,*,Auto" VerticalAlignment="Center">
+                                    <Image Grid.Column="0" Margin="0,0,8,0"
+                                           Source="/Assets/FullBattery.png" />
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification</TextBlock>
+                                    <ToggleSwitch Grid.Column="2"
+                                                  IsChecked="{Binding FullBatteryNotification}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
 
-                                            <Border Grid.Row="1" Padding="10,8">
-                                                <StackPanel>
-                                                    <!-- Full Battery Notification -->
-                                                    <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
-                                                          VerticalAlignment="Center">
-                                                        <Image Grid.Column="0" Margin="0 0,8,0"
-                                                               Source="/Assets/FullBattery.png">
-                                                        </Image>
-                                                       
-                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center">Full Battery Notification </TextBlock>
-                                                        <Border Grid.Column="2" Width="40">
-                                                            <ToggleSwitch />
-                                                        </Border>
-                                                    </Grid>
-                                                    
-                                                    <Grid Row="1" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                                                        <TextBlock Grid.Row="0" Grid.Column="0">Notify At:</TextBlock>
-                                                        <TextBlock Grid.Row="0" Grid.Column="1">50%</TextBlock>
-                                                        <Slider Margin="0" Padding="0,-5,0,-5" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"></Slider>
-                                                    </Grid>
-                                                    
-                                                    <Grid Row="1" RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                                                        <TextBox Grid.Row="0" Grid.Column="0"></TextBox>
-                                                        <Button Grid.Row="0" Grid.Column="1" Margin="4,0,0,0" Theme="{StaticResource SecondaryButton}">Browse</Button>
-                                                    </Grid>
-                                                    
-                                                    <Border Margin="0,16"></Border>
-                                                    <!-- Low Battery Notification -->
-                                                    <Grid Row="0" RowDefinitions="Auto" ColumnDefinitions="32,*,Auto"
-                                                          VerticalAlignment="Center">
-                                                        <Image Grid.Column="0" Margin="0 0,8,0"
-                                                               Source="/Assets/LowBattery.png">
-                                                        </Image>
-                                                        <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification </TextBlock>
-                                                        <Border Grid.Column="2" Width="40">
-                                                            <ToggleSwitch />
-                                                        </Border>
-                                                    </Grid>
-                                                    
-                                                    <Grid Row="1" RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                                                        <TextBlock Grid.Row="0" Grid.Column="0">Notify At:</TextBlock>
-                                                        <TextBlock Grid.Row="0" Grid.Column="1">50%</TextBlock>
-                                                        <Slider Margin="0" Padding="0,-5,0,-5" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" ></Slider>
-                                                    </Grid>
-                                                    
-                                                    <Grid Row="1" RowDefinitions="Auto" ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                                                        <TextBox Grid.Row="0" Grid.Column="0" Padding="4,8"></TextBox>
-                                                        <Button Grid.Row="0" Grid.Column="1" Margin="4,0,0,0" Padding="4,8" Theme="{StaticResource SecondaryButton}">Browse</Button>
-                                                    </Grid>
-                                                </StackPanel>
-                                            </Border>
-                                        </Grid>
-                                    </Border>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </Grid>
-                
+                                <!-- Full Battery Threshold -->
+                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0">Notify at:</TextBlock>
+                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding FullBatteryNotificationValue, StringFormat='{}{0}%'}" />
+                                    <Slider Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                            Minimum="50" Maximum="100"
+                                            Value="{Binding FullBatteryNotificationValue}"
+                                            Margin="0" Padding="0,-5,0,-5" />
+                                </Grid>
+
+                                <!-- Full Battery Sound -->
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding FullBatterySoundPath}"
+                                             IsReadOnly="True"
+                                             Watermark="Default sound"
+                                             Padding="4,8" />
+                                    <Button Grid.Column="1" Margin="4,0,0,0"
+                                            Command="{Binding BrowseFullBatterySoundCommand}"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            Padding="8,8">Browse</Button>
+                                    <Button Grid.Column="2" Margin="4,0,0,0"
+                                            Command="{Binding ResetFullBatterySoundCommand}"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            Padding="8,8"
+                                            IsVisible="{Binding FullBatterySoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">Reset</Button>
+                                </Grid>
+
+                                <Separator Margin="0,8" />
+
+                                <!-- Low Battery Notification -->
+                                <Grid ColumnDefinitions="32,*,Auto" VerticalAlignment="Center">
+                                    <Image Grid.Column="0" Margin="0,0,8,0"
+                                           Source="/Assets/LowBattery.png" />
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center">Low Battery Notification</TextBlock>
+                                    <ToggleSwitch Grid.Column="2"
+                                                  IsChecked="{Binding LowBatteryNotification}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
+
+                                <!-- Low Battery Threshold -->
+                                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Row="0" Grid.Column="0">Notify at:</TextBlock>
+                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding LowBatteryNotificationValue, StringFormat='{}{0}%'}" />
+                                    <Slider Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                            Minimum="5" Maximum="50"
+                                            Value="{Binding LowBatteryNotificationValue}"
+                                            Margin="0" Padding="0,-5,0,-5" />
+                                </Grid>
+
+                                <!-- Low Battery Sound -->
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding LowBatterySoundPath}"
+                                             IsReadOnly="True"
+                                             Watermark="Default sound"
+                                             Padding="4,8" />
+                                    <Button Grid.Column="1" Margin="4,0,0,0"
+                                            Command="{Binding BrowseLowBatterySoundCommand}"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            Padding="8,8">Browse</Button>
+                                    <Button Grid.Column="2" Margin="4,0,0,0"
+                                            Command="{Binding ResetLowBatterySoundCommand}"
+                                            Theme="{StaticResource SecondaryButton}"
+                                            Padding="8,8"
+                                            IsVisible="{Binding LowBatterySoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">Reset</Button>
+                                </Grid>
+
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+
 </UserControl>

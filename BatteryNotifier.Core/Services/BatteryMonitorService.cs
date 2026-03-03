@@ -15,8 +15,8 @@ public sealed class BatteryMonitorService : IDisposable
     public static BatteryMonitorService Instance => _instance.Value;
 
     private BatteryInfo? _lastPowerStatus = null;
-    private int _lowBatteryThreshold = 20;
-    private int _fullBatteryThreshold = 90;
+    private int _lowBatteryThreshold = 25;
+    private int _fullBatteryThreshold = 96;
 
     private const int BatteryLevelCheckThreshold = 120000;
 
@@ -31,6 +31,12 @@ public sealed class BatteryMonitorService : IDisposable
     private BatteryMonitorService()
     {
         _logger = BatteryNotifierAppLogger.ForContext<BatteryMonitorService>();
+
+        // Load thresholds from settings
+        var settings = AppSettings.Instance;
+        _lowBatteryThreshold = settings.LowBatteryNotificationValue;
+        _fullBatteryThreshold = settings.FullBatteryNotificationValue;
+
         InitializeWmiWatcher();
         StartBatteryLevelMonitor();
     }
