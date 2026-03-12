@@ -233,8 +233,10 @@ public sealed class BatteryMonitorService : IDisposable
             }
         }
 
-        // Publish threshold notifications independently of UI updates
-        if (publishNotifications && (isLowBattery || isFullBattery))
+        // Publish threshold notifications only on real state transitions (level or power changed).
+        // forceCheck is for UI refresh only — it should not trigger notifications when nothing changed.
+        // This prevents spurious "unplug charger" notifications on app startup.
+        if (publishNotifications && (powerLineChanged || levelChanged) && (isLowBattery || isFullBattery))
         {
             if (ShouldSuppressNotifications(currentStatus))
             {
@@ -393,10 +395,13 @@ public sealed class BatteryMonitorService : IDisposable
                               currentStatus.BatteryChargeStatus == BatteryChargeStatus.High ||
                               currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online);
 
+        bool realStateChange = powerLineChanged || levelChanged;
+
         return new BatteryChangeResult
         {
             ShouldUpdateUI = shouldUpdateUI,
             ShouldFirePowerLineChanged = powerLineChanged && wasAlreadyTracking,
+            ShouldPublishNotification = realStateChange && (isLowBattery || isFullBattery),
             IsLowBattery = isLowBattery,
             IsFullBattery = isFullBattery,
             CurrentLevel = currentLevel
@@ -407,6 +412,7 @@ public sealed class BatteryMonitorService : IDisposable
     {
         public bool ShouldUpdateUI;
         public bool ShouldFirePowerLineChanged;
+        public bool ShouldPublishNotification;
         public bool IsLowBattery;
         public bool IsFullBattery;
         public int CurrentLevel;
