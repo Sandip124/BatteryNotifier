@@ -1,24 +1,38 @@
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using BatteryNotifier.Core.Logger;
-#if WINDOWS
-using NAudio.Wave;
-#endif
 using Serilog;
+using SoundFlow.Abstracts.Devices;
+using SoundFlow.Backends.MiniAudio;
+using SoundFlow.Components;
+using SoundFlow.Providers;
+using SoundFlow.Structs;
 
 namespace BatteryNotifier.Core.Managers
 {
+    /// <summary>
+    /// Cross-platform audio playback using SoundFlow (MiniAudio backend).
+    /// Replaces NAudio (Windows-only) and subprocess spawning (afplay/paplay/aplay)
+    /// to eliminate AV-suspicious process creation for sound playback.
+    /// </summary>
     public class SoundManager : IDisposable
     {
         private const int DefaultPlayDurationMs = 30000;
 
+        // Shared audio engine — initialized once, lives for the app lifetime.
+        // MiniAudioEngine must NOT be created on Avalonia's UI thread (causes freeze).
+        private static MiniAudioEngine? _engine;
+        private static volatile AudioPlaybackDevice? _playbackDevice;
+        private static readonly object _engineLock = new();
+        private static bool _engineFailed;
+
         private readonly ILogger _logger;
+        private readonly object _playLock = new();
         private CancellationTokenSource? _cancellationTokenSource;
-        private volatile bool _isPlaying;
+        private SoundPlayer? _currentPlayer;
+        private bool _isPlaying;
         private volatile bool _disposed;
 
         public SoundManager()
@@ -26,11 +40,36 @@ namespace BatteryNotifier.Core.Managers
             _logger = BatteryNotifierAppLogger.ForContext<SoundManager>();
         }
 
+        private static AudioPlaybackDevice? EnsureEngine()
+        {
+            if (_engineFailed) return null;
+            if (_playbackDevice != null) return _playbackDevice;
+
+            lock (_engineLock)
+            {
+                if (_playbackDevice != null) return _playbackDevice;
+                if (_engineFailed) return null;
+
+                try
+                {
+                    var engine = new MiniAudioEngine();
+                    var device = engine.InitializePlaybackDevice(null, AudioFormat.Cd);
+                    _engine = engine;
+                    _playbackDevice = device;
+                    return device;
+                }
+                catch
+                {
+                    _engineFailed = true;
+                    return null;
+                }
+            }
+        }
+
         public async Task PlaySoundAsync(string? source, bool loop = false,
             int durationMs = DefaultPlayDurationMs)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
-            if (_isPlaying) return;
 
             // Resolve built-in sounds to their cached WAV file paths
             var resolvedPath = BuiltInSounds.Resolve(source);
@@ -43,7 +82,7 @@ namespace BatteryNotifier.Core.Managers
                 return;
             }
 
-            // Reject symlinks — prevents reading arbitrary files via afplay/paplay
+            // Reject symlinks — prevents reading arbitrary files
             var fileInfo = new FileInfo(resolvedPath);
             if (fileInfo.LinkTarget != null)
             {
@@ -51,38 +90,29 @@ namespace BatteryNotifier.Core.Managers
                 return;
             }
 
-            // Reject files larger than 50 MB to prevent OOM in NAudio
+            // Reject files larger than 50 MB
             if (fileInfo.Length > 50 * 1024 * 1024)
             {
                 _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, resolvedPath);
                 return;
             }
 
-            source = resolvedPath;
+            CancellationToken token;
+            lock (_playLock)
+            {
+                if (_isPlaying) return;
+                _isPlaying = true;
 
-            var oldCts = _cancellationTokenSource;
-            oldCts?.Cancel();
-            oldCts?.Dispose();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var token = _cancellationTokenSource.Token;
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = new CancellationTokenSource();
+                token = _cancellationTokenSource.Token;
+            }
 
-            _isPlaying = true;
             try
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-#if WINDOWS
-                    await PlayWithNAudio(source, loop, durationMs, token);
-#endif
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                {
-                    await PlayWithAfplay(source, loop, durationMs, token);
-                }
-                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    await PlayWithAplay(source, loop, durationMs, token);
-                }
+                // Run on background thread — MiniAudioEngine must not touch the UI thread
+                await Task.Run(() => PlayWithSoundFlow(resolvedPath, loop, durationMs, token), token);
             }
             catch (OperationCanceledException)
             {
@@ -94,99 +124,56 @@ namespace BatteryNotifier.Core.Managers
             }
             finally
             {
-                _isPlaying = false;
-            }
-        }
-
-#if WINDOWS
-        private async Task PlayWithNAudio(string source, bool loop, int durationMs, CancellationToken token)
-        {
-            using var audioFile = new AudioFileReader(source);
-            using var outputDevice = new WaveOutEvent();
-
-            outputDevice.Init(audioFile);
-            outputDevice.Play();
-
-            var timeout = Task.Delay(durationMs, token);
-
-            if (loop)
-            {
-                outputDevice.PlaybackStopped += (s, e) =>
+                lock (_playLock)
                 {
-                    if (!token.IsCancellationRequested && _isPlaying)
-                    {
-                        audioFile.Position = 0;
-                        outputDevice.Play();
-                    }
-                };
-                await timeout;
-            }
-            else
-            {
-                var playbackDone = new TaskCompletionSource<bool>();
-                outputDevice.PlaybackStopped += (s, e) => playbackDone.TrySetResult(true);
-                await Task.WhenAny(playbackDone.Task, timeout);
-            }
-
-            outputDevice.Stop();
-        }
-#endif
-
-        private async Task PlayWithAfplay(string source, bool loop, int durationMs, CancellationToken token)
-        {
-            var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
-            do
-            {
-                await RunProcess("afplay", source, token);
-            } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
-        }
-
-        private async Task PlayWithAplay(string source, bool loop, int durationMs, CancellationToken token)
-        {
-            var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
-            do
-            {
-                // Try paplay first (PulseAudio), fall back to aplay (ALSA)
-                try
-                {
-                    await RunProcess("paplay", source, token);
+                    _isPlaying = false;
                 }
-                catch
-                {
-                    await RunProcess("aplay", source, token);
-                }
-            } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
+            }
         }
 
-        /// <summary>
-        /// Runs a subprocess using ArgumentList (not Arguments string) to prevent shell injection.
-        /// </summary>
-        private static async Task RunProcess(string command, string filePath, CancellationToken token)
+        private void PlayWithSoundFlow(string source, bool loop, int durationMs, CancellationToken token)
         {
-            var psi = new ProcessStartInfo
+            var device = EnsureEngine();
+            if (device == null)
             {
-                FileName = command,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
+                _logger.Warning("Audio engine initialization failed — cannot play sound.");
+                return;
+            }
+
+            using var stream = File.OpenRead(source);
+            using var provider = new StreamDataProvider(_engine!, stream);
+            using var player = new SoundPlayer(_engine!, device.Format, provider) { IsLooping = loop };
+            using var playbackDone = new ManualResetEventSlim(false);
+
+            // Subscribe BEFORE Play() so we don't miss a fast completion.
+            // Use a named handler so we can unsubscribe to break the delegate→player reference chain.
+            EventHandler<EventArgs> onPlaybackEnded = (_, _) =>
+            {
+                try { playbackDone.Set(); }
+                catch (ObjectDisposedException) { /* already cleaned up */ }
             };
-            // ArgumentList passes the path as a single, properly-escaped argument
-            psi.ArgumentList.Add(filePath);
+            player.PlaybackEnded += onPlaybackEnded;
 
-            using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            var tcs = new TaskCompletionSource<bool>();
-            process.Exited += (s, e) => tcs.TrySetResult(true);
+            _currentPlayer = player;
+            device.MasterMixer.AddComponent(player);
+            player.Play();
 
-            process.Start();
-
-            using var reg = token.Register(() =>
+            try
             {
-                try { process.Kill(); } catch { }
-                tcs.TrySetCanceled();
-            });
-
-            await tcs.Task;
+                // Wait for natural completion, cancellation, or timeout
+                playbackDone.Wait(durationMs, token);
+            }
+            catch (OperationCanceledException)
+            {
+                // StopSound() was called
+            }
+            finally
+            {
+                player.Stop();
+                player.PlaybackEnded -= onPlaybackEnded;
+                device.MasterMixer.RemoveComponent(player);
+                _currentPlayer = null;
+            }
         }
 
         public void StopSound()
@@ -194,7 +181,7 @@ namespace BatteryNotifier.Core.Managers
             try
             {
                 _cancellationTokenSource?.Cancel();
-                _isPlaying = false;
+                _currentPlayer?.Stop();
             }
             catch (Exception ex)
             {
@@ -211,13 +198,15 @@ namespace BatteryNotifier.Core.Managers
         protected virtual void Dispose(bool disposing)
         {
             if (_disposed || !disposing) return;
+            _disposed = true;
 
             StopSound();
-            _cancellationTokenSource?.Cancel();
-            _cancellationTokenSource?.Dispose();
-            _cancellationTokenSource = null;
-
-            _disposed = true;
+            lock (_playLock)
+            {
+                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
+            }
         }
     }
 }
