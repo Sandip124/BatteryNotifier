@@ -118,11 +118,44 @@ public class TrayIconService : IDisposable
     {
         if (notification.Type == NotificationType.Inline) return;
 
+        var suppression = SystemStateDetector.GetSuppressionState();
+        var isCritical = notification.Priority >= NotificationPriority.Critical;
+
+        // Always update tray tooltip, even when suppressed
+        UpdateToolTipWithNotification(notification);
+
+        if (suppression.ShouldSuppressToast && !isCritical)
+        {
+            _logger.Information(
+                "Notification suppressed — DND: {DND}, Fullscreen: {FS}, Tag: {Tag}",
+                suppression.IsDoNotDisturb, suppression.IsFullscreen, notification.Tag);
+            return;
+        }
+
         // Show native notification
         ShowNativeNotification(notification);
 
-        // Play sound and handle notification
-        _ = _notificationManager?.EmitGlobalNotification(notification);
+        // Play sound unless DND is active (critical overrides)
+        if (!suppression.ShouldSuppressSound || isCritical)
+        {
+            _ = _notificationManager?.EmitGlobalNotification(notification);
+        }
+    }
+
+    private void UpdateToolTipWithNotification(NotificationMessage notification)
+    {
+        if (_trayIcon == null) return;
+
+        string title = notification.Tag switch
+        {
+            Core.Constants.LowBatteryTag => "Low Battery",
+            Core.Constants.FullBatteryTag => "Full Battery",
+            _ => "BatteryNotifier"
+        };
+
+        var message = notification.Message.Replace("🔋", "").Trim();
+        _trayIcon.ToolTipText = $"{title}: {message}";
+        Task.Delay(5000).ContinueWith(_ => UpdateToolTip());
     }
 
     private void ShowNativeNotification(NotificationMessage notification)
@@ -149,18 +182,9 @@ public class TrayIconService : IDisposable
         }
     }
 
-    private void ShowPlatformNotification(string title, string message)
+    private static void ShowPlatformNotification(string title, string message)
     {
         NotificationPlatformService.ShowNativeNotification(title, message);
-
-        // Also update tooltip temporarily
-        if (_trayIcon != null)
-        {
-            _trayIcon.ToolTipText = $"{title}: {message}";
-
-            // Reset tooltip after a delay
-            Task.Delay(5000).ContinueWith(_ => UpdateToolTip());
-        }
     }
 
     private void OnTrayIconClicked(object? sender, EventArgs e)
