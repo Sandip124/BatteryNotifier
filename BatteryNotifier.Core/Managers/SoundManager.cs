@@ -29,14 +29,19 @@ namespace BatteryNotifier.Core.Managers
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
             if (_isPlaying) return;
-            if (string.IsNullOrEmpty(source) || !File.Exists(source)) return;
+
+            // Resolve built-in sounds to their cached WAV file paths
+            var resolvedPath = BuiltInSounds.Resolve(source);
+            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return;
 
             // Validate the path is a real, rooted file path (no command injection via crafted paths)
-            if (!Path.IsPathRooted(source) || Path.GetFullPath(source) != source)
+            if (!Path.IsPathRooted(resolvedPath) || Path.GetFullPath(resolvedPath) != resolvedPath)
             {
-                _logger.Warning("Rejected non-canonical sound file path: {Path}", source);
+                _logger.Warning("Rejected non-canonical sound file path: {Path}", resolvedPath);
                 return;
             }
+
+            source = resolvedPath;
 
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource = new CancellationTokenSource();

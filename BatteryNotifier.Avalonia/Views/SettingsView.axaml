@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:components="clr-namespace:BatteryNotifier.Avalonia.Views.Components"
              xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
              x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
@@ -142,109 +143,9 @@
                         </Border>
 
                         <Border Grid.Row="1" Padding="12,0,12,10">
-                            <StackPanel Spacing="0">
-
-                                <!-- Full Battery -->
-                                <Grid ColumnDefinitions="28,*,Auto" VerticalAlignment="Center">
-                                    <Image Grid.Column="0" Margin="0,0,6,0"
-                                           Source="/Assets/FullBattery.png" />
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                               FontSize="13" FontWeight="SemiBold">Full Battery</TextBlock>
-                                    <ToggleSwitch Grid.Column="2"
-                                                  IsChecked="{Binding FullBatteryNotification}"
-                                                  OnContent="" OffContent=""
-                                                  Margin="0" Padding="0" />
-                                </Grid>
-
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                                    <TextBlock Grid.Column="0" VerticalAlignment="Center"
-                                               FontSize="11" Foreground="{DynamicResource AppSubtleText}">Threshold</TextBlock>
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                               FontSize="12" FontWeight="SemiBold"
-                                               Text="{Binding FullBatteryNotificationValue, StringFormat='{}{0}%'}" />
-                                </Grid>
-                                <Slider Minimum="50" Maximum="100"
-                                        Value="{Binding FullBatteryNotificationValue}"
-                                        Classes="material" />
-
-                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding FullBatterySoundPath}"
-                                             IsReadOnly="True"
-                                             Watermark="Default sound"
-                                             FontSize="11" Padding="6,6" />
-                                    <Button Grid.Column="1" Margin="4,0,0,0"
-                                            Command="{Binding BrowseFullBatterySoundCommand}"
-                                            Theme="{StaticResource SecondaryButton}"
-                                            FontSize="11" Padding="8,6">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <iconPacks:PackIconPhosphorIcons Kind="FolderOpen"
-                                                Width="12" Height="12" VerticalAlignment="Center" />
-                                            <TextBlock VerticalAlignment="Center">Browse</TextBlock>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Grid.Column="2" Margin="4,0,0,0"
-                                            Command="{Binding ResetFullBatterySoundCommand}"
-                                            Theme="{StaticResource SecondaryButton}"
-                                            FontSize="11" Padding="8,6"
-                                            IsVisible="{Binding FullBatterySoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                        <iconPacks:PackIconPhosphorIcons Kind="X"
-                                            Width="12" Height="12" />
-                                    </Button>
-                                </Grid>
-
-                                <!-- Spacer between sections -->
-                                <Border Height="16" />
-
-                                <!-- Low Battery -->
-                                <Grid ColumnDefinitions="28,*,Auto" VerticalAlignment="Center">
-                                    <Image Grid.Column="0" Margin="0,0,6,0"
-                                           Source="/Assets/LowBattery.png" />
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                               FontSize="13" FontWeight="SemiBold">Low Battery</TextBlock>
-                                    <ToggleSwitch Grid.Column="2"
-                                                  IsChecked="{Binding LowBatteryNotification}"
-                                                  OnContent="" OffContent=""
-                                                  Margin="0" Padding="0" />
-                                </Grid>
-
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                                    <TextBlock Grid.Column="0" VerticalAlignment="Center"
-                                               FontSize="11" Foreground="{DynamicResource AppSubtleText}">Threshold</TextBlock>
-                                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
-                                               FontSize="12" FontWeight="SemiBold"
-                                               Text="{Binding LowBatteryNotificationValue, StringFormat='{}{0}%'}" />
-                                </Grid>
-                                <Slider Minimum="5" Maximum="50"
-                                        Value="{Binding LowBatteryNotificationValue}"
-                                        Classes="material" />
-
-                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0">
-                                    <TextBox Grid.Column="0"
-                                             Text="{Binding LowBatterySoundPath}"
-                                             IsReadOnly="True"
-                                             Watermark="Default sound"
-                                             FontSize="11" Padding="6,6" />
-                                    <Button Grid.Column="1" Margin="4,0,0,0"
-                                            Command="{Binding BrowseLowBatterySoundCommand}"
-                                            Theme="{StaticResource SecondaryButton}"
-                                            FontSize="11" Padding="8,6">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <iconPacks:PackIconPhosphorIcons Kind="FolderOpen"
-                                                Width="12" Height="12" VerticalAlignment="Center" />
-                                            <TextBlock VerticalAlignment="Center">Browse</TextBlock>
-                                        </StackPanel>
-                                    </Button>
-                                    <Button Grid.Column="2" Margin="4,0,0,0"
-                                            Command="{Binding ResetLowBatterySoundCommand}"
-                                            Theme="{StaticResource SecondaryButton}"
-                                            FontSize="11" Padding="8,6"
-                                            IsVisible="{Binding LowBatterySoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                        <iconPacks:PackIconPhosphorIcons Kind="X"
-                                            Width="12" Height="12" />
-                                    </Button>
-                                </Grid>
-
+                            <StackPanel Spacing="12">
+                                <components:BatteryNotificationSection DataContext="{Binding FullBatterySection}" />
+                                <components:BatteryNotificationSection DataContext="{Binding LowBatterySection}" />
                             </StackPanel>
                         </Border>
                     </Grid>

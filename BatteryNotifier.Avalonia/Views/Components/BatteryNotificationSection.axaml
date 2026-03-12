@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
+             mc:Ignorable="d"
+             x:Class="BatteryNotifier.Avalonia.Views.Components.BatteryNotificationSection"
+             x:DataType="vm:BatteryNotificationSectionViewModel">
+
+    <StackPanel Spacing="0">
+        <!-- Header: icon + title + toggle -->
+        <Grid ColumnDefinitions="28,*,Auto" VerticalAlignment="Center">
+            <Image Grid.Column="0" Margin="0,0,6,0"
+                   Source="{Binding Icon}"
+                   RenderOptions.BitmapInterpolationMode="MediumQuality" />
+            <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                       FontSize="13" FontWeight="SemiBold"
+                       Text="{Binding Title}" />
+            <ToggleSwitch Grid.Column="2"
+                          IsChecked="{Binding IsEnabled}"
+                          OnContent="" OffContent=""
+                          Margin="0" Padding="0" />
+        </Grid>
+
+        <!-- Notify At + Slider -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                       FontSize="13">Notify At</TextBlock>
+            <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                       FontSize="13" FontWeight="SemiBold"
+                       Text="{Binding ThresholdValue, StringFormat='{}{0}%'}" />
+        </Grid>
+        <Slider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}"
+                Value="{Binding ThresholdValue}"
+                Classes="material" />
+
+        <!-- Sound: label left, ComboBox right -->
+        <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
+            <TextBlock Grid.Column="0" VerticalAlignment="Center"
+                       FontSize="13" Margin="0,0,10,0">Sound : </TextBlock>
+            <ComboBox Grid.Column="1"
+                      ItemsSource="{Binding SoundOptions}"
+                      SelectedItem="{Binding SelectedSound}"
+                      FontSize="11" Padding="6,5"
+                      HorizontalAlignment="Stretch" />
+        </Grid>
+
+        <!-- Custom file path (shown only when "Custom file..." is selected) -->
+        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0"
+              IsVisible="{Binding IsCustomSound}">
+            <TextBox Grid.Column="0"
+                     Text="{Binding SoundPath}"
+                     IsReadOnly="True"
+                     Watermark="No file selected"
+                     FontSize="11" Padding="6,5"
+                     MinHeight="30" />
+            <Button Grid.Column="1" Margin="4,0,0,0"
+                    Command="{Binding BrowseSoundCommand}"
+                    Theme="{StaticResource SecondaryButton}"
+                    FontSize="11" Padding="8,5"
+                    MinHeight="30">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                    <iconPacks:PackIconPhosphorIcons Kind="FolderOpen"
+                        Width="12" Height="12" VerticalAlignment="Center" />
+                    <TextBlock VerticalAlignment="Center">Browse</TextBlock>
+                </StackPanel>
+            </Button>
+            <Button Grid.Column="2" Margin="4,0,0,0"
+                    Command="{Binding ResetSoundCommand}"
+                    Theme="{StaticResource SecondaryButton}"
+                    FontSize="11" Padding="8,5"
+                    MinHeight="30"
+                    IsVisible="{Binding SoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <iconPacks:PackIconPhosphorIcons Kind="X"
+                    Width="12" Height="12" />
+            </Button>
+        </Grid>
+    </StackPanel>
+
+</UserControl>

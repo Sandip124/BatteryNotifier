@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Styling;
+using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using ReactiveUI;
 
@@ -20,25 +22,15 @@ public class SettingsViewModel : ViewModelBase, IDisposable
     private bool _isDarkTheme;
     private bool _startMinimized;
     private bool _launchAtStartup;
-    private bool _fullBatteryNotification;
-    private bool _lowBatteryNotification;
-    private int _fullBatteryNotificationValue;
-    private int _lowBatteryNotificationValue;
-    private string? _fullBatterySoundPath;
-    private string? _lowBatterySoundPath;
     private bool _disposed;
-
-    public Interaction<string?, string?> BrowseFullBatterySoundInteraction { get; } = new();
-    public Interaction<string?, string?> BrowseLowBatterySoundInteraction { get; } = new();
 
     public ReactiveCommand<Unit, Unit> BackCommand { get; }
     public ReactiveCommand<Unit, Unit> SetSystemThemeCommand { get; }
     public ReactiveCommand<Unit, Unit> SetLightThemeCommand { get; }
     public ReactiveCommand<Unit, Unit> SetDarkThemeCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseFullBatterySoundCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseLowBatterySoundCommand { get; }
-    public ReactiveCommand<Unit, Unit> ResetFullBatterySoundCommand { get; }
-    public ReactiveCommand<Unit, Unit> ResetLowBatterySoundCommand { get; }
+
+    public BatteryNotificationSectionViewModel FullBatterySection { get; }
+    public BatteryNotificationSectionViewModel LowBatterySection { get; }
 
     public SettingsViewModel(Action navigateBack)
     {
@@ -50,22 +42,37 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         SetLightThemeCommand = ReactiveCommand.Create(ApplyLightTheme);
         SetDarkThemeCommand = ReactiveCommand.Create(ApplyDarkTheme);
 
-        BrowseFullBatterySoundCommand = ReactiveCommand.CreateFromTask(BrowseFullBatterySound);
-        BrowseLowBatterySoundCommand = ReactiveCommand.CreateFromTask(BrowseLowBatterySound);
+        FullBatterySection = new BatteryNotificationSectionViewModel(
+            title: "Full Battery",
+            iconSource: "/Assets/FullBattery.png",
+            sliderMin: 50, sliderMax: 100,
+            isEnabled: _settings.FullBatteryNotification,
+            thresholdValue: _settings.FullBatteryNotificationValue,
+            soundSettingsValue: _settings.FullBatteryNotificationMusic,
+            onSettingsChanged: (sound, threshold) =>
+            {
+                _settings.FullBatteryNotification = FullBatterySection.IsEnabled;
+                _settings.FullBatteryNotificationValue = threshold;
+                _settings.FullBatteryNotificationMusic = sound;
+                _settings.Save();
+                UpdateThresholds();
+            });
 
-        ResetFullBatterySoundCommand = ReactiveCommand.Create(() =>
-        {
-            FullBatterySoundPath = null;
-            _settings.FullBatteryNotificationMusic = null;
-            _settings.Save();
-        });
-
-        ResetLowBatterySoundCommand = ReactiveCommand.Create(() =>
-        {
-            LowBatterySoundPath = null;
-            _settings.LowBatteryNotificationMusic = null;
-            _settings.Save();
-        });
+        LowBatterySection = new BatteryNotificationSectionViewModel(
+            title: "Low Battery",
+            iconSource: "/Assets/LowBattery.png",
+            sliderMin: 5, sliderMax: 50,
+            isEnabled: _settings.LowBatteryNotification,
+            thresholdValue: _settings.LowBatteryNotificationValue,
+            soundSettingsValue: _settings.LowBatteryNotificationMusic,
+            onSettingsChanged: (sound, threshold) =>
+            {
+                _settings.LowBatteryNotification = LowBatterySection.IsEnabled;
+                _settings.LowBatteryNotificationValue = threshold;
+                _settings.LowBatteryNotificationMusic = sound;
+                _settings.Save();
+                UpdateThresholds();
+            });
 
         this.WhenAnyValue(x => x.LaunchAtStartup)
             .Skip(1)
@@ -85,58 +92,17 @@ public class SettingsViewModel : ViewModelBase, IDisposable
                 _settings.Save();
             })
             .DisposeWith(_disposables);
+    }
 
-        this.WhenAnyValue(x => x.FullBatteryNotification)
-            .Skip(1)
-            .Subscribe(enabled =>
-            {
-                _settings.FullBatteryNotification = enabled;
-                _settings.Save();
-            })
-            .DisposeWith(_disposables);
-
-        this.WhenAnyValue(x => x.LowBatteryNotification)
-            .Skip(1)
-            .Subscribe(enabled =>
-            {
-                _settings.LowBatteryNotification = enabled;
-                _settings.Save();
-            })
-            .DisposeWith(_disposables);
-
-        this.WhenAnyValue(x => x.FullBatteryNotificationValue)
-            .Skip(1)
-            .Throttle(TimeSpan.FromMilliseconds(500))
-            .Subscribe(value =>
-            {
-                _settings.FullBatteryNotificationValue = value;
-                _settings.Save();
-                try
-                {
-                    BatteryMonitorService.Instance.SetThresholds(
-                        _settings.LowBatteryNotificationValue,
-                        _settings.FullBatteryNotificationValue);
-                }
-                catch { }
-            })
-            .DisposeWith(_disposables);
-
-        this.WhenAnyValue(x => x.LowBatteryNotificationValue)
-            .Skip(1)
-            .Throttle(TimeSpan.FromMilliseconds(500))
-            .Subscribe(value =>
-            {
-                _settings.LowBatteryNotificationValue = value;
-                _settings.Save();
-                try
-                {
-                    BatteryMonitorService.Instance.SetThresholds(
-                        _settings.LowBatteryNotificationValue,
-                        _settings.FullBatteryNotificationValue);
-                }
-                catch { }
-            })
-            .DisposeWith(_disposables);
+    private void UpdateThresholds()
+    {
+        try
+        {
+            BatteryMonitorService.Instance.SetThresholds(
+                LowBatterySection.ThresholdValue,
+                FullBatterySection.ThresholdValue);
+        }
+        catch { }
     }
 
     private void LoadSettings()
@@ -146,12 +112,6 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         _isDarkTheme = _settings.ThemeMode == ThemeMode.Dark;
         _startMinimized = _settings.StartMinimized;
         _launchAtStartup = _settings.LaunchAtStartup;
-        _fullBatteryNotification = _settings.FullBatteryNotification;
-        _lowBatteryNotification = _settings.LowBatteryNotification;
-        _fullBatteryNotificationValue = _settings.FullBatteryNotificationValue;
-        _lowBatteryNotificationValue = _settings.LowBatteryNotificationValue;
-        _fullBatterySoundPath = _settings.FullBatteryNotificationMusic;
-        _lowBatterySoundPath = _settings.LowBatteryNotificationMusic;
     }
 
     private void ApplySystemTheme()
@@ -187,30 +147,6 @@ public class SettingsViewModel : ViewModelBase, IDisposable
             Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
     }
 
-    private async Task BrowseFullBatterySound()
-    {
-        var result = await BrowseFullBatterySoundInteraction.Handle(
-            _settings.FullBatteryNotificationMusic ?? string.Empty);
-        if (result != null)
-        {
-            FullBatterySoundPath = result;
-            _settings.FullBatteryNotificationMusic = result;
-            _settings.Save();
-        }
-    }
-
-    private async Task BrowseLowBatterySound()
-    {
-        var result = await BrowseLowBatterySoundInteraction.Handle(
-            _settings.LowBatteryNotificationMusic ?? string.Empty);
-        if (result != null)
-        {
-            LowBatterySoundPath = result;
-            _settings.LowBatteryNotificationMusic = result;
-            _settings.Save();
-        }
-    }
-
     public bool IsSystemTheme
     {
         get => _isSystemTheme;
@@ -241,46 +177,57 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _launchAtStartup, value);
     }
 
-    public bool FullBatteryNotification
-    {
-        get => _fullBatteryNotification;
-        set => this.RaiseAndSetIfChanged(ref _fullBatteryNotification, value);
-    }
-
-    public bool LowBatteryNotification
-    {
-        get => _lowBatteryNotification;
-        set => this.RaiseAndSetIfChanged(ref _lowBatteryNotification, value);
-    }
-
-    public int FullBatteryNotificationValue
-    {
-        get => _fullBatteryNotificationValue;
-        set => this.RaiseAndSetIfChanged(ref _fullBatteryNotificationValue, value);
-    }
-
-    public int LowBatteryNotificationValue
-    {
-        get => _lowBatteryNotificationValue;
-        set => this.RaiseAndSetIfChanged(ref _lowBatteryNotificationValue, value);
-    }
-
-    public string? FullBatterySoundPath
-    {
-        get => _fullBatterySoundPath;
-        set => this.RaiseAndSetIfChanged(ref _fullBatterySoundPath, value);
-    }
-
-    public string? LowBatterySoundPath
-    {
-        get => _lowBatterySoundPath;
-        set => this.RaiseAndSetIfChanged(ref _lowBatterySoundPath, value);
-    }
-
     public void Dispose()
     {
         if (_disposed) return;
+        FullBatterySection.Dispose();
+        LowBatterySection.Dispose();
         _disposables.Dispose();
         _disposed = true;
     }
+}
+
+/// <summary>
+/// Represents a sound option in the settings UI (built-in, custom, or default/none).
+/// </summary>
+public class SoundOption
+{
+    public string DisplayName { get; init; } = string.Empty;
+    public string? SettingsValue { get; init; }
+    public bool IsDefault { get; init; }
+    public bool IsCustom { get; init; }
+
+    public static readonly SoundOption Default = new() { DisplayName = "Default (none)", IsDefault = true };
+    public static readonly SoundOption Custom = new() { DisplayName = "Custom file...", IsCustom = true };
+
+    public static List<SoundOption> BuildList()
+    {
+        var list = new List<SoundOption> { Default };
+
+        foreach (var name in BuiltInSounds.Names)
+        {
+            list.Add(new SoundOption
+            {
+                DisplayName = name,
+                SettingsValue = BuiltInSounds.ToSettingsValue(name)
+            });
+        }
+
+        list.Add(Custom);
+        return list;
+    }
+
+    public static SoundOption FromSettingsValue(string? value, List<SoundOption> options)
+    {
+        if (string.IsNullOrEmpty(value))
+            return options.First(o => o.IsDefault);
+
+        if (BuiltInSounds.IsBuiltIn(value))
+            return options.FirstOrDefault(o => o.SettingsValue == value) ?? options.First(o => o.IsDefault);
+
+        // Custom file path
+        return options.First(o => o.IsCustom);
+    }
+
+    public override string ToString() => DisplayName;
 }
