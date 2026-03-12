@@ -100,12 +100,16 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
         if (isVisible)
         {
+            // Immediately fetch fresh battery state (catches charger plug/unplug while hidden)
+            try { BatteryMonitorService.Instance.ForceCheck(); }
+            catch { /* Battery monitoring not available */ }
+
             // Catch up on any missed battery updates
             if (_pendingRefresh)
             {
                 _pendingRefresh = false;
-                RefreshBatteryStatus();
             }
+            RefreshBatteryStatus();
 
             // Show greeting and start phrase cycling
             StatusMessage = PickStatusMessage(
