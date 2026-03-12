@@ -25,6 +25,13 @@
         <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 
+        <!-- Trimming: remove unused framework and library code -->
+        <PublishTrimmed>true</PublishTrimmed>
+        <TrimMode>full</TrimMode>
+
+        <!-- Skip loading ICU globalization data (~28 MB saving) -->
+        <InvariantGlobalization>true</InvariantGlobalization>
+
         <!-- Integrity: embed PDB for stack traces, strip debug symbols -->
         <DebugType>embedded</DebugType>
         <DebugSymbols>true</DebugSymbols>

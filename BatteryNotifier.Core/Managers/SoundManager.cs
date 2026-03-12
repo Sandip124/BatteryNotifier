@@ -5,7 +5,9 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using BatteryNotifier.Core.Logger;
+#if WINDOWS
 using NAudio.Wave;
+#endif
 using Serilog;
 
 namespace BatteryNotifier.Core.Managers
@@ -67,7 +69,9 @@ namespace BatteryNotifier.Core.Managers
             {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
+#if WINDOWS
                     await PlayWithNAudio(source, loop, durationMs, token);
+#endif
                 }
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 {
@@ -92,6 +96,7 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 
+#if WINDOWS
         private async Task PlayWithNAudio(string source, bool loop, int durationMs, CancellationToken token)
         {
             using var audioFile = new AudioFileReader(source);
@@ -123,6 +128,7 @@ namespace BatteryNotifier.Core.Managers
 
             outputDevice.Stop();
         }
+#endif
 
         private async Task PlayWithAfplay(string source, bool loop, int durationMs, CancellationToken token)
         {

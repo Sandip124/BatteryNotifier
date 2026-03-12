@@ -10,16 +10,28 @@
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <AnalysisLevel>latest-all</AnalysisLevel>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+        <!-- Mark assembly as trim-compatible -->
+        <IsTrimmable>true</IsTrimmable>
+    </PropertyGroup>
+
+    <!-- Define WINDOWS constant when targeting Windows so NAudio/WMI code compiles conditionally -->
+    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
+        <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="System.Management" Version="9.0.8"/>
         <PackageReference Include="Serilog" Version="4.3.0"/>
         <PackageReference Include="Serilog.Enrichers.Process" Version="3.0.0"/>
         <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0"/>
         <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0"/>
         <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0"/>
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
+    </ItemGroup>
+
+    <!-- Windows-only: WMI for battery info, NAudio for sound playback -->
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
+        <PackageReference Include="System.Management" Version="9.0.8"/>
         <PackageReference Include="NAudio" Version="2.2.1"/>
     </ItemGroup>
 
