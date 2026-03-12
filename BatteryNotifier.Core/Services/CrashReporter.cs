@@ -537,10 +537,20 @@ public static class CrashReporter
     private static void OpenUrl(string url)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            Process.Start("open", url);
+        {
+            var psi = new ProcessStartInfo("open") { UseShellExecute = false };
+            psi.ArgumentList.Add(url);
+            using var p = Process.Start(psi);
+        }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        {
+            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
         else
-            Process.Start("xdg-open", url);
+        {
+            var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+            psi.ArgumentList.Add(url);
+            using var p = Process.Start(psi);
+        }
     }
 }

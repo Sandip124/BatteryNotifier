@@ -43,7 +43,7 @@ public static class BatteryNotifierAppLogger
     public static void Fatal(Exception ex, string template, params object[] args) => Log.Fatal(ex, template, args);
 
     // Structured logging for user actions
-    public static void LogUserAction(string action, string details = null, object additionalData = null)
+    public static void LogUserAction(string action, string? details = null, object? additionalData = null)
     {
         Log.Information("User Action: {Action} {Details} {@Data}", action, details, additionalData);
     }

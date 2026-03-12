@@ -8,6 +8,7 @@ namespace BatteryNotifier.Core.Utils
         private Timer? _timer;
         private Action? _taskToRun;
         private readonly object _lock = new();
+        private bool _disposed;
 
         public void Debounce(Action task, int interval = Constants.DefaultNotificationTimeout)
         {
@@ -19,6 +20,8 @@ namespace BatteryNotifier.Core.Utils
 
             lock (_lock)
             {
+                if (_disposed) return;
+
                 _taskToRun = task;
                 _timer?.Dispose();
 
@@ -28,6 +31,7 @@ namespace BatteryNotifier.Core.Utils
                     Action? action;
                     lock (_lock)
                     {
+                        if (_disposed) return;
                         action = _taskToRun;
                         _taskToRun = null;
                     }
@@ -41,7 +45,9 @@ namespace BatteryNotifier.Core.Utils
         {
             lock (_lock)
             {
+                _disposed = true;
                 _timer?.Dispose();
+                _timer = null;
                 _taskToRun = null;
             }
         }

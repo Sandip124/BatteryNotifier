@@ -11,6 +11,7 @@ public sealed class AppSettings
     public static AppSettings Instance => _instance.Value;
 
     private const string SettingsFileName = "appsettings.json";
+    private readonly object _saveLock = new();
     private string SettingsFilePath => Path.Combine(GetSettingsDirectory(), SettingsFileName);
 
     // Notification Settings
@@ -111,23 +112,26 @@ public sealed class AppSettings
 
     public void Save()
     {
-        try
+        lock (_saveLock)
         {
-            var options = new JsonSerializerOptions
+            try
             {
-                WriteIndented = true
-            };
+                var options = new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                };
 
-            var json = JsonSerializer.Serialize(this, options);
-            var encrypted = SettingsEncryption.Encrypt(json, GetSettingsDirectory());
+                var json = JsonSerializer.Serialize(this, options);
+                var encrypted = SettingsEncryption.Encrypt(json, GetSettingsDirectory());
 
-            var tmpPath = SettingsFilePath + ".tmp";
-            File.WriteAllBytes(tmpPath, encrypted);
-            File.Move(tmpPath, SettingsFilePath, overwrite: true);
-        }
-        catch (Exception)
-        {
-            // Fail silently — settings won't persist
+                var tmpPath = SettingsFilePath + ".tmp";
+                File.WriteAllBytes(tmpPath, encrypted);
+                File.Move(tmpPath, SettingsFilePath, overwrite: true);
+            }
+            catch (Exception)
+            {
+                // Fail silently — settings won't persist
+            }
         }
     }
 

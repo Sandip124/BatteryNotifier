@@ -31,11 +31,11 @@ public static class StartupManager
                 SetLinuxStartup(enabled);
             }
 
-            Logger.Information($"Startup {(enabled ? "enabled" : "disabled")} successfully");
+            Logger.Information("Startup {Action} successfully", enabled ? "enabled" : "disabled");
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"Failed to {(enabled ? "enable" : "disable")} startup");
+            Logger.Error(ex, "Failed to {Action} startup", enabled ? "enable" : "disable");
         }
     }
 
@@ -212,7 +212,10 @@ public static class StartupManager
                 process.StartInfo.ArgumentList.Add(arg);
 
             process.Start();
-            process.WaitForExit(5000);
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(); } catch { }
+            }
         }
         catch (Exception ex)
         {
@@ -237,7 +240,10 @@ public static class StartupManager
             };
             process.Start();
             var uid = process.StandardOutput.ReadToEnd().Trim();
-            process.WaitForExit(3000);
+            if (!process.WaitForExit(3000))
+            {
+                try { process.Kill(); } catch { }
+            }
             return uid;
         }
         catch

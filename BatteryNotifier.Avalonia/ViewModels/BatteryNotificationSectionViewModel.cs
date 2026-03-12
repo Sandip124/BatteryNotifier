@@ -101,6 +101,7 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         this.WhenAnyValue(x => x.ThresholdValue)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(500))
+            .ObserveOn(RxApp.MainThreadScheduler)
             .Subscribe(val => _onSettingsChanged(GetCurrentSoundValue(), val))
             .DisposeWith(_disposables);
     }

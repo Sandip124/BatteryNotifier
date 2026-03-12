@@ -12,9 +12,10 @@ public sealed class BatteryMonitorService : IDisposable
 
     public static BatteryMonitorService Instance => _instance.Value;
 
+    private readonly object _statusLock = new();
     private BatteryInfo? _lastPowerStatus = null;
-    private int _lowBatteryThreshold = 25;
-    private int _fullBatteryThreshold = 96;
+    private volatile int _lowBatteryThreshold = 25;
+    private volatile int _fullBatteryThreshold = 96;
 
     private const int BatteryLevelCheckThresholdMs = 120000;
 
@@ -90,7 +91,7 @@ public sealed class BatteryMonitorService : IDisposable
 
     private void OnWmiPowerEventReflection(object sender, EventArgs e)
     {
-        _logger.Information($"WMI Power event detected at [{DateTime.Now:yyyy-MM-dd HH:mm:ss}]");
+        _logger.Information("WMI Power event detected at {Timestamp:yyyy-MM-dd HH:mm:ss}", DateTime.Now);
         CheckBatteryAndPowerStatus(forceCheck: true);
     }
 
@@ -120,11 +121,18 @@ public sealed class BatteryMonitorService : IDisposable
             return;
 
         var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
-        var lastLevel = _lastPowerStatus != null ? (int)(_lastPowerStatus.BatteryLifePercent * 100) : 0;
 
-        bool powerLineChanged = _lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
+        bool powerLineChanged;
+        bool batteryLevelChanged;
+        bool shouldNotify;
 
-        bool batteryLevelChanged = Math.Abs(currentLevel - lastLevel) >= 5;
+        lock (_statusLock)
+        {
+            var lastLevel = _lastPowerStatus != null ? (int)(_lastPowerStatus.BatteryLifePercent * 100) : 0;
+            powerLineChanged = _lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
+            batteryLevelChanged = Math.Abs(currentLevel - lastLevel) >= 5;
+            shouldNotify = forceCheck || powerLineChanged || batteryLevelChanged || _lastPowerStatus == null;
+        }
 
         bool isLowBattery = currentLevel <= _lowBatteryThreshold &&
                             currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
@@ -134,25 +142,37 @@ public sealed class BatteryMonitorService : IDisposable
                               currentStatus.BatteryChargeStatus == BatteryChargeStatus.High ||
                               currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online);
 
-        bool shouldNotify = forceCheck || powerLineChanged || batteryLevelChanged || isLowBattery || isFullBattery ||
-                            _lastPowerStatus == null;
+        shouldNotify = shouldNotify || isLowBattery || isFullBattery;
 
         UpdateBatteryManagerStore(currentStatus, currentLevel);
 
         if (shouldNotify)
         {
-            _logger.Information($@"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Invoked by: {(forceCheck ? "Force Check" : "Periodic Timer")}, Battery Level: {currentLevel}%, Power Line Status: {currentStatus.PowerLineStatus}");
+            _logger.Information(
+                "[{Timestamp:yyyy-MM-dd HH:mm:ss}] Invoked by: {Source}, Battery Level: {Level}%, Power Line Status: {PowerLine}",
+                DateTime.Now, forceCheck ? "Force Check" : "Periodic Timer", currentLevel, currentStatus.PowerLineStatus);
 
-            if (powerLineChanged && _lastPowerStatus != null)
+            if (powerLineChanged)
             {
-                PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+                lock (_statusLock)
+                {
+                    if (_lastPowerStatus != null)
+                        PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+                }
             }
 
             BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-            _lastPowerStatus = currentStatus;
+
+            // Capture whether power line changed before updating _lastPowerStatus
+            bool wasAlreadyTracking;
+            lock (_statusLock)
+            {
+                wasAlreadyTracking = _lastPowerStatus != null;
+                _lastPowerStatus = currentStatus;
+            }
 
             // Reset notification trackers on power state change so notifications fire eagerly
-            if (powerLineChanged && _lastPowerStatus != null)
+            if (powerLineChanged && wasAlreadyTracking)
             {
                 NotificationService.Instance.ResetAllTrackers();
                 _logger.Information("Power line state changed — notification trackers reset");
@@ -240,17 +260,22 @@ public sealed class BatteryMonitorService : IDisposable
         try
         {
             using var process = new System.Diagnostics.Process();
-            process.StartInfo = new System.Diagnostics.ProcessStartInfo
+            var psi = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "system_profiler",
-                Arguments = "SPDisplaysDataType",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+            psi.ArgumentList.Add("SPDisplaysDataType");
+            process.StartInfo = psi;
             process.Start();
             var output = process.StandardOutput.ReadToEnd();
-            process.WaitForExit(5000);
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(); } catch { }
+                return false;
+            }
 
             // Count "Resolution:" lines — each physical display has one
             int displayCount = 0;

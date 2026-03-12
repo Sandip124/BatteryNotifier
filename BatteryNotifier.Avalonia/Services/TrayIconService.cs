@@ -125,7 +125,8 @@ public class TrayIconService : IDisposable
 
     private void OnBatteryStatusChanged(object? sender, BatteryStatusEventArgs e)
     {
-        UpdateToolTip();
+        // Event fires on BatteryMonitorService's timer thread — marshal to UI
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(UpdateToolTip);
     }
 
     private void UpdateToolTip()
@@ -142,6 +143,14 @@ public class TrayIconService : IDisposable
     private void OnNotificationReceived(object? sender, NotificationMessage notification)
     {
         if (notification.Type == NotificationType.Inline) return;
+
+        // Event can fire from NotificationService's flush Timer (threadpool thread).
+        // Marshal tray icon access to UI thread; sound/subprocess calls are thread-safe.
+        if (!global::Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(() => OnNotificationReceived(sender, notification));
+            return;
+        }
 
         var suppression = SystemStateDetector.GetSuppressionState();
         var isCritical = notification.Priority >= NotificationPriority.Critical;
@@ -402,11 +411,21 @@ public class TrayIconService : IDisposable
     private static void OpenUrl(string url)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            Process.Start("open", url);
+        {
+            var psi = new ProcessStartInfo("open") { UseShellExecute = false };
+            psi.ArgumentList.Add(url);
+            using var p = Process.Start(psi);
+        }
         else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        {
+            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
         else
-            Process.Start("xdg-open", url);
+        {
+            var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+            psi.ArgumentList.Add(url);
+            using var p = Process.Start(psi);
+        }
     }
 
     private void OnExit(object? sender, EventArgs e)

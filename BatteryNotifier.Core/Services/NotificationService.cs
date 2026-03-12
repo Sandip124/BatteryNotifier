@@ -29,6 +29,7 @@ public sealed class NotificationService : IDisposable
 
     private TimeSpan ThrottleInterval { get; set; } = TimeSpan.FromSeconds(2);
 
+    private readonly object _lastNotificationTimeLock = new object();
     private DateTime _lastNotificationTime = DateTime.MinValue;
 
     private bool _disposed;
@@ -127,8 +128,10 @@ public sealed class NotificationService : IDisposable
         }
 
         // Apply throttle for rapid-fire prevention
+        DateTime lastTime;
+        lock (_lastNotificationTimeLock) { lastTime = _lastNotificationTime; }
         var now = DateTime.Now;
-        var timeSinceLastNotification = now - _lastNotificationTime;
+        var timeSinceLastNotification = now - lastTime;
 
         if (timeSinceLastNotification < ThrottleInterval && notification.Priority < NotificationPriority.Critical)
         {
@@ -209,7 +212,7 @@ public sealed class NotificationService : IDisposable
             _notificationQueue.Enqueue(notification, priority);
         }
 
-        _lastNotificationTime = DateTime.Now;
+        lock (_lastNotificationTimeLock) { _lastNotificationTime = DateTime.Now; }
 
         NotificationReceived?.Invoke(this, notification);
     }
@@ -275,10 +278,11 @@ public sealed class NotificationService : IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-
         lock (_flushTimerLock)
         {
+            if (_disposed) return;
+            _disposed = true;
+
             _flushTimer?.Dispose();
             _flushTimer = null;
         }
@@ -292,8 +296,6 @@ public sealed class NotificationService : IDisposable
         }
 
         NotificationReceived = null;
-
-        _disposed = true;
     }
 }
 

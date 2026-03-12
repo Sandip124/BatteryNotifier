@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -228,25 +228,23 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         return PickFunnyPhrase();
     }
 
-    private static readonly Dictionary<string, Bitmap?> _bitmapCache = new();
+    private static readonly ConcurrentDictionary<string, Bitmap?> _bitmapCache = new();
 
     private static Bitmap? LoadAsset(string fileName)
     {
-        if (_bitmapCache.TryGetValue(fileName, out var cached))
-            return cached;
-
-        try
+        return _bitmapCache.GetOrAdd(fileName, static key =>
         {
-            var uri = new Uri($"avares://BatteryNotifier/Assets/{fileName}");
-            using var stream = AssetLoader.Open(uri);
-            var bitmap = new Bitmap(stream);
-            _bitmapCache[fileName] = bitmap;
-            return bitmap;
-        }
-        catch
-        {
-            return null;
-        }
+            try
+            {
+                var uri = new Uri($"avares://BatteryNotifier/Assets/{key}");
+                using var stream = AssetLoader.Open(uri);
+                return new Bitmap(stream);
+            }
+            catch
+            {
+                return null;
+            }
+        });
     }
 
     // ── Properties ───────────────────────────────────────────────
@@ -485,11 +483,21 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                Process.Start("open", url);
+            {
+                var psi = new ProcessStartInfo("open") { UseShellExecute = false };
+                psi.ArgumentList.Add(url);
+                using var p = Process.Start(psi);
+            }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            {
+                using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
             else
-                Process.Start("xdg-open", url);
+            {
+                var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+                psi.ArgumentList.Add(url);
+                using var p = Process.Start(psi);
+            }
         }
         catch { }
     }

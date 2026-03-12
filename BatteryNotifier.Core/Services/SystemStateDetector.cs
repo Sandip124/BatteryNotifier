@@ -396,7 +396,7 @@ Write-Output ([FullscreenCheck]::IsFullscreen())";
     private static string ReadOutputWithTimeout(Process process)
     {
         var outputBuffer = new StringBuilder();
-        var outputDone = new ManualResetEventSlim(false);
+        using var outputDone = new ManualResetEventSlim(false);
         var bytesRead = 0;
 
         // Read asynchronously so we can enforce the timeout

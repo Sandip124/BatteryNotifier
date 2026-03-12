@@ -18,8 +18,8 @@ namespace BatteryNotifier.Core.Managers
 
         private readonly ILogger _logger;
         private CancellationTokenSource? _cancellationTokenSource;
-        private bool _isPlaying;
-        private bool _disposed;
+        private volatile bool _isPlaying;
+        private volatile bool _disposed;
 
         public SoundManager()
         {
@@ -60,7 +60,9 @@ namespace BatteryNotifier.Core.Managers
 
             source = resolvedPath;
 
-            _cancellationTokenSource?.Cancel();
+            var oldCts = _cancellationTokenSource;
+            oldCts?.Cancel();
+            oldCts?.Dispose();
             _cancellationTokenSource = new CancellationTokenSource();
             var token = _cancellationTokenSource.Token;
 

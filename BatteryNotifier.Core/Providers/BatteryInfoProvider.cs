@@ -337,17 +337,23 @@ namespace BatteryNotifier.Core.Providers
             try
             {
                 using var process = new Process();
-                process.StartInfo = new ProcessStartInfo
+                var psi = new ProcessStartInfo
                 {
                     FileName = fileName,
-                    Arguments = arguments,
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
                     CreateNoWindow = true
                 };
+                // Use ArgumentList for safe argument passing (no shell injection)
+                foreach (var arg in arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                    psi.ArgumentList.Add(arg);
+                process.StartInfo = psi;
                 process.Start();
                 var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(3000);
+                if (!process.WaitForExit(3000))
+                {
+                    try { process.Kill(); } catch { }
+                }
                 return output;
             }
             catch

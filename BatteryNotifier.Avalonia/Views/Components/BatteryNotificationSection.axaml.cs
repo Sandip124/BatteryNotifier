@@ -8,6 +8,8 @@ namespace BatteryNotifier.Avalonia.Views.Components;
 
 public partial class BatteryNotificationSection : UserControl
 {
+    private IDisposable? _interactionHandler;
+
     public BatteryNotificationSection()
     {
         InitializeComponent();
@@ -17,9 +19,13 @@ public partial class BatteryNotificationSection : UserControl
     {
         base.OnDataContextChanged(e);
 
+        // Dispose previous handler to prevent duplicate registrations
+        _interactionHandler?.Dispose();
+        _interactionHandler = null;
+
         if (DataContext is BatteryNotificationSectionViewModel vm)
         {
-            vm.BrowseSoundInteraction.RegisterHandler(async ctx =>
+            _interactionHandler = vm.BrowseSoundInteraction.RegisterHandler(async ctx =>
             {
                 var path = await BrowseAudioFile();
                 ctx.SetOutput(path);

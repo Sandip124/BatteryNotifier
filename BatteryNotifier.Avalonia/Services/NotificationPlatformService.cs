@@ -112,7 +112,11 @@ public static class NotificationPlatformService
                 process.StartInfo.ArgumentList.Add(_iconPath);
             }
             process.Start();
-            process.WaitForExit(5000);
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(); } catch { }
+                return false;
+            }
             return process.ExitCode == 0;
         }
         catch
@@ -195,7 +199,10 @@ public static class NotificationPlatformService
             process.StartInfo.ArgumentList.Add(safeTitle);
             process.StartInfo.ArgumentList.Add(safeMessage);
             process.Start();
-            process.WaitForExit(5000);
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(); } catch { }
+            }
         }
         catch (Exception ex)
         {
@@ -269,7 +276,10 @@ public static class NotificationPlatformService
             process.Start();
             process.StandardInput.Write(stdinContent);
             process.StandardInput.Close();
-            process.WaitForExit(5000);
+            if (!process.WaitForExit(5000))
+            {
+                try { process.Kill(); } catch { }
+            }
         }
         catch (Exception ex)
         {
