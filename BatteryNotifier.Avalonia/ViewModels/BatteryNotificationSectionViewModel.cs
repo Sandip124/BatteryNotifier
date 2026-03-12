@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -64,7 +65,7 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         BrowseSoundCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             var result = await BrowseSoundInteraction.Handle(SoundPath ?? string.Empty);
-            if (result != null)
+            if (result != null && ValidateSoundFilePath(result))
             {
                 SoundPath = result;
                 SelectedSound = SoundOptions.First(s => s.IsCustom);
@@ -139,6 +140,52 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
     {
         get => _isCustomSound;
         set => this.RaiseAndSetIfChanged(ref _isCustomSound, value);
+    }
+
+    private static readonly HashSet<string> AllowedExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".wav", ".mp3", ".m4a", ".wma", ".ogg", ".flac", ".aac" };
+
+    private const long MaxSoundFileSizeBytes = 50 * 1024 * 1024; // 50 MB
+
+    private static bool ValidateSoundFilePath(string path)
+    {
+        // Must be an absolute path
+        if (!Path.IsPathRooted(path))
+            return false;
+
+        // Normalize to canonical form (handles / vs \ on Windows, .., symlink text)
+        string canonical;
+        try
+        {
+            canonical = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return false;
+        }
+
+        // Validate file extension
+        var ext = Path.GetExtension(canonical);
+        if (string.IsNullOrEmpty(ext) || !AllowedExtensions.Contains(ext))
+            return false;
+
+        // Check file exists, is not a symlink, and size is within limit
+        try
+        {
+            var info = new FileInfo(canonical);
+            if (!info.Exists || info.Length > MaxSoundFileSizeBytes)
+                return false;
+
+            // Reject symlinks — could point to sensitive files
+            if (info.LinkTarget != null)
+                return false;
+        }
+        catch
+        {
+            return false;
+        }
+
+        return true;
     }
 
     private static Bitmap? LoadIcon(string assetPath)

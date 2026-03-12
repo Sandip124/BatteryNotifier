@@ -66,6 +66,8 @@ public static class BuiltInSounds
 
     private static string? GetOrGenerate(string name)
     {
+        // Strict lookup — only exact matches from the known generator dictionary.
+        // Prevents path traversal via crafted names like "../../etc/passwd".
         if (!Generators.TryGetValue(name, out var generator))
             return null;
 

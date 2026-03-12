@@ -41,6 +41,21 @@ namespace BatteryNotifier.Core.Managers
                 return;
             }
 
+            // Reject symlinks — prevents reading arbitrary files via afplay/paplay
+            var fileInfo = new FileInfo(resolvedPath);
+            if (fileInfo.LinkTarget != null)
+            {
+                _logger.Warning("Rejected symlink sound file path: {Path}", resolvedPath);
+                return;
+            }
+
+            // Reject files larger than 50 MB to prevent OOM in NAudio
+            if (fileInfo.Length > 50 * 1024 * 1024)
+            {
+                _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, resolvedPath);
+                return;
+            }
+
             source = resolvedPath;
 
             _cancellationTokenSource?.Cancel();

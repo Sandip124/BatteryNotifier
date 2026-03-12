@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace BatteryNotifier.Core.Services;
@@ -60,27 +61,50 @@ public sealed class AppSettings
                 return;
             }
 
-            var json = File.ReadAllText(SettingsFilePath);
+            var rawBytes = File.ReadAllBytes(SettingsFilePath);
+            string json;
+
+            if (SettingsEncryption.IsPlaintext(rawBytes))
+            {
+                // Legacy plaintext — migrate to encrypted on next save
+                json = System.Text.Encoding.UTF8.GetString(rawBytes);
+            }
+            else
+            {
+                // Encrypted — decrypt with AES-GCM (throws if tampered)
+                json = SettingsEncryption.Decrypt(rawBytes, GetSettingsDirectory());
+            }
+
             var settings = JsonSerializer.Deserialize<AppSettings>(json);
 
             if (settings != null)
             {
-                // Copy properties
                 FullBatteryNotification = settings.FullBatteryNotification;
                 LowBatteryNotification = settings.LowBatteryNotification;
                 FullBatteryNotificationValue = settings.FullBatteryNotificationValue;
                 LowBatteryNotificationValue = settings.LowBatteryNotificationValue;
-                FullBatteryNotificationMusic = settings.FullBatteryNotificationMusic;
-                LowBatteryNotificationMusic = settings.LowBatteryNotificationMusic;
+                FullBatteryNotificationMusic = SanitizeSoundPath(settings.FullBatteryNotificationMusic);
+                LowBatteryNotificationMusic = SanitizeSoundPath(settings.LowBatteryNotificationMusic);
                 StartMinimized = settings.StartMinimized;
                 ThemeMode = settings.ThemeMode;
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AppId = settings.AppId;
             }
+
+            // Re-save to encrypt if it was plaintext (migration)
+            if (SettingsEncryption.IsPlaintext(rawBytes))
+            {
+                Save();
+            }
+        }
+        catch (CryptographicException)
+        {
+            // Tampered or key mismatch — reset to defaults
+            Save();
         }
         catch (Exception)
         {
-            // If settings are corrupted, use defaults
+            // Corrupted settings — reset to defaults
             Save();
         }
     }
@@ -95,14 +119,48 @@ public sealed class AppSettings
             };
 
             var json = JsonSerializer.Serialize(this, options);
+            var encrypted = SettingsEncryption.Encrypt(json, GetSettingsDirectory());
+
             var tmpPath = SettingsFilePath + ".tmp";
-            File.WriteAllText(tmpPath, json);
+            File.WriteAllBytes(tmpPath, encrypted);
             File.Move(tmpPath, SettingsFilePath, overwrite: true);
         }
         catch (Exception)
         {
-            // Fail silently - settings won't persist
+            // Fail silently — settings won't persist
         }
+    }
+
+    /// <summary>
+    /// Validates sound paths loaded from settings JSON.
+    /// Allows built-in sounds ("builtin:...") and absolute canonical file paths.
+    /// Rejects anything else to prevent path traversal or injection from tampered settings.
+    /// </summary>
+    private static string? SanitizeSoundPath(string? path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return null;
+
+        // Built-in sounds are safe — resolved via dictionary lookup
+        if (path.StartsWith("builtin:", StringComparison.Ordinal))
+            return path;
+
+        // Normalize to canonical form (resolves / vs \ on Windows, .., etc.)
+        string canonical;
+        try
+        {
+            canonical = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return null;
+        }
+
+        // Must be an absolute path after normalization
+        if (!Path.IsPathRooted(canonical))
+            return null;
+
+        return canonical;
     }
 
     public void Reset()
