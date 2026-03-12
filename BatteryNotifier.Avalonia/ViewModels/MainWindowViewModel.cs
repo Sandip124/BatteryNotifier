@@ -3,15 +3,18 @@ using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using BatteryNotifier.Core;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using ReactiveUI;
+using Serilog;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
@@ -38,6 +41,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
         NavigateToSettingsCommand = ReactiveCommand.Create(NavigateToSettings);
         OpenGitHubCommand = ReactiveCommand.Create(OpenGitHub);
+        CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
+        SendLogsCommand = ReactiveCommand.Create(SendLogs);
         ExitCommand = ReactiveCommand.Create(ExitApplication);
 
         // Access BatteryMonitorService FIRST — its constructor does a synchronous
@@ -188,15 +193,79 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     public ReactiveCommand<Unit, Unit> NavigateToSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenGitHubCommand { get; }
+    public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
+    public ReactiveCommand<Unit, Unit> SendLogsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
     public string Version => Constants.ApplicationVersion;
 
     private static void OpenGitHub()
     {
+        OpenUrlInBrowser(Constants.SourceRepositoryUrl);
+    }
+
+    private static void ExitApplication()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+    }
+
+    private async Task CheckForUpdates()
+    {
+        var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+
+        switch (result.Status)
+        {
+            case CheckStatus.UpdateAvailable when result.Release != null:
+                OpenUrlInBrowser(result.Release.HtmlUrl);
+                break;
+
+            case CheckStatus.UpToDate:
+                Services.NotificationPlatformService.ShowNativeNotification(
+                    "No Updates",
+                    $"You're running the latest version ({Constants.ApplicationVersion}).");
+                break;
+
+            case CheckStatus.Failed:
+                Services.NotificationPlatformService.ShowNativeNotification(
+                    "Update Check Failed",
+                    "Could not reach GitHub. Check your internet connection.");
+                break;
+        }
+    }
+
+    private static void SendLogs()
+    {
         try
         {
-            var url = Constants.SourceRepositoryUrl;
+            if (!CrashReporter.CanSendReport())
+            {
+                var remaining = CrashReporter.GetCooldownRemaining();
+                Services.NotificationPlatformService.ShowNativeNotification(
+                    "Rate Limited",
+                    $"Please wait {remaining.TotalMinutes:F0} minutes before sending another report.");
+                // Still save to file
+                var report = CrashReporter.BuildManualReport();
+                CrashReporter.SaveReportToFile(report);
+                return;
+            }
+
+            var manualReport = CrashReporter.BuildManualReport();
+            CrashReporter.SaveReportToFile(manualReport);
+            CrashReporter.OpenGitHubIssue(
+                $"[Log Report] v{Constants.ApplicationVersion}",
+                manualReport);
+        }
+        catch (Exception ex)
+        {
+            BatteryNotifierAppLogger.Error(ex, "Failed to send logs from menu");
+        }
+    }
+
+    private static void OpenUrlInBrowser(string url)
+    {
+        try
+        {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 Process.Start("open", url);
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -205,12 +274,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                 Process.Start("xdg-open", url);
         }
         catch { }
-    }
-
-    private static void ExitApplication()
-    {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.Shutdown();
     }
 
     private void NavigateToSettings()

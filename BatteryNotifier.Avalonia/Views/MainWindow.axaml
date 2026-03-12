@@ -42,11 +42,17 @@
                             Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.Info}, Width=16, Height=16}">
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedRight">
-                                <MenuItem Header="Settings" Command="{Binding NavigateToSettingsCommand}">
+                                <MenuItem Header="Check for Updates..." Command="{Binding CheckForUpdatesCommand}">
                                     <MenuItem.Icon>
-                                        <iconPacks:PackIconPhosphorIcons Kind="GearSix" Width="14" Height="14" />
+                                        <iconPacks:PackIconPhosphorIcons Kind="ArrowsClockwise" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
+                                <MenuItem Header="Send Logs..." Command="{Binding SendLogsCommand}">
+                                    <MenuItem.Icon>
+                                        <iconPacks:PackIconPhosphorIcons Kind="Bug" Width="14" Height="14" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
                                 <MenuItem Header="GitHub" Command="{Binding OpenGitHubCommand}">
                                     <MenuItem.Icon>
                                         <iconPacks:PackIconPhosphorIcons Kind="GithubLogo" Width="14" Height="14" />
