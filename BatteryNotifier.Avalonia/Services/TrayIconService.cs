@@ -60,6 +60,9 @@ public class TrayIconService : IDisposable
             var settingsMenuItem = new NativeMenuItem { Header = "Settings" };
             settingsMenuItem.Click += OnOpenSettings;
 
+            var sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
+            sendLogsMenuItem.Click += OnSendLogs;
+
             var githubMenuItem = new NativeMenuItem { Header = "GitHub" };
             githubMenuItem.Click += OnOpenGitHub;
 
@@ -69,6 +72,7 @@ public class TrayIconService : IDisposable
             _trayMenu.Add(showMenuItem);
             _trayMenu.Add(settingsMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
+            _trayMenu.Add(sendLogsMenuItem);
             _trayMenu.Add(githubMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(exitMenuItem);
@@ -225,6 +229,38 @@ public class TrayIconService : IDisposable
             && vm.CurrentView == null)
         {
             vm.NavigateToSettingsCommand.Execute().Subscribe();
+        }
+    }
+
+    private void OnSendLogs(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (!CrashReporter.CanSendReport())
+            {
+                var remaining = CrashReporter.GetCooldownRemaining();
+                _logger.Warning("Send logs rate-limited. {Minutes:F0} minutes remaining", remaining.TotalMinutes);
+                // Still save to file (not rate-limited)
+                var report = CrashReporter.BuildManualReport();
+                CrashReporter.SaveReportToFile(report);
+                return;
+            }
+
+            var manualReport = CrashReporter.BuildManualReport();
+
+            // Save to file first (always available)
+            var filePath = CrashReporter.SaveReportToFile(manualReport);
+
+            // Open GitHub issue form for user review
+            CrashReporter.OpenGitHubIssue(
+                $"[Log Report] v{Core.Constants.ApplicationVersion}",
+                manualReport);
+
+            _logger.Information("User-initiated log report sent. Saved to {Path}", filePath);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to send logs");
         }
     }
 
