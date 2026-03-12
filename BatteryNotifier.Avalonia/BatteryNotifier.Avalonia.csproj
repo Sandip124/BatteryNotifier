@@ -32,9 +32,19 @@
         <!-- Skip loading ICU globalization data (~28 MB saving) -->
         <InvariantGlobalization>true</InvariantGlobalization>
 
-        <!-- Integrity: embed PDB for stack traces, strip debug symbols -->
+        <!-- GC tuning for low-memory tray app -->
+        <ServerGarbageCollection>false</ServerGarbageCollection>
+        <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+        <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+        <GarbageCollectionAdaptationMode>0</GarbageCollectionAdaptationMode>
+
+        <!-- Strip symbols from native libs, no R2R (saves memory, slightly slower startup) -->
+        <StripSymbols>true</StripSymbols>
+        <PublishReadyToRun>false</PublishReadyToRun>
+
+        <!-- Integrity: embed PDB for stack traces -->
         <DebugType>embedded</DebugType>
-        <DebugSymbols>true</DebugSymbols>
+        <DebugSymbols>false</DebugSymbols>
     </PropertyGroup>
 
     <ItemGroup>
@@ -58,11 +68,10 @@
         <PackageReference Include="Avalonia" Version="11.3.12" />
         <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+        <!-- Removed Avalonia.Fonts.Inter (~8 MB) — uses system fonts instead -->
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.12" />
         <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
-        <PackageReference Include="IconPacks.Avalonia" Version="1.3.1" />
     </ItemGroup>
 
 

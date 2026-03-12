@@ -3,7 +3,6 @@
         xmlns:vm="using:BatteryNotifier.Avalonia.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
         x:Class="BatteryNotifier.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -38,44 +37,45 @@
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
                                Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
                     <Button Grid.Column="2"
-                            Theme="{StaticResource PrimaryButton}"
-                            Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.Info}, Width=16, Height=16}">
+                            Theme="{StaticResource PrimaryButton}">
+                        <PathIcon Data="{StaticResource Icon.Info}" Width="16" Height="16" />
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedRight">
                                 <MenuItem Header="Hide Window" Command="{Binding HideWindowCommand}">
                                     <MenuItem.Icon>
-                                        <iconPacks:PackIconPhosphorIcons Kind="EyeSlash" Width="14" Height="14" />
+                                        <PathIcon Data="{StaticResource Icon.EyeSlash}" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="Check for Updates..." Command="{Binding CheckForUpdatesCommand}">
                                     <MenuItem.Icon>
-                                        <iconPacks:PackIconPhosphorIcons Kind="ArrowsClockwise" Width="14" Height="14" />
+                                        <PathIcon Data="{StaticResource Icon.ArrowsClockwise}" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <MenuItem Header="Send Logs..." Command="{Binding SendLogsCommand}">
                                     <MenuItem.Icon>
-                                        <iconPacks:PackIconPhosphorIcons Kind="Bug" Width="14" Height="14" />
+                                        <PathIcon Data="{StaticResource Icon.Bug}" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="GitHub" Command="{Binding OpenGitHubCommand}">
                                     <MenuItem.Icon>
-                                        <iconPacks:PackIconPhosphorIcons Kind="GithubLogo" Width="14" Height="14" />
+                                        <PathIcon Data="{StaticResource Icon.GithubLogo}" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="Exit" Command="{Binding ExitCommand}">
                                     <MenuItem.Icon>
-                                        <iconPacks:PackIconPhosphorIcons Kind="SignOut" Width="14" Height="14" />
+                                        <PathIcon Data="{StaticResource Icon.SignOut}" Width="14" Height="14" />
                                     </MenuItem.Icon>
                                 </MenuItem>
                             </MenuFlyout>
                         </Button.Flyout>
                     </Button>
                     <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="4"
-                            Theme="{StaticResource PrimaryButton}"
-                            Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.GearSix}, Width=16, Height=16}" />
+                            Theme="{StaticResource PrimaryButton}">
+                        <PathIcon Data="{StaticResource Icon.GearSix}" Width="16" Height="16" />
+                    </Button>
                 </Grid>
             </Border>
 
@@ -93,11 +93,11 @@
                             <!-- Charging indicator -->
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
                                         IsVisible="{Binding IsCharging}">
-                                <iconPacks:PackIconPhosphorIcons Kind="LightningFill"
-                                                                 VerticalAlignment="Center"
-                                                                 HorizontalAlignment="Center"
-                                                                 Foreground="#15C245"
-                                                                 Width="14" Height="14" />
+                                <PathIcon Data="{StaticResource Icon.LightningFill}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center"
+                                          Foreground="#15C245"
+                                          Width="14" Height="14" />
                                 <TextBlock Margin="4,0,0,0" VerticalAlignment="Center"
                                            Foreground="#15C245" Text="{Binding BatteryStatus}" />
                             </StackPanel>

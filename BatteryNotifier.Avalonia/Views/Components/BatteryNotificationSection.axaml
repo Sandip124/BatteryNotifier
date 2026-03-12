@@ -3,7 +3,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
-             xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
              mc:Ignorable="d"
              x:Class="BatteryNotifier.Avalonia.Views.Components.BatteryNotificationSection"
              x:DataType="vm:BatteryNotificationSectionViewModel">
@@ -61,7 +60,7 @@
                     FontSize="11" Padding="8,5"
                     MinHeight="30">
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                    <iconPacks:PackIconPhosphorIcons Kind="FolderOpen"
+                    <PathIcon Data="{StaticResource Icon.FolderOpen}"
                         Width="12" Height="12" VerticalAlignment="Center" />
                     <TextBlock VerticalAlignment="Center">Browse</TextBlock>
                 </StackPanel>
@@ -72,7 +71,7 @@
                     FontSize="11" Padding="8,5"
                     MinHeight="30"
                     IsVisible="{Binding SoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <iconPacks:PackIconPhosphorIcons Kind="X"
+                <PathIcon Data="{StaticResource Icon.X}"
                     Width="12" Height="12" />
             </Button>
         </Grid>

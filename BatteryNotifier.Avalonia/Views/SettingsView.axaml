@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
              xmlns:components="clr-namespace:BatteryNotifier.Avalonia.Views.Components"
-             xmlns:iconPacks="https://github.com/MahApps/IconPacks.Avalonia"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
              x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -49,10 +48,10 @@
                         Foreground="{DynamicResource AppAccentForeground}">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
                                 HorizontalAlignment="Center">
-                        <iconPacks:PackIconPhosphorIcons Kind="CaretLeft"
-                                                         VerticalAlignment="Center"
-                                                         HorizontalAlignment="Center"
-                                                         Width="10" Height="10" />
+                        <PathIcon Data="{StaticResource Icon.CaretLeft}"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center"
+                                  Width="10" Height="10" />
                         <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
                     </StackPanel>
                 </Button>
@@ -71,7 +70,7 @@
                     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
                         <Border Grid.Row="0" Padding="12,10,12,4">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <iconPacks:PackIconPhosphorIcons Kind="Sliders"
+                                <PathIcon Data="{StaticResource Icon.Sliders}"
                                     VerticalAlignment="Center" Width="12" Height="12"
                                     Foreground="{DynamicResource AppSubtleText}" />
                                 <TextBlock Margin="6,0,0,0" FontSize="12" FontWeight="Normal"
@@ -134,7 +133,7 @@
                     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
                         <Border Grid.Row="0" Padding="12,10,12,4">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <iconPacks:PackIconPhosphorIcons Kind="BellSimple"
+                                <PathIcon Data="{StaticResource Icon.BellSimple}"
                                     VerticalAlignment="Center" Width="12" Height="12"
                                     Foreground="{DynamicResource AppSubtleText}" />
                                 <TextBlock Margin="6,0,0,0" FontSize="12" FontWeight="Normal"

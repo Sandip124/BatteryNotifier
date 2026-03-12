@@ -11,7 +11,6 @@
 
     <Application.Styles>
         <FluentTheme />
-        <StyleInclude Source="avares://IconPacks.Avalonia/Icons.axaml" />
 
         <!-- Compact ToggleSwitch: strip on/off labels, clip extra right space -->
         <Style Selector="ToggleSwitch">
@@ -25,8 +24,10 @@
     </Application.Styles>
 
     <Application.Resources>
-        <!-- Theme-aware brushes -->
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Resources/Icons.axaml" />
+            </ResourceDictionary.MergedDictionaries>
             <ResourceDictionary.ThemeDictionaries>
                 <!-- Default fallback ensures resources resolve before theme variant is determined -->
                 <ResourceDictionary x:Key="Default">
