@@ -152,22 +152,21 @@ public sealed class BatteryMonitorService : IDisposable
                 "[{Timestamp:yyyy-MM-dd HH:mm:ss}] Invoked by: {Source}, Battery Level: {Level}%, Power Line Status: {PowerLine}",
                 DateTime.Now, forceCheck ? "Force Check" : "Periodic Timer", currentLevel, currentStatus.PowerLineStatus);
 
-            if (powerLineChanged)
-            {
-                lock (_statusLock)
-                {
-                    if (_lastPowerStatus != null)
-                        PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-                }
-            }
-
-            BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-
-            // Capture whether power line changed before updating _lastPowerStatus
             bool wasAlreadyTracking;
             lock (_statusLock)
             {
                 wasAlreadyTracking = _lastPowerStatus != null;
+            }
+
+            if (powerLineChanged && wasAlreadyTracking)
+            {
+                PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+            }
+
+            BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+
+            lock (_statusLock)
+            {
                 _lastPowerStatus = currentStatus;
             }
 
