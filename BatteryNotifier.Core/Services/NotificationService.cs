@@ -160,6 +160,18 @@ public sealed class NotificationService : IDisposable
     }
 
     /// <summary>
+    /// Returns how many notifications have been sent for a tag (0 if none).
+    /// Used by callers to pick escalation-appropriate message templates.
+    /// </summary>
+    public int GetEscalationCount(string tag)
+    {
+        lock (_trackersLock)
+        {
+            return _trackers.TryGetValue(tag, out var tracker) ? tracker.Count : 0;
+        }
+    }
+
+    /// <summary>
     /// Reset all notification trackers. Called on significant state changes.
     /// </summary>
     public void ResetAllTrackers()

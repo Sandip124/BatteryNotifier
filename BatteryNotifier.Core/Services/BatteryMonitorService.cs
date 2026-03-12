@@ -155,8 +155,6 @@ public sealed class BatteryMonitorService : IDisposable
             if (powerLineChanged && _lastPowerStatus != null)
             {
                 NotificationService.Instance.ResetAllTrackers();
-                _lowBatteryMessageIndex = 0;
-                _fullBatteryMessageIndex = 0;
                 _logger.Information("Power line state changed — notification trackers reset");
             }
 
@@ -270,37 +268,16 @@ public sealed class BatteryMonitorService : IDisposable
         }
     }
 
-    private static readonly string[] LowBatteryMessages =
-    [
-        "Battery is at {0}%. Consider plugging in your charger.",
-        "Battery down to {0}% — plug in soon to avoid interruption.",
-        "Battery critically low at {0}%! Please charge now.",
-        "Last reminder: battery is at {0}%. Charging strongly recommended."
-    ];
-
-    private static readonly string[] FullBatteryMessages =
-    [
-        "Battery fully charged at {0}%. You can unplug your charger.",
-        "Still at {0}% — unplug to preserve battery health.",
-        "Battery has been full ({0}%) for a while. Unplug recommended.",
-        "Final reminder: battery at {0}%. Unplugging helps battery longevity."
-    ];
-
-    private int _lowBatteryMessageIndex;
-    private int _fullBatteryMessageIndex;
-
-    private string GetLowBatteryMessage(int level)
+    private static string GetLowBatteryMessage(int level)
     {
-        var index = Math.Min(_lowBatteryMessageIndex, LowBatteryMessages.Length - 1);
-        _lowBatteryMessageIndex++;
-        return string.Format(LowBatteryMessages[index], level);
+        var escalation = NotificationService.Instance.GetEscalationCount(Constants.LowBatteryTag);
+        return NotificationTemplates.GetLowBatteryMessage(level, escalation);
     }
 
-    private string GetFullBatteryMessage(int level)
+    private static string GetFullBatteryMessage(int level)
     {
-        var index = Math.Min(_fullBatteryMessageIndex, FullBatteryMessages.Length - 1);
-        _fullBatteryMessageIndex++;
-        return string.Format(FullBatteryMessages[index], level);
+        var escalation = NotificationService.Instance.GetEscalationCount(Constants.FullBatteryTag);
+        return NotificationTemplates.GetFullBatteryMessage(level, escalation);
     }
 
     public void SetThresholds(int lowThreshold, int fullThreshold)
