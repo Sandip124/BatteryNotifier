@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -35,12 +36,22 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private IDisposable? _fullBatteryNotificationSub;
     private IDisposable? _lowBatteryNotificationSub;
 
+    /// <summary>True when the main window is visible to the user.</summary>
+    private bool _isWindowVisible;
+
+    /// <summary>Set when a battery update arrives while the window is hidden.</summary>
+    private bool _pendingRefresh;
+
+    /// <summary>Timer for cycling funny phrases — only runs while window is visible.</summary>
+    private CancellationTokenSource? _phraseCts;
+
     public MainWindowViewModel()
     {
         _fullBatteryNotification = _settings.FullBatteryNotification;
         _lowBatteryNotification = _settings.LowBatteryNotification;
 
         NavigateToSettingsCommand = ReactiveCommand.Create(NavigateToSettings);
+        HideWindowCommand = ReactiveCommand.Create(HideWindow);
         OpenGitHubCommand = ReactiveCommand.Create(OpenGitHub);
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
         SendLogsCommand = ReactiveCommand.Create(SendLogs);
@@ -56,11 +67,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch { /* Battery monitoring not available on this platform */ }
 
+        // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
-        StatusMessage = PickStatusMessage(
-            BatteryManagerStore.Instance.BatteryState,
-            BatteryManagerStore.Instance.IsCharging);
-        _ = ClearStatusMessageAfterDelay();
 
         _fullBatteryNotificationSub = this.WhenAnyValue(x => x.FullBatteryNotification)
             .Skip(1)
@@ -79,14 +87,98 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             });
     }
 
+    // ── Visibility-aware UI updates ──────────────────────────────
+
+    /// <summary>
+    /// Called by MainWindow when it becomes visible or hidden.
+    /// Controls whether UI updates are processed or deferred.
+    /// </summary>
+    public void OnWindowVisibilityChanged(bool isVisible)
+    {
+        _isWindowVisible = isVisible;
+
+        if (isVisible)
+        {
+            // Catch up on any missed battery updates
+            if (_pendingRefresh)
+            {
+                _pendingRefresh = false;
+                RefreshBatteryStatus();
+            }
+
+            // Show greeting and start phrase cycling
+            StatusMessage = PickStatusMessage(
+                BatteryManagerStore.Instance.BatteryState,
+                BatteryManagerStore.Instance.IsCharging);
+            StartPhraseCycling();
+        }
+        else
+        {
+            // Window hidden — stop all UI timers
+            StopPhraseCycling();
+            StatusMessage = string.Empty;
+        }
+    }
+
+    private void StartPhraseCycling()
+    {
+        StopPhraseCycling();
+        _phraseCts = new CancellationTokenSource();
+        _ = RunPhraseCycleAsync(_phraseCts.Token);
+    }
+
+    private void StopPhraseCycling()
+    {
+        _phraseCts?.Cancel();
+        _phraseCts?.Dispose();
+        _phraseCts = null;
+    }
+
+    private async Task RunPhraseCycleAsync(CancellationToken ct)
+    {
+        try
+        {
+            // Show greeting for 5 seconds, then clear it
+            await Task.Delay(5000, ct);
+            Dispatcher.UIThread.Post(() => StatusMessage = string.Empty);
+
+            // Cycle the time remaining phrase every 2 minutes (only funny phrases, not real estimates)
+            using var timer = new PeriodicTimer(TimeSpan.FromMinutes(2));
+            while (await timer.WaitForNextTickAsync(ct))
+            {
+                Dispatcher.UIThread.Post(RefreshTimeRemainingPhrase);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Window was hidden — expected
+        }
+    }
+
+    /// <summary>
+    /// Refreshes only the time remaining text. If the OS provides a real estimate,
+    /// it uses that. Otherwise picks a new funny phrase.
+    /// </summary>
+    private void RefreshTimeRemainingPhrase()
+    {
+        var store = BatteryManagerStore.Instance;
+        TimeRemaining = FormatTimeRemaining(store);
+    }
+
     private void OnBatteryStatusChanged(object? sender, BatteryStatusEventArgs e)
     {
-        Dispatcher.UIThread.Post(RefreshBatteryStatus);
+        if (_isWindowVisible)
+            Dispatcher.UIThread.Post(RefreshBatteryStatus);
+        else
+            _pendingRefresh = true;
     }
 
     private void OnPowerLineStatusChanged(object? sender, BatteryStatusEventArgs e)
     {
-        Dispatcher.UIThread.Post(RefreshBatteryStatus);
+        if (_isWindowVisible)
+            Dispatcher.UIThread.Post(RefreshBatteryStatus);
+        else
+            _pendingRefresh = true;
     }
 
     private void RefreshBatteryStatus()
@@ -107,19 +199,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         else
             BatteryStatus = "Discharging";
 
-        if (store.BatteryLifeRemaining > 0 && !store.IsCharging && !store.IsPluggedIn)
-        {
-            var ts = store.BatteryLifeRemainingInSeconds;
-            TimeRemaining = $"{(int)ts.TotalHours}h {ts.Minutes}m Remaining";
-        }
-        else if (store.IsCharging)
-        {
-            TimeRemaining = "Charging...";
-        }
-        else
-        {
-            TimeRemaining = string.Empty;
-        }
+        TimeRemaining = FormatTimeRemaining(store);
 
         var assetName = store.BatteryState switch
         {
@@ -132,6 +212,19 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         };
 
         BatteryImage = LoadAsset(assetName);
+    }
+
+    private static string FormatTimeRemaining(BatteryManagerStore store)
+    {
+        if (store.BatteryLifeRemaining > 0)
+        {
+            var ts = store.BatteryLifeRemainingInSeconds;
+            return store.IsCharging
+                ? $"{(int)ts.TotalHours}h {ts.Minutes}m until full"
+                : $"{(int)ts.TotalHours}h {ts.Minutes}m remaining";
+        }
+
+        return PickFunnyPhrase();
     }
 
     private static Bitmap? LoadAsset(string fileName)
@@ -147,6 +240,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             return null;
         }
     }
+
+    // ── Properties ───────────────────────────────────────────────
 
     public double BatteryPercentage
     {
@@ -197,6 +292,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public ReactiveCommand<Unit, Unit> NavigateToSettingsCommand { get; }
+    public ReactiveCommand<Unit, Unit> HideWindowCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenGitHubCommand { get; }
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
     public ReactiveCommand<Unit, Unit> SendLogsCommand { get; }
@@ -208,6 +304,27 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         get => _statusMessage;
         set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
+    }
+
+    // ── Funny phrases & greetings ────────────────────────────────
+
+    private static readonly string[] FunnyPhrases =
+    [
+        "Forever... just kidding",
+        "Patience, young grasshopper",
+        "Grab a coffee, we'll wait",
+        "Time is an illusion anyway",
+        "Ask again later",
+        "Almost there... probably",
+        "The electrons are vibing",
+        "Calculating the meaning of life",
+        "Who knows? Not me!",
+        "Somewhere between now and never"
+    ];
+
+    private static string PickFunnyPhrase()
+    {
+        return FunnyPhrases[Random.Shared.Next(FunnyPhrases.Length)];
     }
 
     private static readonly string[] GreetingsFull =
@@ -264,12 +381,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         "Getting stronger by the minute!"
     ];
 
-    private async Task ClearStatusMessageAfterDelay()
-    {
-        await Task.Delay(5000);
-        Dispatcher.UIThread.Post(() => StatusMessage = string.Empty);
-    }
-
     private static string PickStatusMessage(BatteryState state, bool isCharging)
     {
         if (isCharging)
@@ -286,6 +397,17 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         };
 
         return pool[Random.Shared.Next(pool.Length)];
+    }
+
+    // ── Commands ─────────────────────────────────────────────────
+
+    private static void HideWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            desktop.MainWindow?.Hide();
+            Services.MacOSDockIconHelper.HideDockIcon();
+        }
     }
 
     private static void OpenGitHub()
@@ -333,7 +455,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                 Services.NotificationPlatformService.ShowNativeNotification(
                     "Rate Limited",
                     $"Please wait {remaining.TotalMinutes:F0} minutes before sending another report.");
-                // Still save to file
                 var report = CrashReporter.BuildManualReport();
                 CrashReporter.SaveReportToFile(report);
                 return;
@@ -380,6 +501,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        StopPhraseCycling();
         _fullBatteryNotificationSub?.Dispose();
         _lowBatteryNotificationSub?.Dispose();
         CurrentView?.Dispose();

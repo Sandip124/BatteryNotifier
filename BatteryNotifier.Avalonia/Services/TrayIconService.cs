@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -24,6 +25,7 @@ public class TrayIconService : IDisposable
     private TrayIcon? _trayIcon;
     private NativeMenu? _trayMenu;
     private NotificationManager? _notificationManager;
+    private CancellationTokenSource? _tooltipRevertCts;
     private bool _disposed;
 
     public TrayIconService()
@@ -57,6 +59,9 @@ public class TrayIconService : IDisposable
             var showMenuItem = new NativeMenuItem { Header = "Show Window" };
             showMenuItem.Click += OnShowWindow;
 
+            var hideMenuItem = new NativeMenuItem { Header = "Hide Window" };
+            hideMenuItem.Click += OnHideWindow;
+
             var settingsMenuItem = new NativeMenuItem { Header = "Settings" };
             settingsMenuItem.Click += OnOpenSettings;
 
@@ -73,6 +78,7 @@ public class TrayIconService : IDisposable
             exitMenuItem.Click += OnExit;
 
             _trayMenu.Add(showMenuItem);
+            _trayMenu.Add(hideMenuItem);
             _trayMenu.Add(settingsMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(updateMenuItem);
@@ -174,7 +180,25 @@ public class TrayIconService : IDisposable
 
         var message = notification.Message.Replace("🔋", "").Trim();
         _trayIcon.ToolTipText = $"{title}: {message}";
-        Task.Delay(5000).ContinueWith(_ => UpdateToolTip());
+
+        // Cancel any previous revert timer, then schedule a new one
+        _tooltipRevertCts?.Cancel();
+        _tooltipRevertCts?.Dispose();
+        _tooltipRevertCts = new CancellationTokenSource();
+        _ = RevertToolTipAfterDelayAsync(_tooltipRevertCts.Token);
+    }
+
+    private async Task RevertToolTipAfterDelayAsync(CancellationToken ct)
+    {
+        try
+        {
+            await Task.Delay(5000, ct);
+            UpdateToolTip();
+        }
+        catch (OperationCanceledException)
+        {
+            // Cancelled by a newer notification or disposal — expected
+        }
     }
 
     private void ShowNativeNotification(NotificationMessage notification)
@@ -216,6 +240,20 @@ public class TrayIconService : IDisposable
         ShowMainWindow();
     }
 
+    private void OnHideWindow(object? sender, EventArgs e)
+    {
+        HideMainWindow();
+    }
+
+    private static void HideMainWindow()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
+
+        desktop.MainWindow?.Hide();
+        MacOSDockIconHelper.HideDockIcon();
+    }
+
     private void ShowMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
@@ -223,6 +261,9 @@ public class TrayIconService : IDisposable
 
         if (desktop.MainWindow is not MainWindow mainWindow)
             return;
+
+        // Show dock icon so CMD+Tab works while window is visible
+        MacOSDockIconHelper.ShowDockIcon();
 
         // Position near notification area before showing
         mainWindow.PositionNearNotificationArea();
@@ -390,6 +431,10 @@ public class TrayIconService : IDisposable
                 UpdateService.Instance.Dispose();
             }
             catch { }
+
+            _tooltipRevertCts?.Cancel();
+            _tooltipRevertCts?.Dispose();
+            _tooltipRevertCts = null;
 
             _notificationManager?.Dispose();
             _notificationManager = null;

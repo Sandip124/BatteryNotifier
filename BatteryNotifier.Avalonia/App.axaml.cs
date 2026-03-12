@@ -96,6 +96,7 @@ public partial class App : Application
             {
                 desktop.MainWindow.ShowInTaskbar = false;
                 desktop.MainWindow.Hide();
+                Services.MacOSDockIconHelper.HideDockIcon();
             }
 
             // Hide to tray on window close (not actually close)
@@ -103,6 +104,7 @@ public partial class App : Application
             {
                 e.Cancel = true;
                 desktop.MainWindow.Hide();
+                Services.MacOSDockIconHelper.HideDockIcon();
             };
 
             desktop.Exit += (s, e) =>

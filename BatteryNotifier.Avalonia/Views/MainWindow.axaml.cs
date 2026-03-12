@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 
@@ -17,6 +18,16 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _logger = BatteryNotifierAppLogger.ForContext<MainWindow>();
+    }
+
+    protected override void OnPropertyChanged(global::Avalonia.AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+
+        if (change.Property == IsVisibleProperty && DataContext is MainWindowViewModel vm)
+        {
+            vm.OnWindowVisibilityChanged(IsVisible);
+        }
     }
 
     /// <summary>

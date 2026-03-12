@@ -42,6 +42,12 @@
                             Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.Info}, Width=16, Height=16}">
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="Hide Window" Command="{Binding HideWindowCommand}">
+                                    <MenuItem.Icon>
+                                        <iconPacks:PackIconPhosphorIcons Kind="EyeSlash" Width="14" Height="14" />
+                                    </MenuItem.Icon>
+                                </MenuItem>
+                                <Separator />
                                 <MenuItem Header="Check for Updates..." Command="{Binding CheckForUpdatesCommand}">
                                     <MenuItem.Icon>
                                         <iconPacks:PackIconPhosphorIcons Kind="ArrowsClockwise" Width="14" Height="14" />

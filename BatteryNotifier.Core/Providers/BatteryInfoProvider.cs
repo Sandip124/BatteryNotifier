@@ -275,6 +275,9 @@ namespace BatteryNotifier.Core.Providers
                             break;
                     }
                 }
+
+                // Estimate time remaining from energy/power readings
+                info.BatteryLifeRemaining = EstimateLinuxTimeRemaining(batteryPath, info);
             }
             catch (Exception ex)
             {
@@ -282,6 +285,51 @@ namespace BatteryNotifier.Core.Providers
             }
 
             return info;
+        }
+
+        /// <summary>
+        /// Estimates time remaining in seconds from sysfs energy_now/power_now or charge_now/current_now.
+        /// Returns -1 if estimation is not possible.
+        /// </summary>
+        private static int EstimateLinuxTimeRemaining(string batteryPath, BatteryInfo info)
+        {
+            if (info.BatteryChargeStatus == BatteryChargeStatus.Charging)
+                return -1; // Can't estimate charge time reliably
+
+            try
+            {
+                // Try energy-based (µWh / µW)
+                var energyNowPath = Path.Combine(batteryPath, "energy_now");
+                var powerNowPath = Path.Combine(batteryPath, "power_now");
+                if (File.Exists(energyNowPath) && File.Exists(powerNowPath))
+                {
+                    if (long.TryParse(File.ReadAllText(energyNowPath).Trim(), out long energyNow) &&
+                        long.TryParse(File.ReadAllText(powerNowPath).Trim(), out long powerNow) &&
+                        powerNow > 0)
+                    {
+                        return (int)((double)energyNow / powerNow * 3600);
+                    }
+                }
+
+                // Fallback: charge-based (µAh / µA)
+                var chargeNowPath = Path.Combine(batteryPath, "charge_now");
+                var currentNowPath = Path.Combine(batteryPath, "current_now");
+                if (File.Exists(chargeNowPath) && File.Exists(currentNowPath))
+                {
+                    if (long.TryParse(File.ReadAllText(chargeNowPath).Trim(), out long chargeNow) &&
+                        long.TryParse(File.ReadAllText(currentNowPath).Trim(), out long currentNow) &&
+                        currentNow > 0)
+                    {
+                        return (int)((double)chargeNow / currentNow * 3600);
+                    }
+                }
+            }
+            catch
+            {
+                // Best effort
+            }
+
+            return -1;
         }
 
         private static string RunProcess(string fileName, string arguments)
