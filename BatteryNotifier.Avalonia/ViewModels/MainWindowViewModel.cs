@@ -29,6 +29,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private string _timeRemaining = string.Empty;
     private bool _fullBatteryNotification;
     private bool _lowBatteryNotification;
+    private string _statusMessage = string.Empty;
     private SettingsViewModel? _currentView;
     private bool _disposed;
     private IDisposable? _fullBatteryNotificationSub;
@@ -56,6 +57,10 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         catch { /* Battery monitoring not available on this platform */ }
 
         RefreshBatteryStatus();
+        StatusMessage = PickStatusMessage(
+            BatteryManagerStore.Instance.BatteryState,
+            BatteryManagerStore.Instance.IsCharging);
+        _ = ClearStatusMessageAfterDelay();
 
         _fullBatteryNotificationSub = this.WhenAnyValue(x => x.FullBatteryNotification)
             .Skip(1)
@@ -198,6 +203,90 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
     public string Version => Constants.ApplicationVersion;
+
+    public string StatusMessage
+    {
+        get => _statusMessage;
+        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
+    }
+
+    private static readonly string[] GreetingsFull =
+    [
+        "Your battery is vibing at 100%.",
+        "Fully juiced! Time to unplug.",
+        "Battery's living its best life.",
+        "All topped up. You're golden!",
+        "Full tank energy right here."
+    ];
+
+    private static readonly string[] GreetingsAdequate =
+    [
+        "Battery's looking great today!",
+        "Smooth sailing ahead.",
+        "You've got plenty of juice.",
+        "All systems go. Carry on!",
+        "Battery says: 'I'm chilling.'"
+    ];
+
+    private static readonly string[] GreetingsSufficient =
+    [
+        "Still going strong!",
+        "Halfway there, keep cruising.",
+        "Battery's holding steady.",
+        "Not bad, not bad at all.",
+        "Doing just fine over here."
+    ];
+
+    private static readonly string[] GreetingsLow =
+    [
+        "Getting a bit thirsty...",
+        "Maybe find a charger soon?",
+        "Battery's sending SOS vibes.",
+        "Running on fumes here!",
+        "A charger would be nice right about now."
+    ];
+
+    private static readonly string[] GreetingsCritical =
+    [
+        "MAYDAY! Plug in, plug in!",
+        "Battery's on life support.",
+        "We're in the danger zone!",
+        "This is not a drill. Charge me!",
+        "Counting down... find power NOW."
+    ];
+
+    private static readonly string[] GreetingsCharging =
+    [
+        "Charging up! Sit tight.",
+        "Nom nom nom... delicious electricity.",
+        "Sipping on some sweet power.",
+        "Refueling in progress...",
+        "Getting stronger by the minute!"
+    ];
+
+    private async Task ClearStatusMessageAfterDelay()
+    {
+        await Task.Delay(5000);
+        Dispatcher.UIThread.Post(() => StatusMessage = string.Empty);
+    }
+
+    private static string PickStatusMessage(BatteryState state, bool isCharging)
+    {
+        if (isCharging)
+            return GreetingsCharging[Random.Shared.Next(GreetingsCharging.Length)];
+
+        var pool = state switch
+        {
+            BatteryState.Full => GreetingsFull,
+            BatteryState.Adequate => GreetingsAdequate,
+            BatteryState.Sufficient => GreetingsSufficient,
+            BatteryState.Low => GreetingsLow,
+            BatteryState.Critical => GreetingsCritical,
+            _ => GreetingsAdequate
+        };
+
+        return pool[Random.Shared.Next(pool.Length)];
+    }
 
     private static void OpenGitHub()
     {

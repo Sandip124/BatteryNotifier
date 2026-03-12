@@ -150,7 +150,10 @@
             <Border Grid.Row="2" Padding="12,6">
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11"
-                               Foreground="{DynamicResource AppSubtleText}">BatteryNotifier</TextBlock>
+                               FontStyle="Italic"
+                               Foreground="{DynamicResource AppSubtleText}"
+                               Text="{Binding StatusMessage}"
+                               TextTrimming="CharacterEllipsis" />
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11"
                                Foreground="{DynamicResource AppSubtleText}"
                                Text="{Binding Version, StringFormat='v{0}'}" />
