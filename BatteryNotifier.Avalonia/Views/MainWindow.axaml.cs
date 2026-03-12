@@ -1,8 +1,9 @@
+using System;
+using System.Runtime.InteropServices;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using BatteryNotifier.Core.Logger;
-using BatteryNotifier.Core.Services;
-using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Avalonia.Views;
@@ -10,50 +11,56 @@ namespace BatteryNotifier.Avalonia.Views;
 public partial class MainWindow : Window
 {
     private readonly ILogger _logger;
-    private readonly Debouncer _debouncer;
+    private const int TrayMargin = 8;
 
     public MainWindow()
     {
-        _debouncer = new Debouncer();
         InitializeComponent();
         _logger = BatteryNotifierAppLogger.ForContext<MainWindow>();
-        InitializeServices();
     }
 
-    private void InitializeServices()
+    /// <summary>
+    /// Positions the window near the platform's notification area.
+    /// macOS: top-right (below menu bar). Windows/Linux: bottom-right (above taskbar).
+    /// </summary>
+    public void PositionNearNotificationArea()
     {
-        BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
-        BatteryMonitorService.Instance.PowerLineStatusChanged += OnPowerLineStatusChanged;
-        NotificationService.Instance.NotificationReceived += OnNotificationReceived;
+        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen == null) return;
+
+        var scaling = screen.Scaling;
+        var workArea = screen.WorkingArea;
+
+        var winWidth = (int)(Width * scaling);
+        var winHeight = (int)(Height * scaling);
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            // macOS: menu bar is at the top, tray icons are top-right
+            Position = new PixelPoint(
+                workArea.Right - winWidth - TrayMargin,
+                workArea.Y + TrayMargin);
+        }
+        else
+        {
+            // Windows / Linux: taskbar is typically at the bottom
+            Position = new PixelPoint(
+                workArea.Right - winWidth - TrayMargin,
+                workArea.Bottom - winHeight - TrayMargin);
+        }
     }
 
-    private void OnBatteryStatusChanged(object? sender, BatteryStatusEventArgs e)
-    {
-        // Battery UI updates are handled by MainWindowViewModel
-    }
-
-    private void OnPowerLineStatusChanged(object? sender, BatteryStatusEventArgs e)
-    {
-        // Battery UI updates are handled by MainWindowViewModel
-    }
-
-    private void OnNotificationReceived(object? sender, NotificationMessage notification)
-    {
-        // Global notifications are handled by TrayIconService
-    }
-
-    private void OnHeaderDrag(object? sender, PointerPressedEventArgs e)
+    private void TitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
             BeginMoveDrag(e);
+        }
     }
 
-    protected override void OnClosed(System.EventArgs e)
+    protected override void OnOpened(EventArgs e)
     {
-        BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
-        BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
-        NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
-        _debouncer?.Dispose();
-        base.OnClosed(e);
+        base.OnOpened(e);
+        PositionNearNotificationArea();
     }
 }

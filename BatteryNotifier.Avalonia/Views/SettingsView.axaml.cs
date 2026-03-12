@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using BatteryNotifier.Avalonia.ViewModels;
 
@@ -11,6 +12,15 @@ public partial class SettingsView : UserControl
     public SettingsView()
     {
         InitializeComponent();
+    }
+
+    private void SettingsTitleBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            var window = TopLevel.GetTopLevel(this) as Window;
+            window?.BeginMoveDrag(e);
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)

@@ -1,9 +1,14 @@
 using System;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Runtime.InteropServices;
+using Avalonia;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using BatteryNotifier.Core;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using ReactiveUI;
@@ -21,20 +26,23 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private string _timeRemaining = string.Empty;
     private bool _fullBatteryNotification;
     private bool _lowBatteryNotification;
-    private bool _isTopmost;
     private SettingsViewModel? _currentView;
     private bool _disposed;
+    private IDisposable? _fullBatteryNotificationSub;
+    private IDisposable? _lowBatteryNotificationSub;
 
     public MainWindowViewModel()
     {
-        _isTopmost = _settings.PinToWindow;
         _fullBatteryNotification = _settings.FullBatteryNotification;
         _lowBatteryNotification = _settings.LowBatteryNotification;
 
         NavigateToSettingsCommand = ReactiveCommand.Create(NavigateToSettings);
+        OpenGitHubCommand = ReactiveCommand.Create(OpenGitHub);
+        ExitCommand = ReactiveCommand.Create(ExitApplication);
 
-        RefreshBatteryStatus();
-
+        // Access BatteryMonitorService FIRST — its constructor does a synchronous
+        // initial check that populates BatteryManagerStore, so the store has real
+        // values before RefreshBatteryStatus() reads them.
         try
         {
             BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
@@ -42,7 +50,9 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch { /* Battery monitoring not available on this platform */ }
 
-        this.WhenAnyValue(x => x.FullBatteryNotification)
+        RefreshBatteryStatus();
+
+        _fullBatteryNotificationSub = this.WhenAnyValue(x => x.FullBatteryNotification)
             .Skip(1)
             .Subscribe(enabled =>
             {
@@ -50,7 +60,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                 _settings.Save();
             });
 
-        this.WhenAnyValue(x => x.LowBatteryNotification)
+        _lowBatteryNotificationSub = this.WhenAnyValue(x => x.LowBatteryNotification)
             .Skip(1)
             .Subscribe(enabled =>
             {
@@ -74,7 +84,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         var store = BatteryManagerStore.Instance;
 
         BatteryPercentage = store.BatteryLifePercent;
-        IsCharging = store.IsCharging;
+        IsCharging = store.IsCharging || store.IsPluggedIn;
 
         if (store.HasNoBattery)
             BatteryStatus = "No Battery";
@@ -82,17 +92,23 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             BatteryStatus = "Unknown";
         else if (store.IsCharging)
             BatteryStatus = "Charging";
+        else if (store.IsPluggedIn)
+            BatteryStatus = "Plugged In";
         else
             BatteryStatus = "Discharging";
 
-        if (store.BatteryLifeRemaining > 0 && !store.IsCharging)
+        if (store.BatteryLifeRemaining > 0 && !store.IsCharging && !store.IsPluggedIn)
         {
             var ts = store.BatteryLifeRemainingInSeconds;
             TimeRemaining = $"{(int)ts.TotalHours}h {ts.Minutes}m Remaining";
         }
+        else if (store.IsCharging)
+        {
+            TimeRemaining = "Charging...";
+        }
         else
         {
-            TimeRemaining = store.IsCharging ? "Charging..." : string.Empty;
+            TimeRemaining = string.Empty;
         }
 
         var assetName = store.BatteryState switch
@@ -164,12 +180,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _lowBatteryNotification, value);
     }
 
-    public bool IsTopmost
-    {
-        get => _isTopmost;
-        set => this.RaiseAndSetIfChanged(ref _isTopmost, value);
-    }
-
     public SettingsViewModel? CurrentView
     {
         get => _currentView;
@@ -177,22 +187,50 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public ReactiveCommand<Unit, Unit> NavigateToSettingsCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenGitHubCommand { get; }
+    public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+
+    public string Version => Constants.ApplicationVersion;
+
+    private static void OpenGitHub()
+    {
+        try
+        {
+            var url = Constants.SourceRepositoryUrl;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                Process.Start("open", url);
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            else
+                Process.Start("xdg-open", url);
+        }
+        catch { }
+    }
+
+    private static void ExitApplication()
+    {
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+    }
 
     private void NavigateToSettings()
     {
-        var settingsVm = new SettingsViewModel(NavigateToMain);
-        settingsVm.PinToWindowChanged += (_, pinned) => IsTopmost = pinned;
-        CurrentView = settingsVm;
+        CurrentView = new SettingsViewModel(NavigateToMain);
     }
 
     private void NavigateToMain()
     {
+        var old = CurrentView;
         CurrentView = null;
+        old?.Dispose();
     }
 
     public void Dispose()
     {
         if (_disposed) return;
+        _fullBatteryNotificationSub?.Dispose();
+        _lowBatteryNotificationSub?.Dispose();
+        CurrentView?.Dispose();
         try
         {
             BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;

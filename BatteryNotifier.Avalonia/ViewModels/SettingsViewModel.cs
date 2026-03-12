@@ -1,5 +1,6 @@
 using System;
 using System.Reactive;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -9,14 +10,14 @@ using ReactiveUI;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
-public class SettingsViewModel : ViewModelBase
+public class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly AppSettings _settings = AppSettings.Instance;
+    private readonly CompositeDisposable _disposables = new();
 
     private bool _isSystemTheme;
     private bool _isLightTheme;
     private bool _isDarkTheme;
-    private bool _pinToWindow;
     private bool _startMinimized;
     private bool _launchAtStartup;
     private bool _fullBatteryNotification;
@@ -25,6 +26,7 @@ public class SettingsViewModel : ViewModelBase
     private int _lowBatteryNotificationValue;
     private string? _fullBatterySoundPath;
     private string? _lowBatterySoundPath;
+    private bool _disposed;
 
     public Interaction<string?, string?> BrowseFullBatterySoundInteraction { get; } = new();
     public Interaction<string?, string?> BrowseLowBatterySoundInteraction { get; } = new();
@@ -37,8 +39,6 @@ public class SettingsViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> BrowseLowBatterySoundCommand { get; }
     public ReactiveCommand<Unit, Unit> ResetFullBatterySoundCommand { get; }
     public ReactiveCommand<Unit, Unit> ResetLowBatterySoundCommand { get; }
-
-    public event EventHandler<bool>? PinToWindowChanged;
 
     public SettingsViewModel(Action navigateBack)
     {
@@ -74,16 +74,8 @@ public class SettingsViewModel : ViewModelBase
                 _settings.LaunchAtStartup = enabled;
                 _settings.Save();
                 StartupManager.SetStartup(enabled);
-            });
-
-        this.WhenAnyValue(x => x.PinToWindow)
-            .Skip(1)
-            .Subscribe(pinned =>
-            {
-                _settings.PinToWindow = pinned;
-                _settings.Save();
-                PinToWindowChanged?.Invoke(this, pinned);
-            });
+            })
+            .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.StartMinimized)
             .Skip(1)
@@ -91,7 +83,8 @@ public class SettingsViewModel : ViewModelBase
             {
                 _settings.StartMinimized = minimized;
                 _settings.Save();
-            });
+            })
+            .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.FullBatteryNotification)
             .Skip(1)
@@ -99,7 +92,8 @@ public class SettingsViewModel : ViewModelBase
             {
                 _settings.FullBatteryNotification = enabled;
                 _settings.Save();
-            });
+            })
+            .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.LowBatteryNotification)
             .Skip(1)
@@ -107,7 +101,8 @@ public class SettingsViewModel : ViewModelBase
             {
                 _settings.LowBatteryNotification = enabled;
                 _settings.Save();
-            });
+            })
+            .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.FullBatteryNotificationValue)
             .Skip(1)
@@ -116,10 +111,15 @@ public class SettingsViewModel : ViewModelBase
             {
                 _settings.FullBatteryNotificationValue = value;
                 _settings.Save();
-                BatteryMonitorService.Instance.SetThresholds(
-                    _settings.LowBatteryNotificationValue,
-                    _settings.FullBatteryNotificationValue);
-            });
+                try
+                {
+                    BatteryMonitorService.Instance.SetThresholds(
+                        _settings.LowBatteryNotificationValue,
+                        _settings.FullBatteryNotificationValue);
+                }
+                catch { }
+            })
+            .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.LowBatteryNotificationValue)
             .Skip(1)
@@ -128,10 +128,15 @@ public class SettingsViewModel : ViewModelBase
             {
                 _settings.LowBatteryNotificationValue = value;
                 _settings.Save();
-                BatteryMonitorService.Instance.SetThresholds(
-                    _settings.LowBatteryNotificationValue,
-                    _settings.FullBatteryNotificationValue);
-            });
+                try
+                {
+                    BatteryMonitorService.Instance.SetThresholds(
+                        _settings.LowBatteryNotificationValue,
+                        _settings.FullBatteryNotificationValue);
+                }
+                catch { }
+            })
+            .DisposeWith(_disposables);
     }
 
     private void LoadSettings()
@@ -139,7 +144,6 @@ public class SettingsViewModel : ViewModelBase
         _isSystemTheme = _settings.ThemeMode == ThemeMode.System;
         _isLightTheme = _settings.ThemeMode == ThemeMode.Light;
         _isDarkTheme = _settings.ThemeMode == ThemeMode.Dark;
-        _pinToWindow = _settings.PinToWindow;
         _startMinimized = _settings.StartMinimized;
         _launchAtStartup = _settings.LaunchAtStartup;
         _fullBatteryNotification = _settings.FullBatteryNotification;
@@ -225,12 +229,6 @@ public class SettingsViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _isDarkTheme, value);
     }
 
-    public bool PinToWindow
-    {
-        get => _pinToWindow;
-        set => this.RaiseAndSetIfChanged(ref _pinToWindow, value);
-    }
-
     public bool StartMinimized
     {
         get => _startMinimized;
@@ -277,5 +275,12 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _lowBatterySoundPath;
         set => this.RaiseAndSetIfChanged(ref _lowBatterySoundPath, value);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposables.Dispose();
+        _disposed = true;
     }
 }
