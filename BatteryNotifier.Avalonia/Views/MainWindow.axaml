@@ -27,7 +27,7 @@
               IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
 
             <!-- Header (drag handle) -->
-            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"
+            <Border Grid.Row="0" Padding="12,10" Name="TitleBar" CornerRadius="8"
                     Background="{DynamicResource AppHeaderBackground}"
                     PointerPressed="TitleBar_PointerPressed">
                 <Grid ColumnDefinitions="32,*,Auto,4,Auto" VerticalAlignment="Center">
@@ -38,7 +38,7 @@
                                Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
                     <Button Grid.Column="2"
                             Theme="{StaticResource PrimaryButton}">
-                        <PathIcon Data="{StaticResource Icon.Info}" Width="16" Height="16" />
+                        <PathIcon Data="{StaticResource Icon.DotsThreeVertical}" Width="16" Height="16" />
                         <Button.Flyout>
                             <MenuFlyout Placement="BottomEdgeAlignedRight">
                                 <MenuItem Header="Hide Window" Command="{Binding HideWindowCommand}">

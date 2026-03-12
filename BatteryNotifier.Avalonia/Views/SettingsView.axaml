@@ -39,7 +39,7 @@
 
     <Grid RowDefinitions="Auto,*">
         <!-- Header (drag handle) -->
-        <Border Grid.Row="0" Padding="12,10" Name="SettingsTitleBar"
+        <Border Grid.Row="0" Padding="12,10" Name="SettingsTitleBar" CornerRadius="8"
                 Background="{DynamicResource AppHeaderBackground}"
                 PointerPressed="SettingsTitleBar_PointerPressed">
             <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
@@ -52,7 +52,7 @@
                                   VerticalAlignment="Center"
                                   HorizontalAlignment="Center"
                                   Width="10" Height="10" />
-                        <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
+                        <TextBlock Margin="4,2,0,0" FontSize="12">Back</TextBlock>
                     </StackPanel>
                 </Button>
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
