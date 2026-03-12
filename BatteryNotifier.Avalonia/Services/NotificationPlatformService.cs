@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using BatteryNotifier.Core.Logger;
 using Serilog;
@@ -12,6 +13,36 @@ namespace BatteryNotifier.Avalonia.Services;
 public static class NotificationPlatformService
 {
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("NotificationPlatformService");
+    private static string? _iconPath;
+
+    /// <summary>
+    /// Call once at startup (on the UI thread) to extract the icon for notifications.
+    /// </summary>
+    public static void Initialize()
+    {
+        try
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "BatteryNotifier");
+            Directory.CreateDirectory(tempDir);
+            var iconFile = Path.Combine(tempDir, "notification-icon.png");
+
+            // Only re-extract if missing (survives across app restarts)
+            if (!File.Exists(iconFile))
+            {
+                using var stream = global::Avalonia.Platform.AssetLoader.Open(
+                    new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-128.png"));
+                using var fs = File.Create(iconFile);
+                stream.CopyTo(fs);
+            }
+
+            _iconPath = iconFile;
+            Logger.Information("Notification icon extracted to {Path}", _iconPath);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Failed to extract notification icon — notifications will have no icon");
+        }
+    }
 
     public static void ShowNativeNotification(string title, string message)
     {
@@ -40,7 +71,11 @@ public static class NotificationPlatformService
     {
         try
         {
-            // Pass the script via stdin to avoid shell argument injection entirely.
+            // Try terminal-notifier first (supports custom icon), fall back to osascript.
+            if (TryShowWithTerminalNotifier(title, message))
+                return;
+
+            // osascript: icon comes from the calling app's bundle (set via MacOSDockIconHelper).
             var script = $"display notification \"{SanitizeForAppleScript(message)}\" with title \"{SanitizeForAppleScript(title)}\"";
             ExecuteCommandWithStdin("osascript", script);
         }
@@ -50,13 +85,56 @@ public static class NotificationPlatformService
         }
     }
 
+    private static bool TryShowWithTerminalNotifier(string title, string message)
+    {
+        try
+        {
+            using var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "terminal-notifier",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.StartInfo.ArgumentList.Add("-title");
+            process.StartInfo.ArgumentList.Add(title);
+            process.StartInfo.ArgumentList.Add("-message");
+            process.StartInfo.ArgumentList.Add(message);
+            process.StartInfo.ArgumentList.Add("-sender");
+            process.StartInfo.ArgumentList.Add("com.batterynotifier.app");
+            if (_iconPath != null)
+            {
+                process.StartInfo.ArgumentList.Add("-appIcon");
+                process.StartInfo.ArgumentList.Add(_iconPath);
+            }
+            process.Start();
+            process.WaitForExit(5000);
+            return process.ExitCode == 0;
+        }
+        catch
+        {
+            // terminal-notifier not installed — fall back to osascript
+            return false;
+        }
+    }
+
     private static void ShowWindowsNotification(string title, string message)
     {
         try
         {
-            // Sanitize inputs to prevent PowerShell injection.
             var safeTitle = SanitizeForXml(SanitizeForPowerShell(title));
             var safeMessage = SanitizeForXml(SanitizeForPowerShell(message));
+
+            var iconXml = "";
+            if (_iconPath != null)
+            {
+                var safeIconPath = _iconPath.Replace("\\", "/");
+                iconXml = $"<image placement='appLogoOverride' src='file:///{SanitizeForXml(SanitizeForPowerShell(safeIconPath))}'/>";
+            }
 
             var script = $@"
                 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -69,6 +147,7 @@ public static class NotificationPlatformService
                         <binding template='ToastGeneric'>
                             <text>{safeTitle}</text>
                             <text>{safeMessage}</text>
+                            {iconXml}
                         </binding>
                     </visual>
                 </toast>
@@ -77,10 +156,9 @@ public static class NotificationPlatformService
                 $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
                 $xml.LoadXml($template)
                 $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Battery Notifier').Show($toast)
+                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('BatteryNotifier').Show($toast)
             ";
 
-            // Pass script via stdin instead of -Command argument to avoid argument injection.
             ExecuteCommandWithStdin("powershell",
                 "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -",
                 script);
@@ -95,8 +173,6 @@ public static class NotificationPlatformService
     {
         try
         {
-            // Pass title and message as separate arguments (no shell interpretation).
-            // notify-send expects: notify-send <summary> [body]
             var safeTitle = SanitizePlainText(title);
             var safeMessage = SanitizePlainText(message);
 
@@ -111,6 +187,11 @@ public static class NotificationPlatformService
                     CreateNoWindow = true
                 }
             };
+            if (_iconPath != null)
+            {
+                process.StartInfo.ArgumentList.Add("-i");
+                process.StartInfo.ArgumentList.Add(_iconPath);
+            }
             process.StartInfo.ArgumentList.Add(safeTitle);
             process.StartInfo.ArgumentList.Add(safeMessage);
             process.Start();
@@ -122,9 +203,6 @@ public static class NotificationPlatformService
         }
     }
 
-    /// <summary>
-    /// Escapes characters that could break out of an AppleScript string literal.
-    /// </summary>
     private static string SanitizeForAppleScript(string input)
     {
         return input
@@ -134,12 +212,8 @@ public static class NotificationPlatformService
             .Replace("\r", "");
     }
 
-    /// <summary>
-    /// Strips characters that could be used for PowerShell injection.
-    /// </summary>
     private static string SanitizeForPowerShell(string input)
     {
-        // Remove $, `, and backtick which PowerShell uses for variable expansion and escaping
         return input
             .Replace("$", "")
             .Replace("`", "")
@@ -148,9 +222,6 @@ public static class NotificationPlatformService
             .Replace("\r", "");
     }
 
-    /// <summary>
-    /// Escapes XML special characters for the toast notification XML template.
-    /// </summary>
     private static string SanitizeForXml(string input)
     {
         return input
@@ -160,9 +231,6 @@ public static class NotificationPlatformService
             .Replace("'", "&apos;");
     }
 
-    /// <summary>
-    /// Strips control characters from plain text (for Linux notify-send).
-    /// </summary>
     private static string SanitizePlainText(string input)
     {
         var chars = new char[input.Length];

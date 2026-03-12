@@ -9,8 +9,7 @@ public class NotificationServiceTests
         var svc = NotificationService.Instance;
         svc.ClearNotifications();
         svc.ClearPendingNotifications();
-        svc.ClearDeduplicationCache();
-        svc.SetDeduplicationInterval(TimeSpan.FromSeconds(30));
+        svc.ResetAllTrackers();
         // Disable throttling by default so tests aren't affected by _lastNotificationTime
         svc.SetThrottleInterval(TimeSpan.Zero);
         return svc;
@@ -39,7 +38,7 @@ public class NotificationServiceTests
     }
 
     [Fact]
-    public void PublishNotification_DuplicateWithin30s_IsBlocked()
+    public void PublishNotification_SameTagWithinBackoff_IsBlocked()
     {
         var svc = CreateService();
         int receivedCount = 0;
@@ -48,9 +47,10 @@ public class NotificationServiceTests
 
         try
         {
-            svc.PublishNotification("Dup message", NotificationType.Global, tag: "DupTag");
-            // Same notification again immediately — should be deduplicated
-            svc.PublishNotification("Dup message", NotificationType.Global, tag: "DupTag");
+            // First notification goes through immediately (backoff[0] = 0)
+            svc.PublishNotification("Low battery at 20%", NotificationType.Global, tag: "LowBattery");
+            // Second notification for same tag — needs 5min backoff, so should be blocked
+            svc.PublishNotification("Low battery at 19%", NotificationType.Global, tag: "LowBattery");
 
             Assert.Equal(1, receivedCount);
         }
@@ -61,7 +61,7 @@ public class NotificationServiceTests
     }
 
     [Fact]
-    public void PublishNotification_DifferentMessages_BothEmitted()
+    public void PublishNotification_DifferentTags_BothEmitted()
     {
         var svc = CreateService();
         int receivedCount = 0;
@@ -142,7 +142,7 @@ public class NotificationServiceTests
     }
 
     [Fact]
-    public void ClearDeduplicationCache_AllowsDuplicateAfterClear()
+    public void ResetAllTrackers_AllowsNotificationAfterReset()
     {
         var svc = CreateService();
         int receivedCount = 0;
@@ -151,11 +151,39 @@ public class NotificationServiceTests
 
         try
         {
-            svc.PublishNotification("Dup msg", NotificationType.Global, tag: "DupClear");
-            svc.ClearDeduplicationCache();
-            svc.PublishNotification("Dup msg", NotificationType.Global, tag: "DupClear");
+            svc.PublishNotification("Battery low", NotificationType.Global, tag: "LowBattery");
+            // Blocked by backoff
+            svc.PublishNotification("Battery low again", NotificationType.Global, tag: "LowBattery");
+            Assert.Equal(1, receivedCount);
+
+            // Reset trackers (simulates charger plug/unplug)
+            svc.ResetAllTrackers();
+            svc.PublishNotification("Battery low after reset", NotificationType.Global, tag: "LowBattery");
 
             Assert.Equal(2, receivedCount);
+        }
+        finally
+        {
+            svc.NotificationReceived -= handler;
+        }
+    }
+
+    [Fact]
+    public void InlineNotifications_BypassBackoff()
+    {
+        var svc = CreateService();
+        int receivedCount = 0;
+        EventHandler<NotificationMessage> handler = (_, _) => receivedCount++;
+        svc.NotificationReceived += handler;
+
+        try
+        {
+            // Inline notifications should always go through
+            svc.PublishNotification("Inline 1", NotificationType.Inline, tag: "InlineTag");
+            svc.PublishNotification("Inline 2", NotificationType.Inline, tag: "InlineTag");
+            svc.PublishNotification("Inline 3", NotificationType.Inline, tag: "InlineTag");
+
+            Assert.Equal(3, receivedCount);
         }
         finally
         {

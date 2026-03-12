@@ -16,7 +16,7 @@
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="False"
         Icon="/Assets/battery-notifier-logo.ico"
-        Title="Battery Notifier">
+        Title="BatteryNotifier">
 
     <Border ClipToBounds="True"
             Background="{DynamicResource AppWindowBackground}">
@@ -35,7 +35,7 @@
                     <Image Grid.Column="0" Margin="0,0,10,0" Width="28" Height="28"
                            Source="/Assets/BatteryNotifierLogo.png" />
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AppForeground}">Battery Notifier</TextBlock>
+                               Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
                     <Button Grid.Column="2"
                             Theme="{StaticResource PrimaryButton}"
                             Content="{iconPacks:PackIcon {x:Static iconPacks:PackIconPhosphorIconsKind.Info}, Width=16, Height=16}">
@@ -101,9 +101,10 @@
                         </StackPanel>
 
                         <!-- Quick Settings -->
-                        <Border Grid.Row="1" CornerRadius="12" BorderThickness="1"
-                                BorderBrush="{DynamicResource AppCardBorder}" ClipToBounds="True">
-                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*" Background="{DynamicResource AppCardBackground}">
+                        <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                                BorderBrush="{DynamicResource AppCardBorder}"
+                                Background="{DynamicResource AppCardBackground}">
+                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*">
                                 <TextBlock Grid.Row="0" Padding="12,10,12,4" FontSize="12" FontWeight="Normal"
                                            Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
                                 <Grid Margin="12,6,12,10" Grid.Row="1" RowDefinitions="Auto,6,Auto" ColumnDefinitions="*">
@@ -139,7 +140,7 @@
             <Border Grid.Row="2" Padding="12,6">
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11"
-                               Foreground="{DynamicResource AppSubtleText}">Battery Notifier</TextBlock>
+                               Foreground="{DynamicResource AppSubtleText}">BatteryNotifier</TextBlock>
                     <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11"
                                Foreground="{DynamicResource AppSubtleText}"
                                Text="{Binding Version, StringFormat='v{0}'}" />

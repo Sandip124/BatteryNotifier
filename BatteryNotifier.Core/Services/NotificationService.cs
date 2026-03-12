@@ -1,4 +1,6 @@
 using System.Linq;
+using BatteryNotifier.Core.Logger;
+using Serilog;
 
 namespace BatteryNotifier.Core.Services;
 
@@ -9,12 +11,14 @@ public sealed class NotificationService : IDisposable
 
     public static NotificationService Instance => _instance.Value;
 
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("NotificationService");
+
     private readonly PriorityQueue<NotificationMessage, int> _notificationQueue;
     private readonly object _queueLock = new();
 
-    private readonly Dictionary<string, DateTime> _recentNotifications =
-        new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
-    private readonly object _recentNotificationsLock = new object();
+    private readonly Dictionary<string, NotificationTracker> _trackers =
+        new Dictionary<string, NotificationTracker>(StringComparer.OrdinalIgnoreCase);
+    private readonly object _trackersLock = new object();
 
     private readonly Dictionary<string, NotificationMessage> _pendingNotifications =
         new Dictionary<string, NotificationMessage>(StringComparer.OrdinalIgnoreCase);
@@ -23,14 +27,26 @@ public sealed class NotificationService : IDisposable
     private Timer? _flushTimer;
     private readonly object _flushTimerLock = new object();
 
-    private TimeSpan DeduplicationInterval { get; set; } = TimeSpan.FromSeconds(30);
-    private TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
     private TimeSpan ThrottleInterval { get; set; } = TimeSpan.FromSeconds(2);
 
-    private DateTime _lastCleanup = DateTime.Now;
     private DateTime _lastNotificationTime = DateTime.MinValue;
 
-    private bool _disposed = false;
+    private bool _disposed;
+
+    // Escalating backoff intervals: immediate → 5min → 15min → 45min → silenced
+    private static readonly TimeSpan[] BackoffIntervals =
+    [
+        TimeSpan.Zero,
+        TimeSpan.FromMinutes(5),
+        TimeSpan.FromMinutes(15),
+        TimeSpan.FromMinutes(45)
+    ];
+
+    private const int MaxNotificationsBeforeSilence = 4;
+
+    // Duolingo "recovering arm" concept: after this duration of silence,
+    // the tracker auto-resets so the user gets a fresh reminder cycle.
+    private static readonly TimeSpan RecoveryInterval = TimeSpan.FromHours(2);
 
     public event EventHandler<NotificationMessage>? NotificationReceived;
 
@@ -54,13 +70,63 @@ public sealed class NotificationService : IDisposable
 
     public void PublishNotification(NotificationMessage notification)
     {
-        if (ShouldDiscardDuplicate(notification))
+        // Inline notifications bypass backoff — they're in-app only
+        if (notification.Type == NotificationType.Inline)
         {
+            EnqueueAndEmit(notification);
             return;
         }
 
-        PerformPeriodicCleanup();
+        var tag = notification.Tag ?? "default";
 
+        lock (_trackersLock)
+        {
+            if (!_trackers.TryGetValue(tag, out var tracker))
+            {
+                tracker = new NotificationTracker();
+                _trackers[tag] = tracker;
+            }
+
+            // Auto-recover after RecoveryInterval (Duolingo "recovering arm" concept)
+            if (tracker.IsSilenced && (DateTime.Now - tracker.LastNotificationTime) >= RecoveryInterval)
+            {
+                Logger.Information("Tag {Tag} auto-recovered after {Hours:F1}h silence",
+                    tag, (DateTime.Now - tracker.LastNotificationTime).TotalHours);
+                tracker.Count = 0;
+                tracker.IsSilenced = false;
+            }
+
+            // Still silenced — drop the notification
+            if (tracker.IsSilenced)
+            {
+                Logger.Debug("Notification silenced for tag {Tag} (sent {Count} already)", tag, tracker.Count);
+                return;
+            }
+
+            // Check backoff interval
+            var backoffIndex = Math.Min(tracker.Count, BackoffIntervals.Length - 1);
+            var requiredDelay = BackoffIntervals[backoffIndex];
+            var elapsed = DateTime.Now - tracker.LastNotificationTime;
+
+            if (tracker.Count > 0 && elapsed < requiredDelay)
+            {
+                Logger.Debug("Notification for tag {Tag} deferred — {Elapsed:F0}s elapsed, need {Required:F0}s",
+                    tag, elapsed.TotalSeconds, requiredDelay.TotalSeconds);
+                return;
+            }
+
+            // Increment and check cap
+            tracker.Count++;
+            tracker.LastNotificationTime = DateTime.Now;
+
+            if (tracker.Count >= MaxNotificationsBeforeSilence)
+            {
+                tracker.IsSilenced = true;
+                Logger.Information("Tag {Tag} silenced after {Count} notifications", tag, tracker.Count);
+            }
+        }
+
+        // Apply throttle for rapid-fire prevention
         var now = DateTime.Now;
         var timeSinceLastNotification = now - _lastNotificationTime;
 
@@ -68,7 +134,7 @@ public sealed class NotificationService : IDisposable
         {
             lock (_pendingLock)
             {
-                var key = CreateNotificationKey(notification);
+                var key = tag;
                 _pendingNotifications[key] = notification;
             }
             ScheduleFlush();
@@ -78,11 +144,37 @@ public sealed class NotificationService : IDisposable
         EnqueueAndEmit(notification);
     }
 
+    /// <summary>
+    /// Reset notification tracking for a specific tag. Called when battery state changes
+    /// (charger plugged/unplugged) so notifications can fire eagerly again.
+    /// </summary>
+    public void ResetTracker(string tag)
+    {
+        lock (_trackersLock)
+        {
+            if (_trackers.Remove(tag))
+            {
+                Logger.Information("Notification tracker reset for tag {Tag}", tag);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Reset all notification trackers. Called on significant state changes.
+    /// </summary>
+    public void ResetAllTrackers()
+    {
+        lock (_trackersLock)
+        {
+            _trackers.Clear();
+            Logger.Information("All notification trackers reset");
+        }
+    }
+
     private void ScheduleFlush()
     {
         lock (_flushTimerLock)
         {
-            // Already scheduled
             if (_flushTimer != null) return;
 
             _flushTimer = new Timer(_ =>
@@ -105,10 +197,7 @@ public sealed class NotificationService : IDisposable
             _notificationQueue.Enqueue(notification, priority);
         }
 
-        RecordNotification(notification);
         _lastNotificationTime = DateTime.Now;
-
-        if (NotificationReceived == null) return;
 
         NotificationReceived?.Invoke(this, notification);
     }
@@ -129,57 +218,6 @@ public sealed class NotificationService : IDisposable
             }
 
             _pendingNotifications.Clear();
-        }
-    }
-
-    private bool ShouldDiscardDuplicate(NotificationMessage notification)
-    {
-        lock (_recentNotificationsLock)
-        {
-            string notificationKey = CreateNotificationKey(notification);
-
-            DateTime notificationTime = notification.Timestamp;
-
-            CleanupOldEntries(notificationTime);
-
-            if (_recentNotifications.TryGetValue(notificationKey, out DateTime lastSeen))
-            {
-                TimeSpan timeSinceLastSeen = notificationTime - lastSeen;
-
-                if (timeSinceLastSeen < DeduplicationInterval)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-    }
-
-    private void RecordNotification(NotificationMessage notification)
-    {
-        lock (_recentNotificationsLock)
-        {
-            string notificationKey = CreateNotificationKey(notification);
-            _recentNotifications[notificationKey] = notification.Timestamp;
-        }
-    }
-
-    private static string CreateNotificationKey(NotificationMessage notification)
-    {
-        return $"{notification.Tag}_{notification.Message}_{notification.Type}";
-    }
-
-    private void CleanupOldEntries(DateTime currentTime)
-    {
-        var keysToRemove = _recentNotifications
-            .Where(kvp => currentTime - kvp.Value > DeduplicationInterval)
-            .Select(kvp => kvp.Key)
-            .ToList();
-
-        foreach (var key in keysToRemove)
-        {
-            _recentNotifications.Remove(key);
         }
     }
 
@@ -223,49 +261,6 @@ public sealed class NotificationService : IDisposable
         }
     }
 
-    public void ClearDeduplicationCache()
-    {
-        lock (_recentNotificationsLock)
-        {
-            _recentNotifications.Clear();
-        }
-    }
-
-    private void PerformPeriodicCleanup()
-    {
-        var now = DateTime.Now;
-        if (now - _lastCleanup > CleanupInterval)
-        {
-            _lastCleanup = now;
-
-            ClearNotifications();
-            ClearPendingNotifications();
-            ClearDeduplicationCache();
-        }
-    }
-
-    public void SetDeduplicationInterval(TimeSpan interval)
-    {
-        DeduplicationInterval = interval;
-    }
-
-    public void SetCleanUpInterval(TimeSpan interval)
-    {
-        CleanupInterval = interval;
-    }
-
-    public int RecentNotificationsCount
-    {
-        get
-        {
-            lock (_recentNotificationsLock)
-            {
-                return _recentNotifications.Count;
-            }
-        }
-    }
-
-
     public void Dispose()
     {
         if (_disposed) return;
@@ -278,12 +273,26 @@ public sealed class NotificationService : IDisposable
 
         ClearNotifications();
         ClearPendingNotifications();
-        ClearDeduplicationCache();
+
+        lock (_trackersLock)
+        {
+            _trackers.Clear();
+        }
 
         NotificationReceived = null;
 
         _disposed = true;
     }
+}
+
+/// <summary>
+/// Tracks per-tag notification state for escalating backoff.
+/// </summary>
+internal class NotificationTracker
+{
+    public int Count { get; set; }
+    public DateTime LastNotificationTime { get; set; } = DateTime.MinValue;
+    public bool IsSilenced { get; set; }
 }
 
 public class NotificationMessage

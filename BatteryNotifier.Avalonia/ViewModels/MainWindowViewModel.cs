@@ -128,7 +128,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            var uri = new Uri($"avares://BatteryNotifier.Avalonia/Assets/{fileName}");
+            var uri = new Uri($"avares://BatteryNotifier/Assets/{fileName}");
             using var stream = AssetLoader.Open(uri);
             return new Bitmap(stream);
         }

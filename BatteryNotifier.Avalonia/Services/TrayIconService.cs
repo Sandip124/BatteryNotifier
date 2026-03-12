@@ -40,7 +40,7 @@ public class TrayIconService : IDisposable
             // Set icon using AssetLoader
             try
             {
-                var assetLoader = AssetLoader.Open(new Uri("avares://BatteryNotifier.Avalonia/Assets/battery-notifier-logo.ico"));
+                var assetLoader = AssetLoader.Open(new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo.ico"));
                 _trayIcon.Icon = new WindowIcon(assetLoader);
             }
             catch (Exception ex)
@@ -111,7 +111,7 @@ public class TrayIconService : IDisposable
         var store = BatteryManagerStore.Instance;
         var status = store.IsCharging ? "Charging" : store.IsPluggedIn ? "Plugged In" : "Discharging";
 
-        _trayIcon.ToolTipText = $"Battery Notifier - {batteryPercent:F0}% ({status})";
+        _trayIcon.ToolTipText = $"BatteryNotifier - {batteryPercent:F0}% ({status})";
     }
 
     private void OnNotificationReceived(object? sender, NotificationMessage notification)
@@ -135,7 +135,7 @@ public class TrayIconService : IDisposable
             {
                 Core.Constants.LowBatteryTag => "Low Battery",
                 Core.Constants.FullBatteryTag => "Full Battery",
-                _ => "Battery Notifier"
+                _ => "BatteryNotifier"
             };
 
             // Remove emoji from message for cleaner notification

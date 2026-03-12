@@ -8,6 +8,8 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <LangVersion>latestmajor</LangVersion>
         <ApplicationIcon>Assets\battery-notifier-logo.ico</ApplicationIcon>
+        <AssemblyName>BatteryNotifier</AssemblyName>
+        <Product>BatteryNotifier</Product>
 
         <!-- Security hardening -->
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
@@ -33,14 +35,14 @@
 
 
     <ItemGroup>
-        <PackageReference Include="Avalonia" Version="11.3.2" />
-        <PackageReference Include="Avalonia.Desktop" Version="11.3.2" />
-        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.2" />
-        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.2" />
+        <PackageReference Include="Avalonia" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
-        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.2" />
-        <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.2" />
-        <PackageReference Include="IconPacks.Avalonia" Version="1.1.0" />
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.12" />
+        <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
+        <PackageReference Include="IconPacks.Avalonia" Version="1.3.1" />
     </ItemGroup>
 
 

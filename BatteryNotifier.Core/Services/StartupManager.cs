@@ -116,16 +116,16 @@ public static class StartupManager
 </plist>";
 
                 File.WriteAllText(plistPath, plistContent);
-
-                // Load the launch agent
-                ExecuteCommand("launchctl", "load", plistPath);
+                // No launchctl load — macOS automatically loads plist files
+                // from ~/Library/LaunchAgents at login. Calling load here
+                // would immediately spawn a duplicate instance.
             }
             else
             {
                 if (File.Exists(plistPath))
                 {
-                    // Unload the launch agent
-                    ExecuteCommand("launchctl", "unload", plistPath);
+                    // Unload to prevent it from launching at next login
+                    ExecuteCommand("launchctl", "bootout", $"gui/{GetUid()}", plistPath);
                     File.Delete(plistPath);
                 }
             }
@@ -217,6 +217,32 @@ public static class StartupManager
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to execute command: {Command}", command);
+        }
+    }
+
+    private static string GetUid()
+    {
+        try
+        {
+            using var process = new System.Diagnostics.Process
+            {
+                StartInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "id",
+                    ArgumentList = { "-u" },
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    CreateNoWindow = true
+                }
+            };
+            process.Start();
+            var uid = process.StandardOutput.ReadToEnd().Trim();
+            process.WaitForExit(3000);
+            return uid;
+        }
+        catch
+        {
+            return Environment.GetEnvironmentVariable("UID") ?? "501";
         }
     }
 

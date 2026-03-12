@@ -47,7 +47,7 @@ public partial class App : Application
             try
             {
                 using var iconStream = AssetLoader.Open(
-                    new Uri("avares://BatteryNotifier.Avalonia/Assets/battery-notifier-logo-48.png"));
+                    new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-48.png"));
                 mainWindow.Icon = new WindowIcon(iconStream);
             }
             catch
@@ -62,7 +62,7 @@ public partial class App : Application
                 try
                 {
                     using var dockIconStream = AssetLoader.Open(
-                        new Uri("avares://BatteryNotifier.Avalonia/Assets/battery-notifier-logo-128.png"));
+                        new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-128.png"));
                     using var ms = new System.IO.MemoryStream();
                     dockIconStream.CopyTo(ms);
                     MacOSDockIconHelper.SetDockIcon(ms.ToArray());
@@ -75,18 +75,12 @@ public partial class App : Application
 
             desktop.MainWindow = mainWindow;
 
-            // Configure launch at startup
-            try
-            {
-                if (settings.LaunchAtStartup)
-                {
-                    StartupManager.SetStartup(true);
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Startup manager error: {ex.Message}");
-            }
+            // Startup registration is handled in SettingsViewModel when the user toggles it.
+            // Do NOT call SetStartup(true) here — it re-registers on every launch,
+            // and on macOS the launchctl load would spawn a duplicate instance.
+
+            // Extract notification icon to disk (must happen on UI thread while AssetLoader is available)
+            NotificationPlatformService.Initialize();
 
             // Initialize tray icon
             _trayIconService = new TrayIconService();

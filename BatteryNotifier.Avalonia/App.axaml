@@ -13,6 +13,15 @@
         <FluentTheme />
         <StyleInclude Source="avares://IconPacks.Avalonia/Icons.axaml" />
 
+        <!-- Compact ToggleSwitch: strip on/off labels, clip extra right space -->
+        <Style Selector="ToggleSwitch">
+            <Setter Property="OnContent" Value="{x:Null}" />
+            <Setter Property="OffContent" Value="{x:Null}" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="MinWidth" Value="40" />
+            <Setter Property="MaxWidth" Value="48" />
+            <Setter Property="ClipToBounds" Value="True" />
+        </Style>
     </Application.Styles>
 
     <Application.Resources>
@@ -57,6 +66,9 @@
                     <SolidColorBrush x:Key="AppHeaderBackground" Color="#EBEBEB" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
+
+            <!-- Override ToggleSwitch min width to remove right padding -->
+            <x:Double x:Key="ToggleSwitchThemeMinWidth">40</x:Double>
         </ResourceDictionary>
 
         <ControlTheme x:Key="PrimaryButton" TargetType="Button">
