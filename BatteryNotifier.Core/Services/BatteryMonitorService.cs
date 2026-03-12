@@ -123,15 +123,13 @@ public sealed class BatteryMonitorService : IDisposable
         var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
 
         bool powerLineChanged;
-        bool batteryLevelChanged;
-        bool shouldNotify;
+        bool levelChanged;
 
         lock (_statusLock)
         {
             var lastLevel = _lastPowerStatus != null ? (int)(_lastPowerStatus.BatteryLifePercent * 100) : 0;
             powerLineChanged = _lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
-            batteryLevelChanged = Math.Abs(currentLevel - lastLevel) >= 5;
-            shouldNotify = forceCheck || powerLineChanged || batteryLevelChanged || _lastPowerStatus == null;
+            levelChanged = currentLevel != lastLevel;
         }
 
         bool isLowBattery = currentLevel <= _lowBatteryThreshold &&
@@ -142,21 +140,23 @@ public sealed class BatteryMonitorService : IDisposable
                               currentStatus.BatteryChargeStatus == BatteryChargeStatus.High ||
                               currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online);
 
-        shouldNotify = shouldNotify || isLowBattery || isFullBattery;
-
+        // Always update the store so it reflects the latest battery state
         UpdateBatteryManagerStore(currentStatus, currentLevel);
 
-        if (shouldNotify)
+        // Always fire UI update events when anything changed (level, power line, or first check)
+        bool anythingChanged;
+        bool wasAlreadyTracking;
+        lock (_statusLock)
+        {
+            wasAlreadyTracking = _lastPowerStatus != null;
+            anythingChanged = forceCheck || powerLineChanged || levelChanged || !wasAlreadyTracking;
+        }
+
+        if (anythingChanged)
         {
             _logger.Information(
                 "[{Timestamp:yyyy-MM-dd HH:mm:ss}] Invoked by: {Source}, Battery Level: {Level}%, Power Line Status: {PowerLine}",
                 DateTime.Now, forceCheck ? "Force Check" : "Periodic Timer", currentLevel, currentStatus.PowerLineStatus);
-
-            bool wasAlreadyTracking;
-            lock (_statusLock)
-            {
-                wasAlreadyTracking = _lastPowerStatus != null;
-            }
 
             if (powerLineChanged && wasAlreadyTracking)
             {
@@ -176,39 +176,37 @@ public sealed class BatteryMonitorService : IDisposable
                 NotificationService.Instance.ResetAllTrackers();
                 _logger.Information("Power line state changed — notification trackers reset");
             }
+        }
 
-            // Publish notifications when thresholds are crossed
-            if (publishNotifications)
+        // Publish threshold notifications independently of UI updates
+        if (publishNotifications && (isLowBattery || isFullBattery))
+        {
+            if (ShouldSuppressNotifications(currentStatus))
             {
-                // On macOS with an external display, the charger must stay connected,
-                // so battery notifications are not useful.
-                if (ShouldSuppressNotifications(currentStatus))
+                _logger.Information("Suppressing battery notification — macOS external display detected while on AC power.");
+            }
+            else
+            {
+                var settings = AppSettings.Instance;
+
+                if (isLowBattery && settings.LowBatteryNotification)
                 {
-                    _logger.Information("Suppressing battery notification — macOS external display detected while on AC power.");
+                    var message = GetLowBatteryMessage(currentLevel);
+                    NotificationService.Instance.PublishNotification(
+                        message,
+                        NotificationType.Global,
+                        Constants.DefaultNotificationTimeout,
+                        Constants.LowBatteryTag);
                 }
-                else
+
+                if (isFullBattery && settings.FullBatteryNotification)
                 {
-                    var settings = AppSettings.Instance;
-
-                    if (isLowBattery && settings.LowBatteryNotification)
-                    {
-                        var message = GetLowBatteryMessage(currentLevel);
-                        NotificationService.Instance.PublishNotification(
-                            message,
-                            NotificationType.Global,
-                            Constants.DefaultNotificationTimeout,
-                            Constants.LowBatteryTag);
-                    }
-
-                    if (isFullBattery && settings.FullBatteryNotification)
-                    {
-                        var message = GetFullBatteryMessage(currentLevel);
-                        NotificationService.Instance.PublishNotification(
-                            message,
-                            NotificationType.Global,
-                            Constants.DefaultNotificationTimeout,
-                            Constants.FullBatteryTag);
-                    }
+                    var message = GetFullBatteryMessage(currentLevel);
+                    NotificationService.Instance.PublishNotification(
+                        message,
+                        NotificationType.Global,
+                        Constants.DefaultNotificationTimeout,
+                        Constants.FullBatteryTag);
                 }
             }
         }
@@ -308,6 +306,50 @@ public sealed class BatteryMonitorService : IDisposable
     {
         _lowBatteryThreshold = lowThreshold;
         _fullBatteryThreshold = fullThreshold;
+    }
+
+    /// <summary>
+    /// Evaluates what actions should be taken given a battery state transition.
+    /// Extracted for testability — the core decision logic of CheckBatteryAndPowerStatus.
+    /// </summary>
+    internal static BatteryChangeResult EvaluateBatteryChange(
+        BatteryInfo? lastStatus, BatteryInfo currentStatus,
+        int lowThreshold, int fullThreshold, bool forceCheck)
+    {
+        var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
+        var lastLevel = lastStatus != null ? (int)(lastStatus.BatteryLifePercent * 100) : 0;
+
+        bool powerLineChanged = lastStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
+        bool levelChanged = currentLevel != lastLevel;
+        bool wasAlreadyTracking = lastStatus != null;
+
+        bool shouldUpdateUI = forceCheck || powerLineChanged || levelChanged || !wasAlreadyTracking;
+
+        bool isLowBattery = currentLevel <= lowThreshold &&
+                            currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
+
+        bool isFullBattery = currentLevel >= fullThreshold &&
+                             (currentStatus.BatteryChargeStatus == BatteryChargeStatus.Charging ||
+                              currentStatus.BatteryChargeStatus == BatteryChargeStatus.High ||
+                              currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online);
+
+        return new BatteryChangeResult
+        {
+            ShouldUpdateUI = shouldUpdateUI,
+            ShouldFirePowerLineChanged = powerLineChanged && wasAlreadyTracking,
+            IsLowBattery = isLowBattery,
+            IsFullBattery = isFullBattery,
+            CurrentLevel = currentLevel
+        };
+    }
+
+    internal struct BatteryChangeResult
+    {
+        public bool ShouldUpdateUI;
+        public bool ShouldFirePowerLineChanged;
+        public bool IsLowBattery;
+        public bool IsFullBattery;
+        public int CurrentLevel;
     }
 
     public void Dispose()
