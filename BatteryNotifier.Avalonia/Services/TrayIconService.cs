@@ -66,12 +66,16 @@ public class TrayIconService : IDisposable
             var githubMenuItem = new NativeMenuItem { Header = "GitHub" };
             githubMenuItem.Click += OnOpenGitHub;
 
+            var updateMenuItem = new NativeMenuItem { Header = "Check for Updates..." };
+            updateMenuItem.Click += OnCheckForUpdates;
+
             var exitMenuItem = new NativeMenuItem { Header = "Exit" };
             exitMenuItem.Click += OnExit;
 
             _trayMenu.Add(showMenuItem);
             _trayMenu.Add(settingsMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
+            _trayMenu.Add(updateMenuItem);
             _trayMenu.Add(sendLogsMenuItem);
             _trayMenu.Add(githubMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
@@ -92,6 +96,17 @@ public class TrayIconService : IDisposable
             catch (Exception serviceEx)
             {
                 _logger.Warning(serviceEx, "Some battery services could not be initialized on this platform");
+            }
+
+            // Start background update checks
+            try
+            {
+                UpdateService.Instance.UpdateAvailable += OnUpdateAvailable;
+                UpdateService.Instance.StartBackgroundChecks();
+            }
+            catch (Exception updateEx)
+            {
+                _logger.Warning(updateEx, "Update service could not be initialized");
             }
 
             _logger.Information("TrayIcon initialized successfully");
@@ -266,17 +281,91 @@ public class TrayIconService : IDisposable
 
     private void OnOpenGitHub(object? sender, EventArgs e)
     {
+        try { OpenUrl(Constants.SourceRepositoryUrl); }
+        catch { }
+    }
+
+    private void OnUpdateAvailable(object? sender, UpdateAvailableEventArgs e)
+    {
+        // Event fires from a threadpool thread — marshal to UI thread for tray access
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var safeTag = SanitizeExternalText(e.Release.TagName);
+            ShowPlatformNotification("Update Available",
+                $"BatteryNotifier {safeTag} is available. Use tray menu to download.");
+        });
+    }
+
+    /// <summary>
+    /// Strip control characters and truncate text from external sources (GitHub API).
+    /// The downstream NotificationPlatformService does platform-specific sanitization,
+    /// but defense-in-depth ensures no unexpected content reaches it.
+    /// </summary>
+    private static string SanitizeExternalText(string input)
+    {
+        if (string.IsNullOrEmpty(input)) return string.Empty;
+        var chars = new char[Math.Min(input.Length, 100)];
+        int j = 0;
+        for (int i = 0; i < input.Length && j < chars.Length; i++)
+        {
+            if (!char.IsControl(input[i]))
+                chars[j++] = input[i];
+        }
+        return new string(chars, 0, j);
+    }
+
+    private async void OnCheckForUpdates(object? sender, EventArgs e)
+    {
         try
         {
-            var url = Constants.SourceRepositoryUrl;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-                Process.Start("open", url);
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            else
-                Process.Start("xdg-open", url);
+            // Show "Checking..." tooltip while the request is in flight
+            if (_trayIcon != null)
+                _trayIcon.ToolTipText = "BatteryNotifier — Checking for updates...";
+
+            var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+
+            switch (result.Status)
+            {
+                case CheckStatus.UpdateAvailable when result.Release != null:
+                    OpenUrl(result.Release.HtmlUrl);
+                    break;
+
+                case CheckStatus.UpToDate:
+                    ShowPlatformNotification("No Updates",
+                        $"You're running the latest version ({Constants.ApplicationVersion}).");
+                    break;
+
+                case CheckStatus.AlreadyChecking:
+                    // User clicked again while a check is running — do nothing
+                    break;
+
+                case CheckStatus.Failed:
+                    ShowPlatformNotification("Update Check Failed",
+                        "Could not reach GitHub. Check your internet connection.");
+                    break;
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Manual update check failed");
+            ShowPlatformNotification("Update Check Failed",
+                "An unexpected error occurred.");
+        }
+        finally
+        {
+            // Restore normal tooltip
+            UpdateToolTip();
+        }
+    }
+
+    private static void OpenUrl(string url)
+    {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            Process.Start("open", url);
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        else
+            Process.Start("xdg-open", url);
     }
 
     private void OnExit(object? sender, EventArgs e)
@@ -297,6 +386,8 @@ public class TrayIconService : IDisposable
             {
                 BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
                 NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+                UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
+                UpdateService.Instance.Dispose();
             }
             catch { }
 

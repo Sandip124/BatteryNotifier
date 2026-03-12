@@ -10,11 +10,24 @@
         <ApplicationIcon>Assets\battery-notifier-logo.ico</ApplicationIcon>
         <AssemblyName>BatteryNotifier</AssemblyName>
         <Product>BatteryNotifier</Product>
+        <Version>3.2.0</Version>
+        <Company>Sandip Sapkota</Company>
+        <Description>Cross-platform battery monitoring and notification app</Description>
 
         <!-- Security hardening -->
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
         <AnalysisLevel>latest-all</AnalysisLevel>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+        <!-- Publishing defaults (overridable via CLI -p: flags) -->
+        <SelfContained>true</SelfContained>
+        <PublishSingleFile>true</PublishSingleFile>
+        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+        <!-- Integrity: embed PDB for stack traces, strip debug symbols -->
+        <DebugType>embedded</DebugType>
+        <DebugSymbols>true</DebugSymbols>
     </PropertyGroup>
 
     <ItemGroup>
@@ -49,4 +62,10 @@
     <ItemGroup>
       <ProjectReference Include="..\BatteryNotifier.Core\BatteryNotifier.Core.csproj" />
     </ItemGroup>
+
+    <!-- Patch Info.plist version from the single-source <Version> property at build time -->
+    <Target Name="PatchInfoPlistVersion" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <Exec Command="sed -i '' 's|&lt;string&gt;[0-9]*\.[0-9]*\.[0-9]*&lt;/string&gt;|&lt;string&gt;$(Version)&lt;/string&gt;|g' Info.plist"
+              WorkingDirectory="$(MSBuildProjectDirectory)" />
+    </Target>
 </Project>
