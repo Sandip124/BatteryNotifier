@@ -33,10 +33,11 @@
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0"/>
     </ItemGroup>
 
-    <!-- Windows-only: WMI for battery info, NAudio for sound playback -->
+    <!-- Windows-only: WMI for battery info, NAudio for sound playback, DPAPI for settings encryption -->
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
         <PackageReference Include="System.Management" Version="9.0.8"/>
         <PackageReference Include="NAudio" Version="2.2.1"/>
+        <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.4"/>
     </ItemGroup>
 
 </Project>

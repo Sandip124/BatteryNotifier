@@ -163,73 +163,67 @@ return ""false""";
 
     // ── Windows ──────────────────────────────────────────────────
 
+#if WINDOWS
+    // P/Invoke declarations for direct fullscreen detection (no PowerShell)
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int Left, Top, Right, Bottom; }
+
+    private const int SM_CXSCREEN = 0;
+    private const int SM_CYSCREEN = 1;
+#endif
+
     private static bool IsWindowsFocusAssistActive()
     {
-        // Query Focus Assist via PowerShell registry read.
-        // Script is a hardcoded literal — no external input.
+#if WINDOWS
+        // Direct registry read — no PowerShell subprocess needed
         try
         {
-            var script = @"
-try {
-    $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.quiethourssettings\windows.quiethourssettings'
-    if (Test-Path $key) {
-        $data = (Get-ItemProperty $key -Name 'Data' -ErrorAction SilentlyContinue).Data
-        if ($data -and $data.Length -gt 15 -and $data[15] -ne 0) {
-            Write-Output 'true'
-            return
-        }
-    }
-} catch {}
-Write-Output 'false'";
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.quiethourssettings\windows.quiethourssettings");
+            if (key == null) return false;
 
-            var output = RunProcessWithStdin("powershell",
-                "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -",
-                script);
-            return output.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
+            var data = key.GetValue("Data") as byte[];
+            return data is { Length: > 15 } && data[15] != 0;
         }
         catch
         {
             return false;
         }
+#else
+        return false;
+#endif
     }
 
     private static bool IsWindowsFullscreenActive()
     {
-        // Use PowerShell + P/Invoke to check if foreground window covers the screen.
-        // Script is a hardcoded literal — no external input.
+#if WINDOWS
+        // Direct P/Invoke — no PowerShell subprocess needed
         try
         {
-            var script = @"
-Add-Type @'
-using System;
-using System.Runtime.InteropServices;
-public class FullscreenCheck {
-    [DllImport(""user32.dll"")] public static extern IntPtr GetForegroundWindow();
-    [DllImport(""user32.dll"")] public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-    [DllImport(""user32.dll"")] public static extern int GetSystemMetrics(int nIndex);
-    [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
-    public static bool IsFullscreen() {
-        var hwnd = GetForegroundWindow();
-        if (hwnd == IntPtr.Zero) return false;
-        RECT rect;
-        if (!GetWindowRect(hwnd, out rect)) return false;
-        int w = GetSystemMetrics(0);
-        int h = GetSystemMetrics(1);
-        return rect.Left <= 0 && rect.Top <= 0 && rect.Right >= w && rect.Bottom >= h;
-    }
-}
-'@ -ErrorAction SilentlyContinue
-Write-Output ([FullscreenCheck]::IsFullscreen())";
-
-            var output = RunProcessWithStdin("powershell",
-                "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -",
-                script);
-            return output.Trim().Equals("True", StringComparison.OrdinalIgnoreCase);
+            var hwnd = GetForegroundWindow();
+            if (hwnd == IntPtr.Zero) return false;
+            if (!GetWindowRect(hwnd, out var rect)) return false;
+            int w = GetSystemMetrics(SM_CXSCREEN);
+            int h = GetSystemMetrics(SM_CYSCREEN);
+            return rect.Left <= 0 && rect.Top <= 0 && rect.Right >= w && rect.Bottom >= h;
         }
         catch
         {
             return false;
         }
+#else
+        return false;
+#endif
     }
 
     // ── Linux ────────────────────────────────────────────────────
@@ -361,21 +355,14 @@ Write-Output ([FullscreenCheck]::IsFullscreen())";
     }
 
     /// <summary>
-    /// Runs a subprocess that receives input via stdin.
-    /// Only used for osascript and powershell with hardcoded scripts.
+    /// Runs a subprocess that receives input via stdin (e.g., osascript with hardcoded scripts).
     /// </summary>
     private static string RunProcessWithStdin(string command, string stdinContent)
-    {
-        return RunProcessWithStdin(command, string.Empty, stdinContent);
-    }
-
-    private static string RunProcessWithStdin(string command, string arguments, string stdinContent)
     {
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
         {
             FileName = command,
-            Arguments = arguments,
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,

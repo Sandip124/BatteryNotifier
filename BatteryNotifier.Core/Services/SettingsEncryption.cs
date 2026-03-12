@@ -7,10 +7,19 @@ using System.Text;
 namespace BatteryNotifier.Core.Services;
 
 /// <summary>
-/// AES-256-GCM encryption for settings at rest.
-/// Key is stored in a separate file with restrictive OS permissions.
+/// Platform-aware encryption for settings at rest.
 ///
-/// File format: [12-byte nonce][16-byte tag][ciphertext]
+/// Windows: Uses DPAPI (ProtectedData) — keys managed by the OS, tied to the
+/// current user account. No key file on disk, no AV-suspicious crypto patterns.
+///
+/// macOS/Linux: Uses AES-256-GCM with a local key file (chmod 600).
+///
+/// AES-GCM file format: [12-byte nonce][16-byte tag][ciphertext]
+/// DPAPI file format: opaque byte array managed by Windows.
+///
+/// Migration: On Windows, if DPAPI decryption fails, falls back to AES-GCM
+/// to transparently migrate settings encrypted by previous versions. The legacy
+/// key file is cleaned up after the first successful DPAPI encryption.
 /// </summary>
 internal static class SettingsEncryption
 {
@@ -20,12 +29,31 @@ internal static class SettingsEncryption
     private const int TagSizeBytes = 16;   // GCM standard
 
     /// <summary>
-    /// Encrypts plaintext JSON to a byte array (nonce + tag + ciphertext).
+    /// Encrypts plaintext JSON to a byte array.
     /// </summary>
     public static byte[] Encrypt(string json, string settingsDirectory)
     {
-        var key = GetOrCreateKey(settingsDirectory);
         var plaintext = Encoding.UTF8.GetBytes(json);
+
+#if WINDOWS
+        // DPAPI: OS-managed encryption tied to the current user account.
+        // No key file needed — eliminates the .settings.key file pattern
+        // that can trigger AV heuristics (resembles ransomware key storage).
+        var result = System.Security.Cryptography.ProtectedData.Protect(
+            plaintext, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+
+        // Clean up legacy AES key file after successful DPAPI encryption
+        try
+        {
+            var keyPath = Path.Combine(settingsDirectory, KeyFileName);
+            if (File.Exists(keyPath)) File.Delete(keyPath);
+        }
+        catch { /* best effort */ }
+
+        return result;
+#else
+        // AES-256-GCM with local key file (macOS/Linux)
+        var key = GetOrCreateKey(settingsDirectory);
 
         var nonce = new byte[NonceSizeBytes];
         RandomNumberGenerator.Fill(nonce);
@@ -43,6 +71,7 @@ internal static class SettingsEncryption
         ciphertext.CopyTo(result, NonceSizeBytes + TagSizeBytes);
 
         return result;
+#endif
     }
 
     /// <summary>
@@ -51,6 +80,21 @@ internal static class SettingsEncryption
     /// </summary>
     public static string Decrypt(byte[] data, string settingsDirectory)
     {
+#if WINDOWS
+        // Try DPAPI first (current format on Windows)
+        try
+        {
+            var plaintext = System.Security.Cryptography.ProtectedData.Unprotect(
+                data, null, System.Security.Cryptography.DataProtectionScope.CurrentUser);
+            return Encoding.UTF8.GetString(plaintext);
+        }
+        catch (CryptographicException) when (File.Exists(Path.Combine(settingsDirectory, KeyFileName)))
+        {
+            // DPAPI failed but legacy AES key exists — fall through to AES-GCM migration
+        }
+#endif
+
+        // AES-GCM decryption (primary on macOS/Linux, migration fallback on Windows)
         if (data.Length < NonceSizeBytes + TagSizeBytes)
             throw new CryptographicException("Data too short to be a valid encrypted settings file.");
 
@@ -60,12 +104,12 @@ internal static class SettingsEncryption
         var tag = data.AsSpan(NonceSizeBytes, TagSizeBytes);
         var ciphertext = data.AsSpan(NonceSizeBytes + TagSizeBytes);
 
-        var plaintext = new byte[ciphertext.Length];
+        var plaintext2 = new byte[ciphertext.Length];
 
         using var aes = new AesGcm(key, TagSizeBytes);
-        aes.Decrypt(nonce, ciphertext, tag, plaintext);
+        aes.Decrypt(nonce, ciphertext, tag, plaintext2);
 
-        return Encoding.UTF8.GetString(plaintext);
+        return Encoding.UTF8.GetString(plaintext2);
     }
 
     /// <summary>
@@ -88,7 +132,12 @@ internal static class SettingsEncryption
         return start < data.Length && data[start] == (byte)'{';
     }
 
-    private static byte[] GetOrCreateKey(string settingsDirectory)
+    // GetOrCreateKey and SetRestrictivePermissions are always available:
+    // - Primary use on macOS/Linux (AES-GCM encryption)
+    // - Migration fallback on Windows (reading legacy AES key)
+    // - Tests (cross-platform)
+
+    internal static byte[] GetOrCreateKey(string settingsDirectory)
     {
         var keyPath = Path.Combine(settingsDirectory, KeyFileName);
 
@@ -110,7 +159,7 @@ internal static class SettingsEncryption
     private static void SetRestrictivePermissions(string path)
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            return; // Windows NTFS inherits user-profile ACLs — sufficient for desktop app
+            return; // Windows: DPAPI handles security; NTFS ACLs protect fallback key file
 
         // macOS / Linux: chmod 600 (owner read/write only)
         try

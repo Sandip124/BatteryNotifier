@@ -164,7 +164,7 @@ public static class NotificationPlatformService
             ";
 
             ExecuteCommandWithStdin("powershell",
-                "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command -",
+                ["-NoProfile", "-NonInteractive", "-Command", "-"],
                 script);
         }
         catch (Exception ex)
@@ -252,10 +252,10 @@ public static class NotificationPlatformService
 
     private static void ExecuteCommandWithStdin(string command, string stdinContent)
     {
-        ExecuteCommandWithStdin(command, string.Empty, stdinContent);
+        ExecuteCommandWithStdin(command, [], stdinContent);
     }
 
-    private static void ExecuteCommandWithStdin(string command, string arguments, string stdinContent)
+    private static void ExecuteCommandWithStdin(string command, string[] args, string stdinContent)
     {
         try
         {
@@ -264,7 +264,6 @@ public static class NotificationPlatformService
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = command,
-                    Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardInput = true,
                     RedirectStandardOutput = true,
@@ -272,6 +271,9 @@ public static class NotificationPlatformService
                     CreateNoWindow = true
                 }
             };
+
+            foreach (var arg in args)
+                process.StartInfo.ArgumentList.Add(arg);
 
             process.Start();
             process.StandardInput.Write(stdinContent);

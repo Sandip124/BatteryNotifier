@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 
@@ -43,28 +44,32 @@ public static class StartupManager
     {
         try
         {
-            var executablePath = GetExecutablePath();
-            // Use the Startup folder instead of registry to avoid antivirus false positives.
-            // %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
             var startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
             if (string.IsNullOrEmpty(startupDir)) return;
 
-            // A small VBScript wrapper launches the app without a visible console window.
-            var startupFile = Path.Combine(startupDir, $"{AppName}.vbs");
+            var lnkFile = Path.Combine(startupDir, $"{AppName}.lnk");
+
+            // Migrate: clean up legacy VBScript-based startup from previous versions
+            var oldVbsFile = Path.Combine(startupDir, $"{AppName}.vbs");
+            if (File.Exists(oldVbsFile))
+            {
+                try { File.Delete(oldVbsFile); } catch { }
+            }
 
             if (enabled)
             {
+                var executablePath = GetExecutablePath();
                 if (string.IsNullOrEmpty(executablePath)) return;
 
-                // VBScript that silently starts the app (no console flash)
-                var vbsContent = $"CreateObject(\"WScript.Shell\").Run Chr(34) & \"{EscapeForVbs(executablePath)}\" & Chr(34), 0, False";
-                File.WriteAllText(startupFile, vbsContent);
+#if WINDOWS
+                CreateShortcut(lnkFile, executablePath);
+#endif
             }
             else
             {
-                if (File.Exists(startupFile))
+                if (File.Exists(lnkFile))
                 {
-                    File.Delete(startupFile);
+                    File.Delete(lnkFile);
                 }
             }
         }
@@ -72,12 +77,6 @@ public static class StartupManager
         {
             Logger.Error(ex, "Failed to set Windows startup");
         }
-    }
-
-    private static string EscapeForVbs(string input)
-    {
-        // VBScript strings use "" to escape a double quote
-        return input.Replace("\"", "\"\"");
     }
 
     private static void SetMacStartup(bool enabled)
@@ -284,8 +283,12 @@ public static class StartupManager
             var startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
             if (string.IsNullOrEmpty(startupDir)) return false;
 
-            var startupFile = Path.Combine(startupDir, $"{AppName}.vbs");
-            return File.Exists(startupFile);
+            // Check for current .lnk shortcut
+            if (File.Exists(Path.Combine(startupDir, $"{AppName}.lnk")))
+                return true;
+
+            // Check for legacy .vbs (from previous versions, will be migrated on next enable)
+            return File.Exists(Path.Combine(startupDir, $"{AppName}.vbs"));
         }
         catch
         {
@@ -326,4 +329,68 @@ public static class StartupManager
             return false;
         }
     }
+
+    // ── Windows .lnk shortcut creation via COM interop ────────────────
+    // Replaces the previous VBScript approach which triggered AV false positives.
+
+#if WINDOWS
+    private static void CreateShortcut(string lnkPath, string targetPath)
+    {
+        var link = (IShellLinkW)new ShellLink();
+        try
+        {
+            link.SetPath(targetPath);
+            link.SetWorkingDirectory(Path.GetDirectoryName(targetPath) ?? "");
+            link.SetDescription("BatteryNotifier - Battery monitoring app");
+
+            var persistFile = (IPersistFile)link;
+            persistFile.Save(lnkPath, true);
+        }
+        finally
+        {
+            Marshal.ReleaseComObject(link);
+        }
+    }
+
+    [ComImport, Guid("00021401-0000-0000-C000-000000000046")]
+    private class ShellLink { }
+
+    [ComImport]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("000214F9-0000-0000-C000-000000000046")]
+    private interface IShellLinkW
+    {
+        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cch, IntPtr pfd, uint fFlags);
+        void GetIDList(out IntPtr ppidl);
+        void SetIDList(IntPtr pidl);
+        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cch);
+        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cch);
+        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cch);
+        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+        void GetHotkey(out ushort pwHotkey);
+        void SetHotkey(ushort wHotkey);
+        void GetShowCmd(out int piShowCmd);
+        void SetShowCmd(int iShowCmd);
+        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cch, out int piIcon);
+        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, uint dwReserved);
+        void Resolve(IntPtr hwnd, uint fFlags);
+        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+    }
+
+    [ComImport]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [Guid("0000010B-0000-0000-C000-000000000046")]
+    private interface IPersistFile
+    {
+        void GetClassID(out Guid pClassID);
+        void IsDirty();
+        void Load([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, uint dwMode);
+        void Save([MarshalAs(UnmanagedType.LPWStr)] string pszFileName, [MarshalAs(UnmanagedType.Bool)] bool fRemember);
+        void SaveCompleted([MarshalAs(UnmanagedType.LPWStr)] string pszFileName);
+        void GetCurFile([MarshalAs(UnmanagedType.LPWStr)] out string ppszFileName);
+    }
+#endif
 }

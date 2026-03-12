@@ -50,25 +50,13 @@ namespace BatteryNotifier.Core.Providers
                 BatteryLifeRemaining = -1
             };
 
+#if WINDOWS
             try
             {
-                // Use System.Management WMI on Windows
-                var batterySearcherType = Type.GetType("System.Management.ManagementObjectSearcher, System.Management");
-                if (batterySearcherType == null) return info;
-
-                using var searcher = Activator.CreateInstance(batterySearcherType, "SELECT * FROM Win32_Battery") as IDisposable;
-                var getMethod = batterySearcherType.GetMethod("Get", Type.EmptyTypes);
-                if (getMethod == null || searcher == null) return info;
-
-                var results = getMethod.Invoke(searcher, null) as System.Collections.IEnumerable;
-                if (results == null) return info;
-
-                foreach (var battery in results)
+                using var searcher = new System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Battery");
+                foreach (System.Management.ManagementObject battery in searcher.Get())
                 {
-                    var indexer = battery.GetType().GetProperty("Item", new[] { typeof(string) });
-                    if (indexer == null) continue;
-
-                    if (indexer.GetValue(battery, new object[] { "EstimatedChargeRemaining" }) is int chargeRemaining)
+                    if (battery["EstimatedChargeRemaining"] is int chargeRemaining)
                     {
                         info.BatteryLifePercent = chargeRemaining / 100f;
                         info.BatteryChargeStatus = chargeRemaining > 66
@@ -78,12 +66,12 @@ namespace BatteryNotifier.Core.Providers
                                 : BatteryChargeStatus.Critical;
                     }
 
-                    if (indexer.GetValue(battery, new object[] { "EstimatedRunTime" }) is int runTime && runTime > 0)
+                    if (battery["EstimatedRunTime"] is int runTime && runTime > 0)
                     {
                         info.BatteryLifeRemaining = runTime * 60;
                     }
 
-                    if (indexer.GetValue(battery, new object[] { "BatteryStatus" }) is int batteryStatus)
+                    if (battery["BatteryStatus"] is int batteryStatus)
                     {
                         if (batteryStatus == 2)
                         {
@@ -100,13 +88,14 @@ namespace BatteryNotifier.Core.Providers
                         }
                     }
 
-                    if (battery is IDisposable d) d.Dispose();
+                    battery.Dispose();
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting Windows battery information: {ex.Message}");
             }
+#endif
 
             return info;
         }

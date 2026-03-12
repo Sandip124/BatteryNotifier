@@ -22,7 +22,9 @@
         <!-- Publishing defaults (overridable via CLI -p: flags) -->
         <SelfContained>true</SelfContained>
         <PublishSingleFile>true</PublishSingleFile>
-        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <!-- false: native libs placed alongside exe instead of self-extracting to %TEMP%.
+             Self-extraction triggers Windows Defender (dotnet/runtime#46312, #2300). -->
+        <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
 
         <!-- Trimming: remove unused framework and library code -->

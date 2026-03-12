@@ -50,50 +50,30 @@ public sealed class BatteryMonitorService : IDisposable
 
     private void InitializeWmiWatcher()
     {
-        if (!OperatingSystem.IsWindows()) return;
-
+#if WINDOWS
         try
         {
-            // Use reflection to avoid compile-time dependency on System.Management
-            var queryType = Type.GetType("System.Management.WqlEventQuery, System.Management");
-            var watcherType = Type.GetType("System.Management.ManagementEventWatcher, System.Management");
-
-            if (queryType != null && watcherType != null)
-            {
-                var query = Activator.CreateInstance(queryType, "SELECT * FROM Win32_PowerManagementEvent");
-                var watcher = Activator.CreateInstance(watcherType, query);
-
-                if (watcher != null)
-                {
-                    var eventInfo = watcherType.GetEvent("EventArrived");
-                    if (eventInfo != null)
-                    {
-                        var handler = Delegate.CreateDelegate(
-                            eventInfo.EventHandlerType!,
-                            this,
-                            typeof(BatteryMonitorService).GetMethod(nameof(OnWmiPowerEventReflection),
-                                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!);
-                        eventInfo.AddEventHandler(watcher, handler);
-                    }
-
-                    watcherType.GetMethod("Start")?.Invoke(watcher, null);
-                    _powerEventWatcher = watcher as IDisposable;
-                }
-
-                _logger.Information("WMI Power event watcher initialized.");
-            }
+            var query = new System.Management.WqlEventQuery("SELECT * FROM Win32_PowerManagementEvent");
+            var watcher = new System.Management.ManagementEventWatcher(query);
+            watcher.EventArrived += OnWmiPowerEvent;
+            watcher.Start();
+            _powerEventWatcher = watcher;
+            _logger.Information("WMI Power event watcher initialized.");
         }
         catch (Exception ex)
         {
             _logger.Error(ex, "Failed to initialize WMI Power event watcher.");
         }
+#endif
     }
 
-    private void OnWmiPowerEventReflection(object sender, EventArgs e)
+#if WINDOWS
+    private void OnWmiPowerEvent(object sender, System.Management.EventArrivedEventArgs e)
     {
         _logger.Information("WMI Power event detected at {Timestamp:yyyy-MM-dd HH:mm:ss}", DateTime.Now);
         CheckBatteryAndPowerStatus(forceCheck: true);
     }
+#endif
 
     private async Task RunBatteryLevelMonitorAsync(CancellationToken token)
     {
