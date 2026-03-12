@@ -90,14 +90,10 @@ public partial class App : Application
             _trayIconService = new TrayIconService();
             _trayIconService.Initialize();
 
-            // Start minimized: hide directly to tray without showing the window.
-            // Setting WindowState.Minimized first causes a brief Dock bounce on macOS.
-            if (settings.StartMinimized)
-            {
-                desktop.MainWindow.ShowInTaskbar = false;
-                desktop.MainWindow.Hide();
-                Services.MacOSDockIconHelper.HideDockIcon();
-            }
+            // App always starts hidden in tray — user opens via tray icon "Show Window".
+            desktop.MainWindow.ShowInTaskbar = false;
+            desktop.MainWindow.Hide();
+            Services.MacOSDockIconHelper.HideDockIcon();
 
             // Hide to tray on window close (not actually close)
             desktop.MainWindow.Closing += (s, e) =>

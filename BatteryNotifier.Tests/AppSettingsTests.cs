@@ -25,7 +25,6 @@ public class AppSettingsTests
         Assert.Equal(25, settings.LowBatteryNotificationValue);
         Assert.Null(settings.FullBatteryNotificationMusic);
         Assert.Null(settings.LowBatteryNotificationMusic);
-        Assert.True(settings.StartMinimized);
         Assert.Equal(ThemeMode.System, settings.ThemeMode);
         Assert.True(settings.LaunchAtStartup);
     }

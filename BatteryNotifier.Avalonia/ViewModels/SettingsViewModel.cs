@@ -20,7 +20,6 @@ public class SettingsViewModel : ViewModelBase, IDisposable
     private bool _isSystemTheme;
     private bool _isLightTheme;
     private bool _isDarkTheme;
-    private bool _startMinimized;
     private bool _launchAtStartup;
     private bool _disposed;
 
@@ -84,14 +83,6 @@ public class SettingsViewModel : ViewModelBase, IDisposable
             })
             .DisposeWith(_disposables);
 
-        this.WhenAnyValue(x => x.StartMinimized)
-            .Skip(1)
-            .Subscribe(minimized =>
-            {
-                _settings.StartMinimized = minimized;
-                _settings.Save();
-            })
-            .DisposeWith(_disposables);
     }
 
     private void UpdateThresholds()
@@ -110,7 +101,6 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         _isSystemTheme = _settings.ThemeMode == ThemeMode.System;
         _isLightTheme = _settings.ThemeMode == ThemeMode.Light;
         _isDarkTheme = _settings.ThemeMode == ThemeMode.Dark;
-        _startMinimized = _settings.StartMinimized;
         _launchAtStartup = _settings.LaunchAtStartup;
     }
 
@@ -163,12 +153,6 @@ public class SettingsViewModel : ViewModelBase, IDisposable
     {
         get => _isDarkTheme;
         set => this.RaiseAndSetIfChanged(ref _isDarkTheme, value);
-    }
-
-    public bool StartMinimized
-    {
-        get => _startMinimized;
-        set => this.RaiseAndSetIfChanged(ref _startMinimized, value);
     }
 
     public bool LaunchAtStartup

@@ -112,14 +112,6 @@
                                                   Margin="0" Padding="0" />
                                 </Grid>
 
-                                <!-- Start Minimized -->
-                                <Grid ColumnDefinitions="*,Auto">
-                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Start minimized to tray</TextBlock>
-                                    <ToggleSwitch Grid.Column="1"
-                                                  IsChecked="{Binding StartMinimized}"
-                                                  OnContent="" OffContent=""
-                                                  Margin="0" Padding="0" />
-                                </Grid>
 
                             </StackPanel>
                         </Border>
