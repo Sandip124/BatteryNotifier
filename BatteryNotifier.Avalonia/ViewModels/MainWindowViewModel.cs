@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -227,13 +228,20 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         return PickFunnyPhrase();
     }
 
+    private static readonly Dictionary<string, Bitmap?> _bitmapCache = new();
+
     private static Bitmap? LoadAsset(string fileName)
     {
+        if (_bitmapCache.TryGetValue(fileName, out var cached))
+            return cached;
+
         try
         {
             var uri = new Uri($"avares://BatteryNotifier/Assets/{fileName}");
             using var stream = AssetLoader.Open(uri);
-            return new Bitmap(stream);
+            var bitmap = new Bitmap(stream);
+            _bitmapCache[fileName] = bitmap;
+            return bitmap;
         }
         catch
         {
