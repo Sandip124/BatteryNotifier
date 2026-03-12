@@ -2,6 +2,7 @@ using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Tests;
 
+[Collection("NotificationService")]
 public class NotificationServiceTests
 {
     private NotificationService CreateService()

@@ -2,6 +2,7 @@ using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Tests;
 
+[Collection("AppSettings")]
 public class AppSettingsTests
 {
     [Fact]

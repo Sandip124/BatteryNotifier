@@ -2,6 +2,7 @@ using BatteryNotifier.Core.Store;
 
 namespace BatteryNotifier.Tests;
 
+[Collection("BatteryManagerStore")]
 public class BatteryManagerStoreTests
 {
     [Theory]

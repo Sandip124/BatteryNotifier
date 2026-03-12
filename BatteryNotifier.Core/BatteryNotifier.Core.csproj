@@ -15,6 +15,10 @@
         <IsTrimmable>true</IsTrimmable>
     </PropertyGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="BatteryNotifier.Tests" />
+    </ItemGroup>
+
     <!-- Define WINDOWS constant when targeting Windows so NAudio/WMI code compiles conditionally -->
     <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
         <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
