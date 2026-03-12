@@ -175,15 +175,20 @@ public sealed class NotificationService : IDisposable
     }
 
     /// <summary>
-    /// Reset all notification trackers. Called on significant state changes.
+    /// Reset all notification trackers and discard any queued pending notifications.
+    /// Called on significant state changes (e.g. charger plugged/unplugged) so that
+    /// stale notifications (like "unplug charger") are never delivered after the
+    /// state they refer to has already changed.
     /// </summary>
     public void ResetAllTrackers()
     {
         lock (_trackersLock)
         {
             _trackers.Clear();
-            Logger.Information("All notification trackers reset");
         }
+
+        ClearPendingNotifications();
+        Logger.Information("All notification trackers and pending notifications reset");
     }
 
     private void ScheduleFlush()
