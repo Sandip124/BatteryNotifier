@@ -8,12 +8,27 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <LangVersion>latestmajor</LangVersion>
         <ApplicationIcon>Assets\battery-notifier-logo.ico</ApplicationIcon>
+
+        <!-- Security hardening -->
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisLevel>latest-all</AnalysisLevel>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     </PropertyGroup>
 
     <ItemGroup>
-        <Folder Include="Models\"/>
-        <AvaloniaResource Include="Assets\**"/>
-        <Folder Include="Styles\" />
+        <!-- Embed all assets as Avalonia resources, except platform icon files that need to be on disk -->
+        <AvaloniaResource Include="Assets\**" Exclude="Assets\battery-notifier-logo.icns" />
+    </ItemGroup>
+
+    <!-- macOS: Info.plist + .icns icon for Dock display -->
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="Assets/battery-notifier-logo.icns" CopyToOutputDirectory="PreserveNewest" Link="battery-notifier-logo.icns" />
+    </ItemGroup>
+
+    <!-- Linux: .png icon for .desktop entry -->
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <Content Include="Assets/BatteryNotifierLogo.png" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
 

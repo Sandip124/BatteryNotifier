@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="BatteryNotifier.Avalonia.App"
              xmlns:local="using:BatteryNotifier.Avalonia"
-             xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
              RequestedThemeVariant="Default">
     <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -17,14 +16,57 @@
     </Application.Styles>
 
     <Application.Resources>
+        <!-- Theme-aware brushes -->
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Default fallback ensures resources resolve before theme variant is determined -->
+                <ResourceDictionary x:Key="Default">
+                    <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="AppCardBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
+                    <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
+                    <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
+                    <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="AppAccentForeground" Color="#4CA6FF" />
+                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#111111" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
+                    <SolidColorBrush x:Key="AppCardBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
+                    <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
+                    <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
+                    <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="AppAccentForeground" Color="#4CA6FF" />
+                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#111111" />
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AppWindowBackground" Color="#F5F5F5" />
+                    <SolidColorBrush x:Key="AppCardBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="AppHoverBackground" Color="#E8E8E8" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#E0E0E0" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="AppForeground" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSubtleText" Color="#6B6B6B" />
+                    <SolidColorBrush x:Key="AppCardBorder" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="AppAccentForeground" Color="#2870BD" />
+                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#EBEBEB" />
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
+
         <ControlTheme x:Key="PrimaryButton" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
-            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
             <Setter Property="Padding" Value="6" />
             <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="HorizontalAlignment" Value="Left"></Setter>
-            <Setter Property="VerticalAlignment" Value="Center"></Setter>
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="BorderBrush" Value="Transparent" />
 
@@ -41,28 +83,24 @@
                             ClipToBounds="True">
                         <ContentPresenter
                             Foreground="{TemplateBinding Foreground}"
-                            Content="{TemplateBinding Content}"
-                             />
+                            Content="{TemplateBinding Content}" />
                     </Border>
-                </ControlTemplate>  
+                </ControlTemplate>
             </Setter>
 
             <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="#121212" />
-                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Background" Value="{DynamicResource AppHoverBackground}" />
             </Style>
         </ControlTheme>
-        
+
         <ControlTheme x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-            <Setter Property="Background" Value="#373737" />
-            
+            <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonBg}" />
+
             <Style Selector="^:pointerover">
-                <Setter Property="Background" Value="#4B4848" />
-                <Setter Property="Foreground" Value="White" />
+                <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
             </Style>
         </ControlTheme>
-      
-        
+
     </Application.Resources>
 
 </Application>

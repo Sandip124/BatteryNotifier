@@ -1,6 +1,9 @@
+using System;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Platform;
 using Avalonia.Styling;
 using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Avalonia.ViewModels;
@@ -32,40 +35,76 @@ public partial class App : Application
                 _ => ThemeVariant.Default
             };
 
-            desktop.MainWindow = new MainWindow
+            // Set shutdown mode to explicit — app stays alive when window is hidden
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+            var mainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel(),
             };
 
-            // Configure launch at startup
-            if (settings.LaunchAtStartup)
+            // Load a platform-appropriate icon size for the window title bar.
+            try
             {
-                StartupManager.SetStartup(true);
+                using var iconStream = AssetLoader.Open(
+                    new Uri("avares://BatteryNotifier.Avalonia/Assets/battery-notifier-logo-48.png"));
+                mainWindow.Icon = new WindowIcon(iconStream);
+            }
+            catch
+            {
+                // Falls back to the .ico set in XAML
+            }
+
+            // On macOS, Window.Icon only sets the title bar icon.
+            // The Dock icon requires NSApplication.shared.applicationIconImage.
+            if (OperatingSystem.IsMacOS())
+            {
+                try
+                {
+                    using var dockIconStream = AssetLoader.Open(
+                        new Uri("avares://BatteryNotifier.Avalonia/Assets/battery-notifier-logo-128.png"));
+                    using var ms = new System.IO.MemoryStream();
+                    dockIconStream.CopyTo(ms);
+                    MacOSDockIconHelper.SetDockIcon(ms.ToArray());
+                }
+                catch
+                {
+                    // Non-critical — generic Dock icon stays
+                }
+            }
+
+            desktop.MainWindow = mainWindow;
+
+            // Configure launch at startup
+            try
+            {
+                if (settings.LaunchAtStartup)
+                {
+                    StartupManager.SetStartup(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Startup manager error: {ex.Message}");
             }
 
             // Initialize tray icon
             _trayIconService = new TrayIconService();
             _trayIconService.Initialize();
 
-            // Apply start minimized
+            // Start minimized: hide directly to tray without showing the window.
+            // Setting WindowState.Minimized first causes a brief Dock bounce on macOS.
             if (settings.StartMinimized)
             {
-                desktop.MainWindow.WindowState = global::Avalonia.Controls.WindowState.Minimized;
+                desktop.MainWindow.ShowInTaskbar = false;
                 desktop.MainWindow.Hide();
             }
 
-            // Minimize to tray on close
+            // Hide to tray on window close (not actually close)
             desktop.MainWindow.Closing += (s, e) =>
             {
                 e.Cancel = true;
                 desktop.MainWindow.Hide();
-
-                if (desktop.MainWindow.WindowState == global::Avalonia.Controls.WindowState.Normal)
-                {
-                    settings.WindowPositionX = (int)desktop.MainWindow.Position.X;
-                    settings.WindowPositionY = (int)desktop.MainWindow.Position.Y;
-                    settings.Save();
-                }
             };
 
             desktop.Exit += (s, e) =>
