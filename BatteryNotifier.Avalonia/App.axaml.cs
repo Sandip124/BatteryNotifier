@@ -193,14 +193,20 @@ public partial class App : Application
                 {
                     var dir = System.IO.Path.GetDirectoryName(path)!;
                     if (OperatingSystem.IsMacOS())
-                        System.Diagnostics.Process.Start(
+                    {
+                        using var p = System.Diagnostics.Process.Start(
                             new System.Diagnostics.ProcessStartInfo("open") { ArgumentList = { "-R", path } });
+                    }
                     else if (OperatingSystem.IsWindows())
-                        System.Diagnostics.Process.Start(
+                    {
+                        using var p = System.Diagnostics.Process.Start(
                             new System.Diagnostics.ProcessStartInfo("explorer") { ArgumentList = { "/select,", path } });
+                    }
                     else
-                        System.Diagnostics.Process.Start(
+                    {
+                        using var p = System.Diagnostics.Process.Start(
                             new System.Diagnostics.ProcessStartInfo("xdg-open") { ArgumentList = { dir } });
+                    }
                 }
                 catch { }
             }

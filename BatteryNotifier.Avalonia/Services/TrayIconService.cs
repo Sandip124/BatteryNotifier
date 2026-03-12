@@ -28,6 +28,15 @@ public class TrayIconService : IDisposable
     private CancellationTokenSource? _tooltipRevertCts;
     private bool _disposed;
 
+    // Store menu items for clean unsubscription in Dispose
+    private NativeMenuItem? _showMenuItem;
+    private NativeMenuItem? _hideMenuItem;
+    private NativeMenuItem? _settingsMenuItem;
+    private NativeMenuItem? _sendLogsMenuItem;
+    private NativeMenuItem? _githubMenuItem;
+    private NativeMenuItem? _updateMenuItem;
+    private NativeMenuItem? _exitMenuItem;
+
     public TrayIconService()
     {
         _logger = BatteryNotifierAppLogger.ForContext<TrayIconService>();
@@ -56,36 +65,36 @@ public class TrayIconService : IDisposable
             // Create menu
             _trayMenu = new NativeMenu();
 
-            var showMenuItem = new NativeMenuItem { Header = "Show Window" };
-            showMenuItem.Click += OnShowWindow;
+            _showMenuItem = new NativeMenuItem { Header = "Show Window" };
+            _showMenuItem.Click += OnShowWindow;
 
-            var hideMenuItem = new NativeMenuItem { Header = "Hide Window" };
-            hideMenuItem.Click += OnHideWindow;
+            _hideMenuItem = new NativeMenuItem { Header = "Hide Window" };
+            _hideMenuItem.Click += OnHideWindow;
 
-            var settingsMenuItem = new NativeMenuItem { Header = "Settings" };
-            settingsMenuItem.Click += OnOpenSettings;
+            _settingsMenuItem = new NativeMenuItem { Header = "Settings" };
+            _settingsMenuItem.Click += OnOpenSettings;
 
-            var sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
-            sendLogsMenuItem.Click += OnSendLogs;
+            _sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
+            _sendLogsMenuItem.Click += OnSendLogs;
 
-            var githubMenuItem = new NativeMenuItem { Header = "GitHub" };
-            githubMenuItem.Click += OnOpenGitHub;
+            _githubMenuItem = new NativeMenuItem { Header = "GitHub" };
+            _githubMenuItem.Click += OnOpenGitHub;
 
-            var updateMenuItem = new NativeMenuItem { Header = "Check for Updates..." };
-            updateMenuItem.Click += OnCheckForUpdates;
+            _updateMenuItem = new NativeMenuItem { Header = "Check for Updates..." };
+            _updateMenuItem.Click += OnCheckForUpdates;
 
-            var exitMenuItem = new NativeMenuItem { Header = "Exit" };
-            exitMenuItem.Click += OnExit;
+            _exitMenuItem = new NativeMenuItem { Header = "Exit" };
+            _exitMenuItem.Click += OnExit;
 
-            _trayMenu.Add(showMenuItem);
-            _trayMenu.Add(hideMenuItem);
-            _trayMenu.Add(settingsMenuItem);
+            _trayMenu.Add(_showMenuItem);
+            _trayMenu.Add(_hideMenuItem);
+            _trayMenu.Add(_settingsMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
-            _trayMenu.Add(updateMenuItem);
-            _trayMenu.Add(sendLogsMenuItem);
-            _trayMenu.Add(githubMenuItem);
+            _trayMenu.Add(_updateMenuItem);
+            _trayMenu.Add(_sendLogsMenuItem);
+            _trayMenu.Add(_githubMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
-            _trayMenu.Add(exitMenuItem);
+            _trayMenu.Add(_exitMenuItem);
 
             _trayIcon.Menu = _trayMenu;
 
@@ -458,14 +467,22 @@ public class TrayIconService : IDisposable
             _notificationManager?.Dispose();
             _notificationManager = null;
 
+            // Unsubscribe menu item Click handlers to prevent event leaks
+            if (_showMenuItem != null) { _showMenuItem.Click -= OnShowWindow; _showMenuItem = null; }
+            if (_hideMenuItem != null) { _hideMenuItem.Click -= OnHideWindow; _hideMenuItem = null; }
+            if (_settingsMenuItem != null) { _settingsMenuItem.Click -= OnOpenSettings; _settingsMenuItem = null; }
+            if (_sendLogsMenuItem != null) { _sendLogsMenuItem.Click -= OnSendLogs; _sendLogsMenuItem = null; }
+            if (_githubMenuItem != null) { _githubMenuItem.Click -= OnOpenGitHub; _githubMenuItem = null; }
+            if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
+            if (_exitMenuItem != null) { _exitMenuItem.Click -= OnExit; _exitMenuItem = null; }
+            _trayMenu = null;
+
             if (_trayIcon != null)
             {
                 _trayIcon.Clicked -= OnTrayIconClicked;
                 _trayIcon.Dispose();
                 _trayIcon = null;
             }
-
-            _trayMenu = null;
         }
         catch (Exception ex)
         {

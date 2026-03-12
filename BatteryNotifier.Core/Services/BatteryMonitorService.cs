@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Providers;
 using BatteryNotifier.Core.Store;
@@ -17,7 +18,10 @@ public sealed class BatteryMonitorService : IDisposable
     private volatile int _lowBatteryThreshold = 25;
     private volatile int _fullBatteryThreshold = 96;
 
-    private const int BatteryLevelCheckThresholdMs = 120000;
+    // Windows has WMI events and macOS has Darwin notify for instant power-state detection,
+    // so poll infrequently on those platforms. Linux has no easy event API — poll every 15s.
+    private static readonly int BatteryLevelCheckThresholdMs =
+        OperatingSystem.IsLinux() ? 15_000 : 120_000;
 
     public event EventHandler<BatteryStatusEventArgs>? BatteryStatusChanged;
     public event EventHandler<BatteryStatusEventArgs>? PowerLineStatusChanged;
@@ -25,6 +29,9 @@ public sealed class BatteryMonitorService : IDisposable
     private ILogger _logger;
     private CancellationTokenSource? _cts;
     private IDisposable? _powerEventWatcher;
+    private int _macNotifyToken = -1;
+    private int _macNotifyFd = -1;
+    private Thread? _macNotifyThread;
     private bool _disposed;
 
     private BatteryMonitorService()
@@ -42,6 +49,10 @@ public sealed class BatteryMonitorService : IDisposable
         if (OperatingSystem.IsWindows())
         {
             InitializeWmiWatcher();
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            InitializeMacPowerWatcher();
         }
 
         _cts = new CancellationTokenSource();
@@ -74,6 +85,70 @@ public sealed class BatteryMonitorService : IDisposable
         CheckBatteryAndPowerStatus(forceCheck: true);
     }
 #endif
+
+    // ── macOS: Darwin notify API for instant power source changes ──
+
+    [DllImport("libSystem.dylib")]
+    private static extern int notify_register_file_descriptor(
+        string name, ref int notify_fd, int flags, out int out_token);
+
+    [DllImport("libSystem.dylib")]
+    private static extern int notify_cancel(int token);
+
+    [DllImport("libSystem.dylib", SetLastError = true)]
+    private static extern nint read(int fd, byte[] buf, nint count);
+
+    [DllImport("libSystem.dylib")]
+    private static extern int close(int fd);
+
+    private void InitializeMacPowerWatcher()
+    {
+        try
+        {
+            int fd = -1;
+            var status = notify_register_file_descriptor(
+                "com.apple.system.powersources.timeremaining",
+                ref fd, 0, out var token);
+
+            if (status != 0)
+            {
+                _logger.Warning("Failed to register Darwin power notify (status={Status}). " +
+                                "Falling back to polling only.", status);
+                return;
+            }
+
+            _macNotifyFd = fd;
+            _macNotifyToken = token;
+
+            _macNotifyThread = new Thread(MacPowerNotifyLoop)
+            {
+                Name = "MacPowerNotify",
+                IsBackground = true
+            };
+            _macNotifyThread.Start();
+
+            _logger.Information("macOS Darwin power source watcher initialized (fd={Fd}, token={Token}).", fd, token);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error(ex, "Failed to initialize macOS power source watcher.");
+        }
+    }
+
+    private void MacPowerNotifyLoop()
+    {
+        // Each notification delivers a 4-byte int (the token) on the fd.
+        var buf = new byte[4];
+        while (!_disposed)
+        {
+            // Blocks until a power source change notification arrives
+            var bytesRead = read(_macNotifyFd, buf, 4);
+            if (bytesRead <= 0 || _disposed) break;
+
+            _logger.Information("macOS power source change detected at {Timestamp:yyyy-MM-dd HH:mm:ss}", DateTime.Now);
+            CheckBatteryAndPowerStatus(forceCheck: true);
+        }
+    }
 
     private async Task RunBatteryLevelMonitorAsync(CancellationToken token)
     {
@@ -282,6 +357,11 @@ public sealed class BatteryMonitorService : IDisposable
         return NotificationTemplates.GetFullBatteryMessage(level, escalation);
     }
 
+    /// <summary>
+    /// Triggers an immediate battery status check (e.g., when the window becomes visible).
+    /// </summary>
+    public void ForceCheck() => CheckBatteryAndPowerStatus(forceCheck: true);
+
     public void SetThresholds(int lowThreshold, int fullThreshold)
     {
         _lowBatteryThreshold = lowThreshold;
@@ -335,18 +415,40 @@ public sealed class BatteryMonitorService : IDisposable
     public void Dispose()
     {
         if (_disposed) return;
+        _disposed = true;
 
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;
 
+        // Unsubscribe WMI event handler before disposing the watcher
+#if WINDOWS
+        if (_powerEventWatcher is System.Management.ManagementEventWatcher wmiWatcher)
+        {
+            wmiWatcher.EventArrived -= OnWmiPowerEvent;
+        }
+#endif
         _powerEventWatcher?.Dispose();
         _powerEventWatcher = null;
 
+        // Clean up macOS Darwin notify resources.
+        // Closing the fd unblocks the read() call in MacPowerNotifyLoop.
+        if (_macNotifyToken >= 0)
+        {
+            notify_cancel(_macNotifyToken);
+            _macNotifyToken = -1;
+        }
+        if (_macNotifyFd >= 0)
+        {
+            close(_macNotifyFd);
+            _macNotifyFd = -1;
+        }
+        // Wait for the notify thread to exit (read() returns after fd is closed)
+        _macNotifyThread?.Join(3000);
+        _macNotifyThread = null;
+
         BatteryStatusChanged = null;
         PowerLineStatusChanged = null;
-
-        _disposed = true;
     }
 }
 
