@@ -1,12 +1,15 @@
 using System;
-using System.IO;
-using System.Reflection;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using BatteryNotifier.Avalonia.ViewModels;
+using BatteryNotifier.Avalonia.Views;
+using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
@@ -54,26 +57,38 @@ public class TrayIconService : IDisposable
             var showMenuItem = new NativeMenuItem { Header = "Show Window" };
             showMenuItem.Click += OnShowWindow;
 
+            var settingsMenuItem = new NativeMenuItem { Header = "Settings" };
+            settingsMenuItem.Click += OnOpenSettings;
+
+            var githubMenuItem = new NativeMenuItem { Header = "GitHub" };
+            githubMenuItem.Click += OnOpenGitHub;
+
             var exitMenuItem = new NativeMenuItem { Header = "Exit" };
             exitMenuItem.Click += OnExit;
 
             _trayMenu.Add(showMenuItem);
+            _trayMenu.Add(settingsMenuItem);
+            _trayMenu.Add(new NativeMenuItemSeparator());
+            _trayMenu.Add(githubMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(exitMenuItem);
 
             _trayIcon.Menu = _trayMenu;
 
-            // Handle double-click
+            // Handle click
             _trayIcon.Clicked += OnTrayIconClicked;
 
             // Subscribe to battery changes to update icon
-            BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
-
-            // Subscribe to notifications
-            NotificationService.Instance.NotificationReceived += OnNotificationReceived;
-
-            // Initialize notification manager
-            _notificationManager = new NotificationManager(new SoundManager());
+            try
+            {
+                BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
+                NotificationService.Instance.NotificationReceived += OnNotificationReceived;
+                _notificationManager = new NotificationManager(new SoundManager());
+            }
+            catch (Exception serviceEx)
+            {
+                _logger.Warning(serviceEx, "Some battery services could not be initialized on this platform");
+            }
 
             _logger.Information("TrayIcon initialized successfully");
         }
@@ -93,8 +108,8 @@ public class TrayIconService : IDisposable
         if (_trayIcon == null) return;
 
         var batteryPercent = BatteryManagerStore.Instance.BatteryLifePercent;
-        var isCharging = BatteryManagerStore.Instance.IsCharging;
-        var status = isCharging ? "Charging" : "Discharging";
+        var store = BatteryManagerStore.Instance;
+        var status = store.IsCharging ? "Charging" : store.IsPluggedIn ? "Plugged In" : "Discharging";
 
         _trayIcon.ToolTipText = $"Battery Notifier - {batteryPercent:F0}% ({status})";
     }
@@ -126,8 +141,6 @@ public class TrayIconService : IDisposable
             // Remove emoji from message for cleaner notification
             var message = notification.Message.Replace("🔋", "").Trim();
 
-            // Avalonia's TrayIcon doesn't have built-in notification support
-            // We'll need to use platform-specific notifications
             ShowPlatformNotification(title, message);
         }
         catch (Exception ex)
@@ -138,13 +151,11 @@ public class TrayIconService : IDisposable
 
     private void ShowPlatformNotification(string title, string message)
     {
-        // Use native notification service for platform-specific notifications
         NotificationPlatformService.ShowNativeNotification(title, message);
 
         // Also update tooltip temporarily
         if (_trayIcon != null)
         {
-            var originalTooltip = _trayIcon.ToolTipText;
             _trayIcon.ToolTipText = $"{title}: {message}";
 
             // Reset tooltip after a delay
@@ -164,20 +175,48 @@ public class TrayIconService : IDisposable
 
     private void ShowMainWindow()
     {
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            if (desktop.MainWindow != null)
-            {
-                desktop.MainWindow.Show();
-                desktop.MainWindow.Activate();
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
 
-                // Bring to front
-                if (desktop.MainWindow.WindowState == WindowState.Minimized)
-                {
-                    desktop.MainWindow.WindowState = WindowState.Normal;
-                }
-            }
+        if (desktop.MainWindow is not MainWindow mainWindow)
+            return;
+
+        // Position near notification area before showing
+        mainWindow.PositionNearNotificationArea();
+        mainWindow.Show();
+        mainWindow.Activate();
+
+        if (mainWindow.WindowState == WindowState.Minimized)
+        {
+            mainWindow.WindowState = WindowState.Normal;
         }
+    }
+
+    private void OnOpenSettings(object? sender, EventArgs e)
+    {
+        ShowMainWindow();
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow?.DataContext is MainWindowViewModel vm
+            && vm.CurrentView == null)
+        {
+            vm.NavigateToSettingsCommand.Execute().Subscribe();
+        }
+    }
+
+    private void OnOpenGitHub(object? sender, EventArgs e)
+    {
+        try
+        {
+            var url = Constants.SourceRepositoryUrl;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                Process.Start("open", url);
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            else
+                Process.Start("xdg-open", url);
+        }
+        catch { }
     }
 
     private void OnExit(object? sender, EventArgs e)
@@ -194,8 +233,12 @@ public class TrayIconService : IDisposable
 
         try
         {
-            BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
-            NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+            try
+            {
+                BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
+                NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+            }
+            catch { }
 
             _notificationManager?.Dispose();
             _notificationManager = null;
