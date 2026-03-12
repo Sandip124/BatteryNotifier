@@ -44,24 +44,40 @@ public static class StartupManager
         try
         {
             var executablePath = GetExecutablePath();
-            var keyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
+            // Use the Startup folder instead of registry to avoid antivirus false positives.
+            // %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
+            var startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            if (string.IsNullOrEmpty(startupDir)) return;
 
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath, true);
-            if (key == null) return;
+            // A small VBScript wrapper launches the app without a visible console window.
+            var startupFile = Path.Combine(startupDir, $"{AppName}.vbs");
 
             if (enabled)
             {
-                key.SetValue(AppName, $"\"{executablePath}\"");
+                if (string.IsNullOrEmpty(executablePath)) return;
+
+                // VBScript that silently starts the app (no console flash)
+                var vbsContent = $"CreateObject(\"WScript.Shell\").Run Chr(34) & \"{EscapeForVbs(executablePath)}\" & Chr(34), 0, False";
+                File.WriteAllText(startupFile, vbsContent);
             }
             else
             {
-                key.DeleteValue(AppName, false);
+                if (File.Exists(startupFile))
+                {
+                    File.Delete(startupFile);
+                }
             }
         }
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to set Windows startup");
         }
+    }
+
+    private static string EscapeForVbs(string input)
+    {
+        // VBScript strings use "" to escape a double quote
+        return input.Replace("\"", "\"\"");
     }
 
     private static void SetMacStartup(bool enabled)
@@ -102,14 +118,14 @@ public static class StartupManager
                 File.WriteAllText(plistPath, plistContent);
 
                 // Load the launch agent
-                ExecuteCommand("launchctl", $"load \"{plistPath}\"");
+                ExecuteCommand("launchctl", "load", plistPath);
             }
             else
             {
                 if (File.Exists(plistPath))
                 {
                     // Unload the launch agent
-                    ExecuteCommand("launchctl", $"unload \"{plistPath}\"");
+                    ExecuteCommand("launchctl", "unload", plistPath);
                     File.Delete(plistPath);
                 }
             }
@@ -138,13 +154,15 @@ public static class StartupManager
 
             if (enabled)
             {
-                var desktopContent = $@"[Desktop Entry]
-Type=Application
-Name={AppName}
-Exec={executablePath}
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true";
+                // Look for a .png icon next to the executable for the desktop entry
+                var iconPath = Path.Combine(Path.GetDirectoryName(executablePath) ?? ".", "BatteryNotifierLogo.png");
+
+                var desktopContent = $"[Desktop Entry]\nType=Application\nName={AppName}\nExec={executablePath}\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true";
+
+                if (File.Exists(iconPath))
+                {
+                    desktopContent += $"\nIcon={iconPath}";
+                }
 
                 File.WriteAllText(desktopFilePath, desktopContent);
             }
@@ -174,29 +192,31 @@ X-GNOME-Autostart-enabled=true";
         return System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
     }
 
-    private static void ExecuteCommand(string command, string arguments)
+    private static void ExecuteCommand(string command, params string[] args)
     {
         try
         {
-            var process = new System.Diagnostics.Process
+            using var process = new System.Diagnostics.Process
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = command,
-                    Arguments = arguments,
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 }
             };
+            // Use ArgumentList to prevent shell injection via crafted file paths
+            foreach (var arg in args)
+                process.StartInfo.ArgumentList.Add(arg);
 
             process.Start();
             process.WaitForExit(5000);
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, $"Failed to execute command: {command} {arguments}");
+            Logger.Error(ex, "Failed to execute command: {Command}", command);
         }
     }
 
@@ -229,9 +249,11 @@ X-GNOME-Autostart-enabled=true";
     {
         try
         {
-            var keyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath, false);
-            return key?.GetValue(AppName) != null;
+            var startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
+            if (string.IsNullOrEmpty(startupDir)) return false;
+
+            var startupFile = Path.Combine(startupDir, $"{AppName}.vbs");
+            return File.Exists(startupFile);
         }
         catch
         {

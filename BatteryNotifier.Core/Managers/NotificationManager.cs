@@ -1,32 +1,17 @@
 using System;
 using System.Threading.Tasks;
-using System.Timers;
 using BatteryNotifier.Core.Services;
-using BatteryNotifier.Core.Utils;
-using Timer = System.Timers.Timer;
 
 namespace BatteryNotifier.Core.Managers
 {
     public class NotificationManager : IDisposable
     {
         private readonly SoundManager _soundManager;
-        private readonly Debouncer _debouncer = new();
-        private readonly Timer _pendingNotificationTimer;
         private bool _disposed;
 
         public NotificationManager(SoundManager soundManager)
         {
             _soundManager = soundManager;
-
-            _pendingNotificationTimer = new Timer(3000);
-            _pendingNotificationTimer.Elapsed += OnPendingNotificationTimerElapsed;
-            _pendingNotificationTimer.AutoReset = true;
-            _pendingNotificationTimer.Start();
-        }
-
-        private void OnPendingNotificationTimerElapsed(object? sender, ElapsedEventArgs e)
-        {
-            NotificationService.Instance.FlushPendingNotifications();
         }
 
         public async Task EmitGlobalNotification(NotificationMessage notificationMessage,
@@ -69,11 +54,7 @@ namespace BatteryNotifier.Core.Managers
         {
             if (!_disposed && disposing)
             {
-                _pendingNotificationTimer?.Stop();
-                _pendingNotificationTimer?.Dispose();
-
                 _soundManager?.StopSound();
-                _debouncer?.Dispose();
                 _disposed = true;
             }
         }

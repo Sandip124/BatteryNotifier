@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using BatteryNotifier.Core.Logger;
-using BatteryNotifier.Core.Utils;
 using NAudio.Wave;
 using Serilog;
 
@@ -16,7 +15,6 @@ namespace BatteryNotifier.Core.Managers
         private const int DefaultPlayDurationMs = 30000;
 
         private readonly ILogger _logger;
-        private readonly Debouncer _debouncer = new();
         private CancellationTokenSource? _cancellationTokenSource;
         private bool _isPlaying;
         private bool _disposed;
@@ -32,6 +30,13 @@ namespace BatteryNotifier.Core.Managers
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
             if (_isPlaying) return;
             if (string.IsNullOrEmpty(source) || !File.Exists(source)) return;
+
+            // Validate the path is a real, rooted file path (no command injection via crafted paths)
+            if (!Path.IsPathRooted(source) || Path.GetFullPath(source) != source)
+            {
+                _logger.Warning("Rejected non-canonical sound file path: {Path}", source);
+                return;
+            }
 
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource = new CancellationTokenSource();
@@ -104,7 +109,7 @@ namespace BatteryNotifier.Core.Managers
             var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
             do
             {
-                await RunProcess("afplay", $"\"{source}\"", token);
+                await RunProcess("afplay", source, token);
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
         }
 
@@ -116,26 +121,30 @@ namespace BatteryNotifier.Core.Managers
                 // Try paplay first (PulseAudio), fall back to aplay (ALSA)
                 try
                 {
-                    await RunProcess("paplay", $"\"{source}\"", token);
+                    await RunProcess("paplay", source, token);
                 }
                 catch
                 {
-                    await RunProcess("aplay", $"\"{source}\"", token);
+                    await RunProcess("aplay", source, token);
                 }
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
         }
 
-        private static async Task RunProcess(string command, string arguments, CancellationToken token)
+        /// <summary>
+        /// Runs a subprocess using ArgumentList (not Arguments string) to prevent shell injection.
+        /// </summary>
+        private static async Task RunProcess(string command, string filePath, CancellationToken token)
         {
             var psi = new ProcessStartInfo
             {
                 FileName = command,
-                Arguments = arguments,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
+            // ArgumentList passes the path as a single, properly-escaped argument
+            psi.ArgumentList.Add(filePath);
 
             using var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
             var tcs = new TaskCompletionSource<bool>();
@@ -179,7 +188,6 @@ namespace BatteryNotifier.Core.Managers
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
-            _debouncer?.Dispose();
 
             _disposed = true;
         }

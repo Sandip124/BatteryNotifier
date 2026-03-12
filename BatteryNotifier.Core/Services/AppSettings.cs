@@ -21,10 +21,7 @@ public sealed class AppSettings
     public string? LowBatteryNotificationMusic { get; set; }
 
     // Window Settings
-    public bool PinToWindow { get; set; } = false;
     public bool StartMinimized { get; set; } = true;
-    public int WindowPositionX { get; set; } = 0;
-    public int WindowPositionY { get; set; } = 0;
 
     // Theme Settings
     public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
@@ -75,10 +72,7 @@ public sealed class AppSettings
                 LowBatteryNotificationValue = settings.LowBatteryNotificationValue;
                 FullBatteryNotificationMusic = settings.FullBatteryNotificationMusic;
                 LowBatteryNotificationMusic = settings.LowBatteryNotificationMusic;
-                PinToWindow = settings.PinToWindow;
                 StartMinimized = settings.StartMinimized;
-                WindowPositionX = settings.WindowPositionX;
-                WindowPositionY = settings.WindowPositionY;
                 ThemeMode = settings.ThemeMode;
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AppId = settings.AppId;
@@ -101,7 +95,9 @@ public sealed class AppSettings
             };
 
             var json = JsonSerializer.Serialize(this, options);
-            File.WriteAllText(SettingsFilePath, json);
+            var tmpPath = SettingsFilePath + ".tmp";
+            File.WriteAllText(tmpPath, json);
+            File.Move(tmpPath, SettingsFilePath, overwrite: true);
         }
         catch (Exception)
         {
@@ -117,10 +113,7 @@ public sealed class AppSettings
         LowBatteryNotificationValue = 25;
         FullBatteryNotificationMusic = null;
         LowBatteryNotificationMusic = null;
-        PinToWindow = false;
         StartMinimized = true;
-        WindowPositionX = 0;
-        WindowPositionY = 0;
         ThemeMode = ThemeMode.System;
         LaunchAtStartup = true;
 

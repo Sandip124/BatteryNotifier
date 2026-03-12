@@ -13,6 +13,7 @@ public sealed class BatteryManagerStore
     public double BatteryLifePercent { get; private set; }
 
     public bool IsCharging { get; private set; }
+    public bool IsPluggedIn { get; private set; }
     public bool HasNoBattery { get; private set; }
     public bool IsUnknown { get; private set; }
 
@@ -28,7 +29,11 @@ public sealed class BatteryManagerStore
         };
     }
 
-    public void SetChargingState(bool isCharging) => IsCharging = isCharging;
+    public void SetChargingState(bool isCharging, bool isPluggedIn)
+    {
+        IsCharging = isCharging;
+        IsPluggedIn = isPluggedIn;
+    }
     public void SetHasNoBattery(bool hasNoBattery) => HasNoBattery = hasNoBattery;
     public void SetIsUnknown(bool isUnknown) => IsUnknown = isUnknown;
     public void SetBatteryLife(int batteryLife) => BatteryLifeRemaining = batteryLife;

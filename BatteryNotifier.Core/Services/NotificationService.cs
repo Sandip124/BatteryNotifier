@@ -4,19 +4,24 @@ namespace BatteryNotifier.Core.Services;
 
 public sealed class NotificationService : IDisposable
 {
-    private static readonly Lazy<NotificationService> _instance = 
+    private static readonly Lazy<NotificationService> _instance =
         new Lazy<NotificationService>(() => new NotificationService());
-    
+
     public static NotificationService Instance => _instance.Value;
-    
+
     private readonly PriorityQueue<NotificationMessage, int> _notificationQueue;
     private readonly object _queueLock = new();
 
-    private readonly Dictionary<string, DateTime> _recentNotifications = new Dictionary<string, DateTime>();
+    private readonly Dictionary<string, DateTime> _recentNotifications =
+        new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
     private readonly object _recentNotificationsLock = new object();
 
-    private readonly Dictionary<string, NotificationMessage> _pendingNotifications = new Dictionary<string, NotificationMessage>();
+    private readonly Dictionary<string, NotificationMessage> _pendingNotifications =
+        new Dictionary<string, NotificationMessage>(StringComparer.OrdinalIgnoreCase);
     private readonly object _pendingLock = new object();
+
+    private Timer? _flushTimer;
+    private readonly object _flushTimerLock = new object();
 
     private TimeSpan DeduplicationInterval { get; set; } = TimeSpan.FromSeconds(30);
     private TimeSpan CleanupInterval { get; set; } = TimeSpan.FromMinutes(5);
@@ -24,16 +29,16 @@ public sealed class NotificationService : IDisposable
 
     private DateTime _lastCleanup = DateTime.Now;
     private DateTime _lastNotificationTime = DateTime.MinValue;
-    
+
     private bool _disposed = false;
-    
+
     public event EventHandler<NotificationMessage>? NotificationReceived;
-    
+
     private NotificationService()
     {
         _notificationQueue = new PriorityQueue<NotificationMessage, int>();
     }
-    
+
     public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000, string? tag = null)
     {
         var notification = new NotificationMessage
@@ -66,10 +71,30 @@ public sealed class NotificationService : IDisposable
                 var key = CreateNotificationKey(notification);
                 _pendingNotifications[key] = notification;
             }
+            ScheduleFlush();
             return;
         }
 
         EnqueueAndEmit(notification);
+    }
+
+    private void ScheduleFlush()
+    {
+        lock (_flushTimerLock)
+        {
+            // Already scheduled
+            if (_flushTimer != null) return;
+
+            _flushTimer = new Timer(_ =>
+            {
+                FlushPendingNotifications();
+                lock (_flushTimerLock)
+                {
+                    _flushTimer?.Dispose();
+                    _flushTimer = null;
+                }
+            }, null, (int)ThrottleInterval.TotalMilliseconds, Timeout.Infinite);
+        }
     }
 
     private void EnqueueAndEmit(NotificationMessage notification)
@@ -106,28 +131,28 @@ public sealed class NotificationService : IDisposable
             _pendingNotifications.Clear();
         }
     }
-    
+
     private bool ShouldDiscardDuplicate(NotificationMessage notification)
     {
         lock (_recentNotificationsLock)
         {
             string notificationKey = CreateNotificationKey(notification);
-            
+
             DateTime notificationTime = notification.Timestamp;
-            
+
             CleanupOldEntries(notificationTime);
-            
+
             if (_recentNotifications.TryGetValue(notificationKey, out DateTime lastSeen))
             {
                 TimeSpan timeSinceLastSeen = notificationTime - lastSeen;
-                
+
                 if (timeSinceLastSeen < DeduplicationInterval)
                 {
                     return true;
                 }
             }
-            
-            return false; 
+
+            return false;
         }
     }
 
@@ -140,9 +165,9 @@ public sealed class NotificationService : IDisposable
         }
     }
 
-    private string CreateNotificationKey(NotificationMessage notification)
+    private static string CreateNotificationKey(NotificationMessage notification)
     {
-        return $"{notification.Tag}_{notification.Message}_{notification.Type}".ToLowerInvariant();
+        return $"{notification.Tag}_{notification.Message}_{notification.Type}";
     }
 
     private void CleanupOldEntries(DateTime currentTime)
@@ -157,7 +182,7 @@ public sealed class NotificationService : IDisposable
             _recentNotifications.Remove(key);
         }
     }
-    
+
     public NotificationMessage? GetNextNotification()
     {
         lock (_queueLock)
@@ -170,7 +195,7 @@ public sealed class NotificationService : IDisposable
     {
         ThrottleInterval = interval;
     }
-    
+
     public int PendingCount
     {
         get
@@ -181,7 +206,7 @@ public sealed class NotificationService : IDisposable
             }
         }
     }
-    
+
     public void ClearNotifications()
     {
         lock (_queueLock)
@@ -205,7 +230,7 @@ public sealed class NotificationService : IDisposable
             _recentNotifications.Clear();
         }
     }
-    
+
     private void PerformPeriodicCleanup()
     {
         var now = DateTime.Now;
@@ -223,7 +248,7 @@ public sealed class NotificationService : IDisposable
     {
         DeduplicationInterval = interval;
     }
-    
+
     public void SetCleanUpInterval(TimeSpan interval)
     {
         CleanupInterval = interval;
@@ -239,11 +264,17 @@ public sealed class NotificationService : IDisposable
             }
         }
     }
-    
-     
+
+
     public void Dispose()
     {
         if (_disposed) return;
+
+        lock (_flushTimerLock)
+        {
+            _flushTimer?.Dispose();
+            _flushTimer = null;
+        }
 
         ClearNotifications();
         ClearPendingNotifications();
@@ -273,6 +304,11 @@ public class NotificationMessage
                    Type == other.Type;
         }
         return false;
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Message, Tag, Type);
     }
 }
 
