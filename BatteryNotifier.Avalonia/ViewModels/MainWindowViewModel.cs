@@ -46,6 +46,9 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Timer for cycling funny phrases — only runs while window is visible.</summary>
     private CancellationTokenSource? _phraseCts;
 
+    /// <summary>Cancels any in-progress typewriter animation.</summary>
+    private CancellationTokenSource? _typewriterCts;
+
     public MainWindowViewModel()
     {
         _fullBatteryNotification = _settings.FullBatteryNotification;
@@ -121,6 +124,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         {
             // Window hidden — stop all UI timers
             StopPhraseCycling();
+            CancelTypewriter();
             StatusMessage = string.Empty;
         }
     }
@@ -161,13 +165,63 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Refreshes only the time remaining text. If the OS provides a real estimate,
-    /// it uses that. Otherwise picks a new funny phrase.
+    /// Refreshes the time remaining text. Real estimates are shown instantly.
+    /// Funny phrases use a typewriter animation with thinking dots.
     /// </summary>
     private void RefreshTimeRemainingPhrase()
     {
         var store = BatteryManagerStore.Instance;
-        TimeRemaining = FormatTimeRemaining(store);
+        if (store.BatteryLifeRemaining > 0)
+        {
+            CancelTypewriter();
+            TimeRemaining = FormatTimeRemaining(store);
+        }
+        else
+        {
+            _ = TypewritePhrase(PickFunnyPhrase());
+        }
+    }
+
+    private void CancelTypewriter()
+    {
+        _typewriterCts?.Cancel();
+        _typewriterCts?.Dispose();
+        _typewriterCts = null;
+    }
+
+    private async Task TypewritePhrase(string phrase)
+    {
+        CancelTypewriter();
+        var cts = new CancellationTokenSource();
+        _typewriterCts = cts;
+        var ct = cts.Token;
+
+        try
+        {
+            // Phase 1: Thinking dots animation
+            for (int cycle = 0; cycle < 2; cycle++)
+            {
+                for (int dots = 1; dots <= 3; dots++)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    Dispatcher.UIThread.Post(() => TimeRemaining = new string('.', dots));
+                    await Task.Delay(300, ct);
+                }
+            }
+
+            // Phase 2: Type out the phrase character by character
+            for (int i = 1; i <= phrase.Length; i++)
+            {
+                ct.ThrowIfCancellationRequested();
+                var partial = phrase[..i];
+                Dispatcher.UIThread.Post(() => TimeRemaining = partial);
+                await Task.Delay(35, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // New phrase or real estimate replaced us — expected
+        }
     }
 
     private void OnBatteryStatusChanged(object? sender, BatteryStatusEventArgs e)
@@ -204,7 +258,15 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         else
             BatteryStatus = "Discharging";
 
-        TimeRemaining = FormatTimeRemaining(store);
+        if (store.BatteryLifeRemaining > 0)
+        {
+            CancelTypewriter();
+            TimeRemaining = FormatTimeRemaining(store);
+        }
+        else
+        {
+            _ = TypewritePhrase(PickFunnyPhrase());
+        }
 
         var assetName = store.BatteryState switch
         {
@@ -221,15 +283,10 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     private static string FormatTimeRemaining(BatteryManagerStore store)
     {
-        if (store.BatteryLifeRemaining > 0)
-        {
-            var ts = store.BatteryLifeRemainingInSeconds;
-            return store.IsCharging
-                ? $"{(int)ts.TotalHours}h {ts.Minutes}m until full"
-                : $"{(int)ts.TotalHours}h {ts.Minutes}m remaining";
-        }
-
-        return PickFunnyPhrase();
+        var ts = store.BatteryLifeRemainingInSeconds;
+        return store.IsCharging
+            ? $"{(int)ts.TotalHours}h {ts.Minutes}m until full"
+            : $"{(int)ts.TotalHours}h {ts.Minutes}m remaining";
     }
 
     private static readonly ConcurrentDictionary<string, Bitmap?> _bitmapCache = new();
@@ -522,6 +579,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         if (_disposed) return;
         StopPhraseCycling();
+        CancelTypewriter();
         _fullBatteryNotificationSub?.Dispose();
         _lowBatteryNotificationSub?.Dispose();
         CurrentView?.Dispose();

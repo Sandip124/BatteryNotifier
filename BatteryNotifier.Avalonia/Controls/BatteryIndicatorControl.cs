@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Controls;
 using Avalonia.Threading;
 
 namespace BatteryNotifier.Avalonia.Controls;
@@ -25,6 +26,7 @@ public class BatteryIndicatorControl : Control
     // Pulse animation state
     private DispatcherTimer? _pulseTimer;
     private double _pulsePhase;
+    private IDisposable? _visibilitySub;
 
     static BatteryIndicatorControl()
     {
@@ -51,12 +53,22 @@ public class BatteryIndicatorControl : Control
     {
         base.OnAttachedToVisualTree(e);
         ActualThemeVariantChanged += OnThemeChanged;
+
+        // Track parent window visibility — pauses pulse when window is hidden
+        if (VisualRoot is Window window)
+        {
+            _visibilitySub = window.GetObservable(Window.IsVisibleProperty)
+                .Subscribe(_ => UpdatePulseAnimation());
+        }
+
         UpdatePulseAnimation();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ActualThemeVariantChanged -= OnThemeChanged;
+        _visibilitySub?.Dispose();
+        _visibilitySub = null;
         StopPulseAnimation();
         base.OnDetachedFromVisualTree(e);
     }
@@ -65,7 +77,8 @@ public class BatteryIndicatorControl : Control
 
     private void UpdatePulseAnimation()
     {
-        if (IsCharging && VisualRoot != null)
+        var isVisible = VisualRoot is Window { IsVisible: true };
+        if (IsCharging && isVisible)
             StartPulseAnimation();
         else
             StopPulseAnimation();
