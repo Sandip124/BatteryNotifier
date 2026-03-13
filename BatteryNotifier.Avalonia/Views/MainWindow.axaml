@@ -28,7 +28,7 @@
               IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
 
             <!-- Header (drag handle) -->
-            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  
+            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="8"
                     Background="{DynamicResource AppHeaderBackground}"
                     PointerPressed="TitleBar_PointerPressed">
                 <Grid ColumnDefinitions="32,*,Auto,4,Auto" VerticalAlignment="Center">

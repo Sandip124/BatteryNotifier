@@ -8,7 +8,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Avalonia.Views;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
@@ -26,12 +25,11 @@ public class TrayIconService : IDisposable
     private NativeMenu? _trayMenu;
     private NotificationManager? _notificationManager;
     private CancellationTokenSource? _tooltipRevertCts;
+    private IDisposable? _visibilitySubscription;
     private bool _disposed;
 
     // Store menu items for clean unsubscription in Dispose
-    private NativeMenuItem? _showMenuItem;
-    private NativeMenuItem? _hideMenuItem;
-    private NativeMenuItem? _settingsMenuItem;
+    private NativeMenuItem? _showHideMenuItem;
     private NativeMenuItem? _sendLogsMenuItem;
     private NativeMenuItem? _githubMenuItem;
     private NativeMenuItem? _updateMenuItem;
@@ -65,14 +63,8 @@ public class TrayIconService : IDisposable
             // Create menu
             _trayMenu = new NativeMenu();
 
-            _showMenuItem = new NativeMenuItem { Header = "Show Window" };
-            _showMenuItem.Click += OnShowWindow;
-
-            _hideMenuItem = new NativeMenuItem { Header = "Hide Window" };
-            _hideMenuItem.Click += OnHideWindow;
-
-            _settingsMenuItem = new NativeMenuItem { Header = "Settings" };
-            _settingsMenuItem.Click += OnOpenSettings;
+            _showHideMenuItem = new NativeMenuItem { Header = "Show Window" };
+            _showHideMenuItem.Click += OnShowHideWindow;
 
             _sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
             _sendLogsMenuItem.Click += OnSendLogs;
@@ -86,9 +78,7 @@ public class TrayIconService : IDisposable
             _exitMenuItem = new NativeMenuItem { Header = "Exit" };
             _exitMenuItem.Click += OnExit;
 
-            _trayMenu.Add(_showMenuItem);
-            _trayMenu.Add(_hideMenuItem);
-            _trayMenu.Add(_settingsMenuItem);
+            _trayMenu.Add(_showHideMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_updateMenuItem);
             _trayMenu.Add(_sendLogsMenuItem);
@@ -111,6 +101,15 @@ public class TrayIconService : IDisposable
             catch (Exception serviceEx)
             {
                 _logger.Warning(serviceEx, "Some battery services could not be initialized on this platform");
+            }
+
+            // Subscribe to window visibility changes to keep tray menu label in sync.
+            // This catches hides from the in-window menu, the X button, tray toggle, etc.
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dt
+                && dt.MainWindow is { } mainWin)
+            {
+                _visibilitySubscription = mainWin.GetObservable(Window.IsVisibleProperty)
+                    .Subscribe(_ => UpdateShowHideMenuLabel());
             }
 
             // Start background update checks
@@ -250,20 +249,41 @@ public class TrayIconService : IDisposable
 
     private void OnTrayIconClicked(object? sender, EventArgs e)
     {
-        ShowMainWindow();
+        ToggleMainWindow();
     }
 
-    private void OnShowWindow(object? sender, EventArgs e)
+    private void OnShowHideWindow(object? sender, EventArgs e)
     {
-        ShowMainWindow();
+        ToggleMainWindow();
     }
 
-    private void OnHideWindow(object? sender, EventArgs e)
+    private void ToggleMainWindow()
     {
-        HideMainWindow();
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
+
+        if (desktop.MainWindow is { IsVisible: true })
+            HideMainWindow();
+        else
+            ShowMainWindow();
     }
 
-    private static void HideMainWindow()
+    private void UpdateShowHideMenuLabel()
+    {
+        if (_showHideMenuItem == null) return;
+
+        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            && desktop.MainWindow is { IsVisible: true })
+        {
+            _showHideMenuItem.Header = "Hide Window";
+        }
+        else
+        {
+            _showHideMenuItem.Header = "Show Window";
+        }
+    }
+
+    private void HideMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -294,19 +314,7 @@ public class TrayIconService : IDisposable
         }
     }
 
-    private void OnOpenSettings(object? sender, EventArgs e)
-    {
-        ShowMainWindow();
-
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow?.DataContext is MainWindowViewModel vm
-            && vm.CurrentView == null)
-        {
-            vm.NavigateToSettingsCommand.Execute().Subscribe();
-        }
-    }
-
-    private void OnSendLogs(object? sender, EventArgs e)
+private void OnSendLogs(object? sender, EventArgs e)
     {
         try
         {
@@ -460,6 +468,9 @@ public class TrayIconService : IDisposable
             }
             catch { }
 
+            _visibilitySubscription?.Dispose();
+            _visibilitySubscription = null;
+
             _tooltipRevertCts?.Cancel();
             _tooltipRevertCts?.Dispose();
             _tooltipRevertCts = null;
@@ -468,9 +479,7 @@ public class TrayIconService : IDisposable
             _notificationManager = null;
 
             // Unsubscribe menu item Click handlers to prevent event leaks
-            if (_showMenuItem != null) { _showMenuItem.Click -= OnShowWindow; _showMenuItem = null; }
-            if (_hideMenuItem != null) { _hideMenuItem.Click -= OnHideWindow; _hideMenuItem = null; }
-            if (_settingsMenuItem != null) { _settingsMenuItem.Click -= OnOpenSettings; _settingsMenuItem = null; }
+            if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }
             if (_sendLogsMenuItem != null) { _sendLogsMenuItem.Click -= OnSendLogs; _sendLogsMenuItem = null; }
             if (_githubMenuItem != null) { _githubMenuItem.Click -= OnOpenGitHub; _githubMenuItem = null; }
             if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
