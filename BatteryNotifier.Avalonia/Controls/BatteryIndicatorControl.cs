@@ -7,12 +7,14 @@ using Avalonia.Styling;
 namespace BatteryNotifier.Avalonia.Controls;
 
 /// <summary>
-/// Custom-rendered battery indicator with glossy 3D appearance matching the app asset style.
-/// Theme-aware: adapts shell, well, and border colors for light and dark modes.
-/// Shows exact charge level with state-colored fill and a status badge at bottom-center.
+/// Custom-rendered battery indicator with glossy 3D appearance.
+/// Theme-aware with sine-curve capsule geometry, ambient glow, glass reflections,
+/// and status badge overlay.
 /// </summary>
 public class BatteryIndicatorControl : Control
 {
+    // ── Styled properties ────────────────────────────────────────
+
     public static readonly StyledProperty<double> PercentageProperty =
         AvaloniaProperty.Register<BatteryIndicatorControl, double>(nameof(Percentage), 50);
 
@@ -23,6 +25,20 @@ public class BatteryIndicatorControl : Control
     {
         AffectsRender<BatteryIndicatorControl>(PercentageProperty, IsChargingProperty);
     }
+
+    public double Percentage
+    {
+        get => GetValue(PercentageProperty);
+        set => SetValue(PercentageProperty, value);
+    }
+
+    public bool IsCharging
+    {
+        get => GetValue(IsChargingProperty);
+        set => SetValue(IsChargingProperty, value);
+    }
+
+    // ── Lifecycle ────────────────────────────────────────────────
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
@@ -38,25 +54,12 @@ public class BatteryIndicatorControl : Control
 
     private void OnThemeChanged(object? sender, EventArgs e) => InvalidateVisual();
 
-    public double Percentage
-    {
-        get => GetValue(PercentageProperty);
-        set => SetValue(PercentageProperty, value);
-    }
-
-    public bool IsCharging
-    {
-        get => GetValue(IsChargingProperty);
-        set => SetValue(IsChargingProperty, value);
-    }
-
-    // ── Theme detection ──────────────────────────────────────────
+    // ── Theme ────────────────────────────────────────────────────
 
     private bool IsDark => ActualThemeVariant == ThemeVariant.Dark;
-
     private ThemePalette Palette => IsDark ? DarkPalette : LightPalette;
 
-    // ── Render ────────────────────────────────────────────────────
+    // ── Render ───────────────────────────────────────────────────
 
     public override void Render(DrawingContext ctx)
     {
@@ -67,36 +70,146 @@ public class BatteryIndicatorControl : Control
         var pct = Math.Clamp(Percentage, 0, 100) / 100.0;
         var p = Palette;
 
-        // Reserve space at bottom for badge overhang
         var badgeRadius = h * 0.18;
-        var badgeOverhang = badgeRadius * 0.50;
-        var batteryH = h - badgeOverhang;
+        var batteryH = h - badgeRadius * 0.50;
 
-        // ── Proportional layout ──
+        // Proportional layout
         var termW = w * 0.045;
         var termGap = w * 0.006;
         var bodyW = w - termW - termGap;
-        var cr = Math.Min(bodyW, batteryH) * 0.15;
-        var bw = Math.Max(1.5, Math.Min(bodyW, batteryH) * 0.03);
-        var inset = bw + Math.Max(2, batteryH * 0.045);
+        var bulge = batteryH * 0.06;
+        var inset = Math.Max(2, batteryH * 0.065);
 
-        var bodyRect = new Rect(0, 0, bodyW, batteryH);
-        var bodyRR = new RoundedRect(bodyRect, cr);
+        var bodyRect = new Rect(bulge, 0, bodyW - bulge * 2, batteryH);
+        var bodyGeo = CreateSineCapsule(bodyRect, bulge);
         var innerRect = bodyRect.Deflate(inset);
-        var innerCR = Math.Max(0, cr - inset);
-        var innerRR = new RoundedRect(innerRect, innerCR);
+        var innerBulge = bulge * 0.85;
+        var innerGeo = CreateSineCapsule(innerRect, innerBulge);
 
-        DrawBodyShell(ctx, bodyRR, bw, p);
-        DrawInnerWell(ctx, innerRR, p);
-        DrawFill(ctx, innerRect, innerRR, pct);
-        DrawGlassReflection(ctx, innerRect, innerRR);
-        DrawTerminal(ctx, bodyW + termGap, batteryH, termW, bw, cr, p);
+        // Draw layers back-to-front
+        DrawAmbientGlow(ctx, w, h);
+        DrawBodyShell(ctx, bodyGeo, bodyRect, p);
+        DrawInnerWell(ctx, innerGeo, innerRect, p);
+        DrawFill(ctx, innerRect, innerGeo, innerBulge, pct);
+        DrawGlassReflection(ctx, innerRect, innerGeo);
+        DrawTerminal(ctx, bodyW + termGap, batteryH, termW, p);
         DrawStatusBadge(ctx, bodyRect, badgeRadius, p);
+    }
+
+    // ── Geometry: Sine-curve capsule ─────────────────────────────
+    //
+    // Barrel/fisheye shape: left and right edges bow outward following
+    // sin(π·t). Corners use cubic Bezier curves for smooth transitions.
+
+    private static StreamGeometry CreateSineCapsule(Rect rect, double bulge)
+        => CreateSineCapsuleAsymmetric(rect, bulge, bulge);
+
+    private static StreamGeometry CreateSineCapsuleAsymmetric(Rect rect,
+        double leftBulge, double rightBulge, double cornerFactor = 0.12)
+    {
+        var geo = new StreamGeometry();
+        using var c = geo.Open();
+
+        const int segments = 24;
+        const int skip = 2;
+        double tSkip = (double)skip / segments;
+
+        var x = rect.X;
+        var y = rect.Y;
+        var w = rect.Width;
+        var h = rect.Height;
+        var cr = Math.Min(h * cornerFactor, w * 0.3);
+
+        // Start at top-left, go clockwise
+        c.BeginFigure(new Point(x, y + cr), true);
+
+        // Top-left corner
+        c.CubicBezierTo(new Point(x, y), new Point(x, y), new Point(x + cr, y));
+
+        // Top edge
+        c.LineTo(new Point(x + w - cr, y));
+
+        // Top-right corner → right sine curve
+        double trT = tSkip;
+        c.CubicBezierTo(
+            new Point(x + w, y),
+            new Point(x + w, y + cr * 0.4),
+            new Point(x + w + rightBulge * Math.Sin(Math.PI * trT), y + trT * h));
+
+        // Right edge (sine bulge)
+        for (int i = skip + 1; i <= segments - skip; i++)
+        {
+            double t = (double)i / segments;
+            c.LineTo(new Point(x + w + rightBulge * Math.Sin(Math.PI * t), y + t * h));
+        }
+
+        // Bottom-right corner
+        double brT = 1.0 - tSkip;
+        c.LineTo(new Point(x + w + rightBulge * Math.Sin(Math.PI * brT), y + brT * h));
+        c.CubicBezierTo(
+            new Point(x + w, y + h - cr * 0.4),
+            new Point(x + w, y + h),
+            new Point(x + w - cr, y + h));
+
+        // Bottom edge
+        c.LineTo(new Point(x + cr, y + h));
+
+        // Bottom-left corner → left sine curve
+        double blT = tSkip;
+        c.CubicBezierTo(
+            new Point(x, y + h),
+            new Point(x, y + h - cr * 0.4),
+            new Point(x - leftBulge * Math.Sin(Math.PI * blT), y + h - blT * h));
+
+        // Left edge (sine bulge)
+        for (int i = skip + 1; i <= segments - skip; i++)
+        {
+            double t = (double)i / segments;
+            c.LineTo(new Point(x - leftBulge * Math.Sin(Math.PI * t), y + h - t * h));
+        }
+
+        // Close: left sine curve → top-left start
+        double tlT = 1.0 - tSkip;
+        c.LineTo(new Point(x - leftBulge * Math.Sin(Math.PI * tlT), y + tSkip * h));
+        c.CubicBezierTo(
+            new Point(x, y + cr * 0.4),
+            new Point(x, y),
+            new Point(x, y + cr));
+
+        c.EndFigure(true);
+        return geo;
+    }
+
+    // ── Layer 0: Ambient glow ────────────────────────────────────
+
+    private void DrawAmbientGlow(DrawingContext ctx, double w, double h)
+    {
+        var color = GetFillColor(Percentage);
+        var alpha = (byte)(IsDark ? 25 : 16);
+
+        var cx = w * 0.47;
+        var cy = h * 0.5;
+        var radius = Math.Max(w, h) * 2.0;
+
+        var brush = new RadialGradientBrush
+        {
+            Center = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            GradientOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new(Color.FromArgb(alpha, color.R, color.G, color.B), 0.0),
+                new(Color.FromArgb((byte)(alpha * 0.5), color.R, color.G, color.B), 0.35),
+                new(Color.FromArgb(0, color.R, color.G, color.B), 0.85),
+            }
+        };
+
+        ctx.DrawRectangle(brush, null,
+            new Rect(cx - radius, cy - radius, radius * 2, radius * 2));
     }
 
     // ── Layer 1: Metallic shell ──────────────────────────────────
 
-    private static void DrawBodyShell(DrawingContext ctx, RoundedRect rr, double bw, ThemePalette p)
+    private static void DrawBodyShell(DrawingContext ctx, Geometry geo, Rect rect, ThemePalette p)
     {
         var shell = new LinearGradientBrush
         {
@@ -110,19 +223,20 @@ public class BatteryIndicatorControl : Control
                 new(p.ShellBottom, 1.0),
             }
         };
-        ctx.DrawRectangle(shell, null, rr);
+        ctx.DrawGeometry(shell, null, geo);
 
-        var pen = new Pen(new SolidColorBrush(p.Border), bw);
-        ctx.DrawRectangle(null, pen, rr);
-
-        var highlightRect = new Rect(rr.Rect.X + bw * 2, rr.Rect.Y + bw * 0.5,
-                                      rr.Rect.Width - bw * 4, bw * 0.6);
-        ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(p.HighlightAlpha, 255, 255, 255)), null, highlightRect);
+        // Subtle top-edge highlight
+        using (ctx.PushGeometryClip(geo))
+        {
+            ctx.DrawRectangle(
+                new SolidColorBrush(Color.FromArgb(p.HighlightAlpha, 255, 255, 255)), null,
+                new Rect(rect.X + rect.Width * 0.08, rect.Y + 1, rect.Width * 0.84, 1.2));
+        }
     }
 
     // ── Layer 2: Inner well ──────────────────────────────────────
 
-    private static void DrawInnerWell(DrawingContext ctx, RoundedRect rr, ThemePalette p)
+    private static void DrawInnerWell(DrawingContext ctx, Geometry geo, Rect rect, ThemePalette p)
     {
         var bg = new LinearGradientBrush
         {
@@ -134,24 +248,29 @@ public class BatteryIndicatorControl : Control
                 new(p.WellBottom, 1.0),
             }
         };
-        ctx.DrawRectangle(bg, null, rr);
+        ctx.DrawGeometry(bg, null, geo);
 
-        var shadowRect = new Rect(rr.Rect.X, rr.Rect.Y, rr.Rect.Width, rr.Rect.Height * 0.12);
-        using (ctx.PushClip(rr))
+        using (ctx.PushGeometryClip(geo))
         {
-            ctx.DrawRectangle(new SolidColorBrush(Color.FromArgb(p.WellShadowAlpha, 0, 0, 0)), null, shadowRect);
+            ctx.DrawRectangle(
+                new SolidColorBrush(Color.FromArgb(p.WellShadowAlpha, 0, 0, 0)), null,
+                new Rect(rect.X, rect.Y, rect.Width, rect.Height * 0.12));
         }
     }
 
     // ── Layer 3: Colored fill bar ────────────────────────────────
 
-    private void DrawFill(DrawingContext ctx, Rect inner, RoundedRect innerRR, double pct)
+    private void DrawFill(DrawingContext ctx, Rect inner, Geometry clipGeo,
+        double innerBulge, double pct)
     {
+        var color = GetFillColor(Percentage);
+
+        // Background tint across the entire well
+        ctx.DrawGeometry(new SolidColorBrush(Color.FromArgb(30, color.R, color.G, color.B)),
+            null, clipGeo);
+
         var fillW = inner.Width * pct;
         if (fillW < 1) return;
-
-        var fillRect = new Rect(inner.X, inner.Y, fillW, inner.Height);
-        var color = GetFillColor(Percentage);
 
         var fillBrush = new LinearGradientBrush
         {
@@ -166,55 +285,164 @@ public class BatteryIndicatorControl : Control
             }
         };
 
-        using (ctx.PushClip(innerRR))
-        {
-            ctx.DrawRectangle(fillBrush, null, fillRect);
+        // Fill capsule: left always bulges, right lerps from inward to outward
+        var fillRect = new Rect(inner.X, inner.Y, fillW, inner.Height);
+        var fillBulge = innerBulge * 1.4;
+        var leftBulge = fillBulge;
+        var rightBulge = fillBulge * (2 * pct - 1);
+        var fillGeo = CreateSineCapsuleAsymmetric(fillRect, leftBulge, rightBulge, 0.05);
 
-            var edgeH = Math.Max(1.5, inner.Height * 0.06);
-            ctx.DrawRectangle(
-                new SolidColorBrush(Color.FromArgb(55, 255, 255, 255)), null,
-                new Rect(inner.X, inner.Y, fillW, edgeH));
+        using (ctx.PushGeometryClip(clipGeo))
+        {
+            ctx.DrawGeometry(fillBrush, null, fillGeo);
+            DrawFillInnerGlow(ctx, fillGeo, fillRect, inner, leftBulge, rightBulge);
         }
     }
 
-    // ── Layer 4: Glass reflection ────────────────────────────────
-
-    private static void DrawGlassReflection(DrawingContext ctx, Rect inner, RoundedRect innerRR)
+    private static void DrawFillInnerGlow(DrawingContext ctx, Geometry fillGeo,
+        Rect fillRect, Rect inner, double leftBulge, double rightBulge)
     {
-        var glassH = inner.Height * 0.40;
-        var glassRect = new Rect(inner.X, inner.Y, inner.Width, glassH);
+        // Top highlight
+        var topH = Math.Max(1.5, inner.Height * 0.12);
+        var topGeo = CreateSineCapsuleAsymmetric(
+            new Rect(fillRect.X, fillRect.Y, fillRect.Width, topH),
+            leftBulge, rightBulge * (topH / inner.Height), 0.05);
+        using (ctx.PushGeometryClip(fillGeo))
+        {
+            ctx.DrawGeometry(new LinearGradientBrush
+            {
+                StartPoint = RelStart, EndPoint = RelEnd,
+                GradientStops = new GradientStops
+                {
+                    new(Color.FromArgb(80, 255, 255, 255), 0.0),
+                    new(Color.FromArgb(0, 255, 255, 255), 1.0),
+                }
+            }, null, topGeo);
+        }
 
-        var glass = new LinearGradientBrush
+        // Bottom shadow
+        var botH = Math.Max(1.5, inner.Height * 0.10);
+        var botGeo = CreateSineCapsuleAsymmetric(
+            new Rect(fillRect.X, fillRect.Bottom - botH, fillRect.Width, botH),
+            leftBulge, rightBulge * (botH / inner.Height), 0.05);
+        using (ctx.PushGeometryClip(fillGeo))
+        {
+            ctx.DrawGeometry(new LinearGradientBrush
+            {
+                StartPoint = RelStart, EndPoint = RelEnd,
+                GradientStops = new GradientStops
+                {
+                    new(Color.FromArgb(0, 0, 0, 0), 0.0),
+                    new(Color.FromArgb(50, 0, 0, 0), 1.0),
+                }
+            }, null, botGeo);
+        }
+
+        // Left edge glow
+        var leftW = Math.Max(1.5, fillRect.Width * 0.08);
+        var leftGeo = CreateSineCapsuleAsymmetric(
+            new Rect(fillRect.X, fillRect.Y, leftW, fillRect.Height),
+            leftBulge, 0, 0.05);
+        using (ctx.PushGeometryClip(fillGeo))
+        {
+            ctx.DrawGeometry(new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+                GradientStops = new GradientStops
+                {
+                    new(Color.FromArgb(60, 255, 255, 255), 0.0),
+                    new(Color.FromArgb(0, 255, 255, 255), 1.0),
+                }
+            }, null, leftGeo);
+        }
+    }
+
+    // ── Layer 4: Glass reflection beams ──────────────────────────
+
+    private static void DrawGlassReflection(DrawingContext ctx, Rect inner, Geometry clipGeo)
+    {
+        using var _ = ctx.PushGeometryClip(clipGeo);
+        var insetX = inner.Width * 0.06;
+
+        // Top beam: bright specular highlight
+        DrawBeam(ctx,
+            new Rect(inner.X + insetX, inner.Y + inner.Height * 0.12,
+                     inner.Width - insetX * 2, Math.Max(1.5, inner.Height * 0.40)),
+            90, 110);
+
+        // Bottom shadow beam
+        var bottomY = inner.Y + inner.Height * 0.74;
+        var bottomH = Math.Max(2.5, inner.Height * 0.12);
+        DrawShadowBeam(ctx,
+            new Rect(inner.X + insetX * 1.5, bottomY,
+                     inner.Width - insetX * 3, bottomH),
+            18, 28);
+
+        // Thin accent shadow beam
+        DrawShadowBeam(ctx,
+            new Rect(inner.X + insetX * 2, bottomY + bottomH + inner.Height * 0.03,
+                     inner.Width - insetX * 4, Math.Max(1.0, inner.Height * 0.04)),
+            12, 20);
+
+        // Soft top glow
+        ctx.DrawRectangle(new LinearGradientBrush
         {
             StartPoint = RelStart, EndPoint = RelEnd,
             GradientStops = new GradientStops
             {
-                new(Color.FromArgb(60, 255, 255, 255), 0.0),
-                new(Color.FromArgb(22, 255, 255, 255), 0.55),
+                new(Color.FromArgb(30, 255, 255, 255), 0.0),
+                new(Color.FromArgb(8, 255, 255, 255), 0.6),
                 new(Color.FromArgb(0, 255, 255, 255), 1.0),
             }
-        };
+        }, null, new Rect(inner.X, inner.Y, inner.Width, inner.Height * 0.30));
+    }
 
-        using (ctx.PushClip(innerRR))
+    private static void DrawBeam(DrawingContext ctx, Rect rect, byte edgeAlpha, byte centerAlpha)
+    {
+        ctx.DrawRectangle(new LinearGradientBrush
         {
-            ctx.DrawRectangle(glass, null, glassRect);
-        }
+            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new(Color.FromArgb(0, 255, 255, 255), 0.0),
+                new(Color.FromArgb(edgeAlpha, 255, 255, 255), 0.15),
+                new(Color.FromArgb(centerAlpha, 255, 255, 255), 0.5),
+                new(Color.FromArgb(edgeAlpha, 255, 255, 255), 0.85),
+                new(Color.FromArgb(0, 255, 255, 255), 1.0),
+            }
+        }, null, rect);
+    }
+
+    private static void DrawShadowBeam(DrawingContext ctx, Rect rect, byte edgeAlpha, byte centerAlpha)
+    {
+        ctx.DrawRectangle(new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+            GradientStops = new GradientStops
+            {
+                new(Color.FromArgb(0, 0, 0, 0), 0.0),
+                new(Color.FromArgb(edgeAlpha, 0, 0, 0), 0.2),
+                new(Color.FromArgb(centerAlpha, 0, 0, 0), 0.5),
+                new(Color.FromArgb(edgeAlpha, 0, 0, 0), 0.8),
+                new(Color.FromArgb(0, 0, 0, 0), 1.0),
+            }
+        }, null, rect);
     }
 
     // ── Layer 5: Terminal cap ────────────────────────────────────
 
     private static void DrawTerminal(DrawingContext ctx, double x, double bodyH,
-        double termW, double bw, double bodyCR, ThemePalette p)
+        double termW, ThemePalette p)
     {
         var termH = bodyH * 0.34;
         var termY = (bodyH - termH) / 2;
-        var termCR = Math.Min(termW * 0.4, bodyCR * 0.5);
-
         var termRect = new Rect(x, termY, termW, termH);
-        var termRR = new RoundedRect(termRect,
-            new CornerRadius(0, termCR, termCR, 0));
+        var termGeo = CreateSineCapsuleAsymmetric(termRect, 0, termW * 0.2);
 
-        var brush = new LinearGradientBrush
+        ctx.DrawGeometry(new LinearGradientBrush
         {
             StartPoint = RelStart, EndPoint = RelEnd,
             GradientStops = new GradientStops
@@ -223,45 +451,34 @@ public class BatteryIndicatorControl : Control
                 new(p.TermMid, 0.45),
                 new(p.TermBottom, 1.0),
             }
-        };
-
-        var pen = new Pen(new SolidColorBrush(p.Border), bw * 0.7);
-        ctx.DrawRectangle(brush, pen, termRR);
+        }, null, termGeo);
     }
 
-    // ── Layer 6: Status badge at bottom-center ──────────────────
+    // ── Layer 6: Status badge ────────────────────────────────────
 
     private void DrawStatusBadge(DrawingContext ctx, Rect bodyRect, double radius, ThemePalette p)
     {
         var cx = bodyRect.Width * 0.5;
         var cy = bodyRect.Bottom - radius * 0.45;
-
+        var shadowBrush = new SolidColorBrush(Color.FromArgb(p.BadgeShadowAlpha, 0, 0, 0));
         var badgeColor = GetBadgeColor();
-
-        // Drop shadow
-        ctx.DrawEllipse(
-            new SolidColorBrush(Color.FromArgb(p.BadgeShadowAlpha, 0, 0, 0)), null,
-            new Point(cx, cy + 1.5), radius + 1.5, radius + 1.5);
+        const double shadowOff = 1.5;
 
         if (IsLowOrCritical)
+        {
+            DrawTriangle(ctx, cx, cy + shadowOff, radius + shadowOff, shadowBrush, null);
             DrawTriangleBadge(ctx, cx, cy, radius, badgeColor);
+        }
         else
+        {
+            ctx.DrawEllipse(shadowBrush, null,
+                new Point(cx, cy + shadowOff), radius + shadowOff, radius + shadowOff);
             DrawCircleBadge(ctx, cx, cy, radius, badgeColor);
+        }
     }
 
-    private void DrawCircleBadge(DrawingContext ctx, double cx, double cy, double r, Color color)
-    {
-        var brush = new SolidColorBrush(color);
-        var pen = new Pen(new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)), 1.5);
-        ctx.DrawEllipse(brush, pen, new Point(cx, cy), r, r);
-
-        if (IsCharging)
-            DrawBoltIcon(ctx, cx, cy, r);
-        else
-            DrawCheckmarkIcon(ctx, cx, cy, r);
-    }
-
-    private static void DrawTriangleBadge(DrawingContext ctx, double cx, double cy, double r, Color color)
+    private static void DrawTriangle(DrawingContext ctx, double cx, double cy,
+        double r, IBrush? fill, IPen? pen)
     {
         var triH = r * 2.0;
         var triW = triH * 1.15;
@@ -276,14 +493,33 @@ public class BatteryIndicatorControl : Control
             c.LineTo(new Point(cx - triW / 2, botY));
             c.EndFigure(true);
         }
+        ctx.DrawGeometry(fill, pen, geo);
+    }
 
-        var brush = new SolidColorBrush(color);
+    private void DrawCircleBadge(DrawingContext ctx, double cx, double cy, double r, Color color)
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)), 1.5);
+        ctx.DrawEllipse(new SolidColorBrush(color), pen, new Point(cx, cy), r, r);
+
+        if (IsCharging)
+            DrawBoltIcon(ctx, cx, cy, r);
+        else
+            DrawCheckmarkIcon(ctx, cx, cy, r);
+    }
+
+    private void DrawTriangleBadge(DrawingContext ctx, double cx, double cy, double r, Color color)
+    {
         var pen = new Pen(new SolidColorBrush(Color.FromArgb(200, 255, 255, 255)), 1.5)
             { LineJoin = PenLineJoin.Round };
-        ctx.DrawGeometry(brush, pen, geo);
+        DrawTriangle(ctx, cx, cy, r, new SolidColorBrush(color), pen);
 
-        DrawExclamationIcon(ctx, cx, cy, r);
+        if (IsCharging)
+            DrawBoltIcon(ctx, cx, cy, r);
+        else
+            DrawExclamationIcon(ctx, cx, cy, r);
     }
+
+    // ── Badge icons ──────────────────────────────────────────────
 
     private static void DrawCheckmarkIcon(DrawingContext ctx, double cx, double cy, double r)
     {
@@ -295,30 +531,27 @@ public class BatteryIndicatorControl : Control
             c.LineTo(new Point(cx - s * 0.08, cy + s * 0.55));
             c.LineTo(new Point(cx + s * 0.70, cy - s * 0.42));
         }
-        var pen = new Pen(Brushes.White, r * 0.18)
-            { LineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round };
-        ctx.DrawGeometry(null, pen, geo);
+        ctx.DrawGeometry(null,
+            new Pen(Brushes.White, r * 0.18) { LineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round },
+            geo);
     }
 
     private static void DrawExclamationIcon(DrawingContext ctx, double cx, double cy, double r)
     {
-        var white = new SolidColorBrush(Colors.White);
         var strokeW = r * 0.16;
-
         var lineH = r * 0.50;
         var lineTop = cy - lineH * 0.45;
-        var pen = new Pen(white, strokeW * 2) { LineCap = PenLineCap.Round };
+
         var geo = new StreamGeometry();
         using (var c = geo.Open())
         {
             c.BeginFigure(new Point(cx, lineTop), false);
             c.LineTo(new Point(cx, lineTop + lineH));
         }
-        ctx.DrawGeometry(null, pen, geo);
+        ctx.DrawGeometry(null, new Pen(Brushes.White, strokeW * 2) { LineCap = PenLineCap.Round }, geo);
 
         var dotR = strokeW * 1.1;
-        ctx.DrawEllipse(white, null,
-            new Point(cx, lineTop + lineH + dotR * 2.8), dotR, dotR);
+        ctx.DrawEllipse(Brushes.White, null, new Point(cx, lineTop + lineH + dotR * 2.8), dotR, dotR);
     }
 
     private static void DrawBoltIcon(DrawingContext ctx, double cx, double cy, double r)
@@ -341,23 +574,17 @@ public class BatteryIndicatorControl : Control
         ctx.DrawGeometry(Brushes.White, null, geo);
     }
 
-    // ── State helpers ───────────────────────────────────────────
+    // ── State helpers ────────────────────────────────────────────
 
     private bool IsLowOrCritical => Percentage < 40 && !IsCharging;
 
-    private Color GetBadgeColor()
+    private Color GetBadgeColor() => IsCharging ? AppGreen : Percentage switch
     {
-        if (IsCharging)
-            return AppGreen;
-
-        return Percentage switch
-        {
-            >= 60 => AppGreen,
-            >= 40 => BadgeBlue,
-            >= 15 => BadgeAmber,
-            _     => BadgeRed,
-        };
-    }
+        >= 60 => AppGreen,
+        >= 40 => BadgeBlue,
+        >= 15 => BadgeAmber,
+        _     => BadgeRed,
+    };
 
     private static Color GetFillColor(double pct) => pct switch
     {
@@ -367,78 +594,12 @@ public class BatteryIndicatorControl : Control
         _     => BadgeRed,
     };
 
-    // ── Color palette — extracted from app icon & asset PNGs ────
+    // ── Colors ───────────────────────────────────────────────────
 
-    private static readonly Color AppGreen   = Color.FromRgb(59, 175, 74);   // #3BAF4A
-    private static readonly Color BadgeBlue  = Color.FromRgb(74, 144, 226);  // #4A90E2
-    private static readonly Color BadgeAmber = Color.FromRgb(240, 180, 41);  // #F0B429
-    private static readonly Color BadgeRed   = Color.FromRgb(234, 67, 53);   // #EA4335
-
-    // ── Theme palettes ──────────────────────────────────────────
-
-    private record ThemePalette
-    {
-        // Shell gradient (top to bottom)
-        public required Color ShellTop, ShellUpper, ShellMid, ShellLower, ShellBottom;
-        public required Color Border;
-        public required byte HighlightAlpha;
-
-        // Inner well gradient
-        public required Color WellTop, WellMid, WellBottom;
-        public required byte WellShadowAlpha;
-
-        // Terminal cap gradient
-        public required Color TermTop, TermMid, TermBottom;
-
-        // Badge
-        public required byte BadgeShadowAlpha;
-    }
-
-    private static readonly ThemePalette DarkPalette = new()
-    {
-        ShellTop    = Color.FromRgb(220, 222, 228),
-        ShellUpper  = Color.FromRgb(192, 194, 202),
-        ShellMid    = Color.FromRgb(168, 170, 178),
-        ShellLower  = Color.FromRgb(148, 150, 158),
-        ShellBottom = Color.FromRgb(132, 134, 142),
-        Border      = Color.FromRgb(88, 90, 98),
-        HighlightAlpha = 50,
-
-        WellTop    = Color.FromRgb(18, 20, 28),
-        WellMid    = Color.FromRgb(30, 33, 42),
-        WellBottom = Color.FromRgb(25, 28, 36),
-        WellShadowAlpha = 35,
-
-        TermTop    = Color.FromRgb(200, 202, 210),
-        TermMid    = Color.FromRgb(160, 162, 170),
-        TermBottom = Color.FromRgb(138, 140, 148),
-
-        BadgeShadowAlpha = 45,
-    };
-
-    private static readonly ThemePalette LightPalette = new()
-    {
-        ShellTop    = Color.FromRgb(245, 246, 248),
-        ShellUpper  = Color.FromRgb(228, 230, 235),
-        ShellMid    = Color.FromRgb(210, 212, 218),
-        ShellLower  = Color.FromRgb(198, 200, 206),
-        ShellBottom = Color.FromRgb(188, 190, 196),
-        Border      = Color.FromRgb(165, 168, 178),
-        HighlightAlpha = 80,
-
-        WellTop    = Color.FromRgb(215, 218, 225),
-        WellMid    = Color.FromRgb(228, 230, 235),
-        WellBottom = Color.FromRgb(220, 222, 228),
-        WellShadowAlpha = 18,
-
-        TermTop    = Color.FromRgb(238, 240, 244),
-        TermMid    = Color.FromRgb(210, 212, 218),
-        TermBottom = Color.FromRgb(195, 198, 205),
-
-        BadgeShadowAlpha = 25,
-    };
-
-    // ── Color helpers ───────────────────────────────────────────
+    private static readonly Color AppGreen   = Color.FromRgb(59, 175, 74);
+    private static readonly Color BadgeBlue  = Color.FromRgb(74, 144, 226);
+    private static readonly Color BadgeAmber = Color.FromRgb(240, 180, 41);
+    private static readonly Color BadgeRed   = Color.FromRgb(234, 67, 53);
 
     private static Color Lighten(Color c, double amt) => Color.FromRgb(
         (byte)Math.Min(255, c.R + (255 - c.R) * amt),
@@ -452,4 +613,52 @@ public class BatteryIndicatorControl : Control
 
     private static readonly RelativePoint RelStart = new(0, 0, RelativeUnit.Relative);
     private static readonly RelativePoint RelEnd = new(0, 1, RelativeUnit.Relative);
+
+    // ── Theme palettes ───────────────────────────────────────────
+
+    private record ThemePalette
+    {
+        public required Color ShellTop, ShellUpper, ShellMid, ShellLower, ShellBottom;
+        public required byte HighlightAlpha;
+        public required Color WellTop, WellMid, WellBottom;
+        public required byte WellShadowAlpha;
+        public required Color TermTop, TermMid, TermBottom;
+        public required byte BadgeShadowAlpha;
+    }
+
+    private static readonly ThemePalette DarkPalette = new()
+    {
+        ShellTop    = Color.FromRgb(220, 222, 228),
+        ShellUpper  = Color.FromRgb(192, 194, 202),
+        ShellMid    = Color.FromRgb(168, 170, 178),
+        ShellLower  = Color.FromRgb(148, 150, 158),
+        ShellBottom = Color.FromRgb(132, 134, 142),
+        HighlightAlpha = 50,
+        WellTop    = Color.FromRgb(18, 20, 28),
+        WellMid    = Color.FromRgb(30, 33, 42),
+        WellBottom = Color.FromRgb(25, 28, 36),
+        WellShadowAlpha = 35,
+        TermTop    = Color.FromRgb(200, 202, 210),
+        TermMid    = Color.FromRgb(160, 162, 170),
+        TermBottom = Color.FromRgb(138, 140, 148),
+        BadgeShadowAlpha = 45,
+    };
+
+    private static readonly ThemePalette LightPalette = new()
+    {
+        ShellTop    = Color.FromRgb(245, 246, 248),
+        ShellUpper  = Color.FromRgb(228, 230, 235),
+        ShellMid    = Color.FromRgb(210, 212, 218),
+        ShellLower  = Color.FromRgb(198, 200, 206),
+        ShellBottom = Color.FromRgb(188, 190, 196),
+        HighlightAlpha = 80,
+        WellTop    = Color.FromRgb(215, 218, 225),
+        WellMid    = Color.FromRgb(228, 230, 235),
+        WellBottom = Color.FromRgb(220, 222, 228),
+        WellShadowAlpha = 18,
+        TermTop    = Color.FromRgb(238, 240, 244),
+        TermMid    = Color.FromRgb(210, 212, 218),
+        TermBottom = Color.FromRgb(195, 198, 205),
+        BadgeShadowAlpha = 25,
+    };
 }

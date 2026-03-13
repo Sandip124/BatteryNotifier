@@ -40,7 +40,7 @@
                     <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="#4CA6FF" />
-                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#111111" />
+                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0161616" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
@@ -52,7 +52,7 @@
                     <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="#4CA6FF" />
-                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#111111" />
+                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0161616" />
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#F5F5F5" />
@@ -64,7 +64,7 @@
                     <SolidColorBrush x:Key="AppSubtleText" Color="#6B6B6B" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#D0D0D0" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="#2870BD" />
-                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#EBEBEB" />
+                    <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0F0F0F0" />
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

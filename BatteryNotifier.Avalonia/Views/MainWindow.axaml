@@ -4,10 +4,10 @@
         xmlns:controls="using:BatteryNotifier.Avalonia.Controls"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="500"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="510"
         x:Class="BatteryNotifier.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="400" Height="500"
+        Width="400" Height="510"
         CanResize="False"
         SystemDecorations="BorderOnly"
         TransparencyLevelHint="AcrylicBlur"
@@ -27,8 +27,9 @@
         <Grid RowDefinitions="Auto,*,Auto"
               IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
 
-            <!-- Header (drag handle) -->
+            <!-- Header (drag handle) — ZIndex keeps it above the ambient glow -->
             <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="8"
+                    ZIndex="1"
                     Background="{DynamicResource AppHeaderBackground}"
                     PointerPressed="TitleBar_PointerPressed">
                 <Grid ColumnDefinitions="32,*,Auto,4,Auto" VerticalAlignment="Center">
@@ -81,11 +82,11 @@
             </Border>
 
             <!-- Battery Status -->
-            <Grid Grid.Row="1" ColumnDefinitions="*">
-                <Border Margin="8,4,8,8">
-                    <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
+            <Grid Grid.Row="1" ColumnDefinitions="*" ClipToBounds="False">
+                <Border Margin="8,4,8,8" ClipToBounds="False">
+                    <Grid RowDefinitions="*,Auto" ColumnDefinitions="*" ClipToBounds="False">
 
-                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0">
+                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" ClipToBounds="False">
                             <controls:BatteryIndicatorControl
                                 Width="200" Height="110"
                                 Percentage="{Binding BatteryPercentage}"
