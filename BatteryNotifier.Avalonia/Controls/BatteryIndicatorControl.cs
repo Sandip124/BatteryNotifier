@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
 
 namespace BatteryNotifier.Avalonia.Controls;
 
@@ -21,9 +22,15 @@ public class BatteryIndicatorControl : Control
     public static readonly StyledProperty<bool> IsChargingProperty =
         AvaloniaProperty.Register<BatteryIndicatorControl, bool>(nameof(IsCharging));
 
+    // Pulse animation state
+    private DispatcherTimer? _pulseTimer;
+    private double _pulsePhase;
+
     static BatteryIndicatorControl()
     {
         AffectsRender<BatteryIndicatorControl>(PercentageProperty, IsChargingProperty);
+        IsChargingProperty.Changed.AddClassHandler<BatteryIndicatorControl>(
+            (c, _) => c.UpdatePulseAnimation());
     }
 
     public double Percentage
@@ -44,15 +51,50 @@ public class BatteryIndicatorControl : Control
     {
         base.OnAttachedToVisualTree(e);
         ActualThemeVariantChanged += OnThemeChanged;
+        UpdatePulseAnimation();
     }
 
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         ActualThemeVariantChanged -= OnThemeChanged;
+        StopPulseAnimation();
         base.OnDetachedFromVisualTree(e);
     }
 
     private void OnThemeChanged(object? sender, EventArgs e) => InvalidateVisual();
+
+    private void UpdatePulseAnimation()
+    {
+        if (IsCharging && VisualRoot != null)
+            StartPulseAnimation();
+        else
+            StopPulseAnimation();
+    }
+
+    private void StartPulseAnimation()
+    {
+        if (_pulseTimer != null) return;
+        _pulseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(40) }; // ~25 fps
+        _pulseTimer.Tick += OnPulseTick;
+        _pulseTimer.Start();
+    }
+
+    private void StopPulseAnimation()
+    {
+        if (_pulseTimer == null) return;
+        _pulseTimer.Tick -= OnPulseTick;
+        _pulseTimer.Stop();
+        _pulseTimer = null;
+        _pulsePhase = 0;
+        InvalidateVisual();
+    }
+
+    private void OnPulseTick(object? sender, EventArgs e)
+    {
+        _pulsePhase += 0.04; // ~2.5 second full cycle
+        if (_pulsePhase > Math.PI * 2) _pulsePhase -= Math.PI * 2;
+        InvalidateVisual();
+    }
 
     // ── Theme ────────────────────────────────────────────────────
 
@@ -184,12 +226,19 @@ public class BatteryIndicatorControl : Control
 
     private void DrawAmbientGlow(DrawingContext ctx, double w, double h)
     {
-        var color = GetFillColor(Percentage);
-        var alpha = (byte)(IsDark ? 25 : 16);
+        // Charging: always green (full battery shade) with pulse animation
+        // Discharging: color based on current battery percentage, static
+        var color = IsCharging ? AppGreen : GetFillColor(Percentage);
+        var baseAlpha = IsDark ? 25.0 : 16.0;
+
+        var alpha = (byte)(IsCharging
+            ? baseAlpha * (1.0 + 0.5 * Math.Sin(_pulsePhase))
+            : baseAlpha);
 
         var cx = w * 0.47;
         var cy = h * 0.5;
-        var radius = Math.Max(w, h) * 2.0;
+        var radiusScale = IsCharging ? 2.0 + 0.15 * Math.Sin(_pulsePhase) : 2.0;
+        var radius = Math.Max(w, h) * radiusScale;
 
         var brush = new RadialGradientBrush
         {

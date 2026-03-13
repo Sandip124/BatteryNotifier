@@ -49,7 +49,7 @@
                     <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
                     <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
-                    <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
+                    <SolidColorBrush x:Key="AppSubtleText" Color="#9c9c9c" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="#4CA6FF" />
                     <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0161616" />

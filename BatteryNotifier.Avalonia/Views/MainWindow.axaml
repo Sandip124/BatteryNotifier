@@ -24,7 +24,7 @@
         <Grid>
 
         <!-- Home screen (visible when not in settings) -->
-        <Grid RowDefinitions="Auto,*,Auto"
+        <Grid RowDefinitions="Auto,*"
               IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
 
             <!-- Header (drag handle) — ZIndex keeps it above the ambient glow -->
@@ -36,8 +36,13 @@
                     <Image Grid.Column="0" Margin="0,0,10,0" Width="28" Height="28"
                            Source="/Assets/BatteryNotifierLogo.png"
                            RenderOptions.BitmapInterpolationMode="MediumQuality" />
-                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppSubtleText}"
+                                   Text="{Binding Version, StringFormat='v{0}'}" />
+                    </StackPanel>
                     <Button Grid.Column="2"
                             Theme="{StaticResource PrimaryButton}">
                         <PathIcon Data="{StaticResource Icon.DotsThreeVertical}" Width="16" Height="16" />
@@ -161,19 +166,6 @@
                 </Border>
             </Grid>
 
-            <!-- Footer -->
-            <Border Grid.Row="2" Padding="12,4,12,6">
-                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11"
-                               FontStyle="Italic"
-                               Foreground="{DynamicResource AppSubtleText}"
-                               Text="{Binding StatusMessage}"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11"
-                               Foreground="{DynamicResource AppSubtleText}"
-                               Text="{Binding Version, StringFormat='v{0}'}" />
-                </Grid>
-            </Border>
 
         </Grid>
 
