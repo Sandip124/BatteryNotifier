@@ -40,6 +40,26 @@ namespace BatteryNotifier.Core.Providers
             };
         }
 
+        // ── Windows: kernel32 GetSystemPowerStatus ──
+        // More reliable than WMI Win32_Battery for real-time battery state.
+        // WMI BatteryStatus values (1=Other,2=Unknown,6=Charging) are often
+        // misinterpreted and slow to query; GetSystemPowerStatus is instant.
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool GetSystemPowerStatus(out SystemPowerStatus status);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct SystemPowerStatus
+        {
+            public byte ACLineStatus;        // 0=Offline, 1=Online, 255=Unknown
+            public byte BatteryFlag;         // 1=High, 2=Low, 4=Critical, 8=Charging, 128=NoBattery, 255=Unknown
+            public byte BatteryLifePercent;  // 0–100, or 255=Unknown
+            public byte SystemStatusFlag;    // 0 or 1 (power saver)
+            public int BatteryLifeTime;      // Seconds remaining, or -1
+            public int BatteryFullLifeTime;  // Seconds to full charge, or -1
+        }
+
         private static BatteryInfo GetBatteryInfoWindows()
         {
             var info = new BatteryInfo
@@ -50,52 +70,61 @@ namespace BatteryNotifier.Core.Providers
                 BatteryLifeRemaining = -1
             };
 
-#if WINDOWS
             try
             {
-                using var searcher = new System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Battery");
-                foreach (System.Management.ManagementObject battery in searcher.Get())
+                if (!GetSystemPowerStatus(out var ps))
+                    return info;
+
+                // No battery installed
+                if ((ps.BatteryFlag & 128) != 0)
                 {
-                    if (battery["EstimatedChargeRemaining"] is int chargeRemaining)
-                    {
-                        info.BatteryLifePercent = chargeRemaining / 100f;
-                        info.BatteryChargeStatus = chargeRemaining > 66
-                            ? BatteryChargeStatus.High
-                            : chargeRemaining > 33
-                                ? BatteryChargeStatus.Low
-                                : BatteryChargeStatus.Critical;
-                    }
+                    info.BatteryChargeStatus = BatteryChargeStatus.NoSystemBattery;
+                    info.PowerLineStatus = BatteryPowerLineStatus.Online;
+                    return info;
+                }
 
-                    if (battery["EstimatedRunTime"] is int runTime && runTime > 0)
-                    {
-                        info.BatteryLifeRemaining = runTime * 60;
-                    }
+                // AC line status
+                info.PowerLineStatus = ps.ACLineStatus switch
+                {
+                    0 => BatteryPowerLineStatus.Offline,
+                    1 => BatteryPowerLineStatus.Online,
+                    _ => BatteryPowerLineStatus.Unknown
+                };
 
-                    if (battery["BatteryStatus"] is int batteryStatus)
-                    {
-                        if (batteryStatus == 2)
-                        {
-                            info.BatteryChargeStatus = BatteryChargeStatus.Charging;
-                            info.PowerLineStatus = BatteryPowerLineStatus.Online;
-                        }
-                        else if (batteryStatus == 1)
-                        {
-                            info.PowerLineStatus = BatteryPowerLineStatus.Offline;
-                        }
-                        else if (batteryStatus == 3)
-                        {
-                            info.PowerLineStatus = BatteryPowerLineStatus.Online;
-                        }
-                    }
+                // Battery percentage
+                if (ps.BatteryLifePercent is >= 0 and <= 100)
+                {
+                    info.BatteryLifePercent = ps.BatteryLifePercent / 100f;
+                }
 
-                    battery.Dispose();
+                // Charge status from BatteryFlag
+                if ((ps.BatteryFlag & 8) != 0)
+                {
+                    info.BatteryChargeStatus = BatteryChargeStatus.Charging;
+                }
+                else if ((ps.BatteryFlag & 4) != 0)
+                {
+                    info.BatteryChargeStatus = BatteryChargeStatus.Critical;
+                }
+                else if ((ps.BatteryFlag & 2) != 0)
+                {
+                    info.BatteryChargeStatus = BatteryChargeStatus.Low;
+                }
+                else if ((ps.BatteryFlag & 1) != 0)
+                {
+                    info.BatteryChargeStatus = BatteryChargeStatus.High;
+                }
+
+                // Time remaining (seconds), only valid when discharging
+                if (ps.BatteryLifeTime >= 0)
+                {
+                    info.BatteryLifeRemaining = ps.BatteryLifeTime;
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error getting Windows battery information: {ex.Message}");
             }
-#endif
 
             return info;
         }

@@ -140,6 +140,12 @@ public static class NotificationPlatformService
                 iconXml = $"<image placement='appLogoOverride' src='file:///{SanitizeForXml(SanitizeForPowerShell(safeIconPath))}'/>";
             }
 
+            // Use PowerShell's own registered AppUserModelID. Custom AUMID requires
+            // a Start Menu shortcut with the AUMID stamped in its property store —
+            // without that, CreateToastNotifier silently drops notifications.
+            // PowerShell's AUMID is always registered and works reliably.
+            var psAumid = @"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
+
             var script = $@"
                 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
                 [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
@@ -160,7 +166,7 @@ public static class NotificationPlatformService
                 $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
                 $xml.LoadXml($template)
                 $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('BatteryNotifier').Show($toast)
+                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{psAumid}').Show($toast)
             ";
 
             ExecuteCommandWithStdin("powershell",
