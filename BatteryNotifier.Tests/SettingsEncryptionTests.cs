@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using BatteryNotifier.Core.Services;
@@ -7,6 +8,8 @@ namespace BatteryNotifier.Tests;
 public class SettingsEncryptionTests : IDisposable
 {
     private readonly string _tempDir;
+
+    private static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     public SettingsEncryptionTests()
     {
@@ -33,7 +36,7 @@ public class SettingsEncryptionTests : IDisposable
     [Fact]
     public void Encrypt_ProducesDifferentOutputEachTime()
     {
-        // Due to random nonce, same plaintext should produce different ciphertext
+        // Due to random nonce (AES-GCM) or DPAPI entropy, same plaintext should produce different ciphertext
         var json = """{"test":true}""";
 
         var encrypted1 = SettingsEncryption.Encrypt(json, _tempDir);
@@ -55,9 +58,12 @@ public class SettingsEncryptionTests : IDisposable
             SettingsEncryption.Decrypt(encrypted, _tempDir));
     }
 
+    // AES-GCM specific: tag is at byte offset 12..27; DPAPI has a different format
     [Fact]
     public void Decrypt_TamperedTag_ThrowsCryptographicException()
     {
+        if (IsWindows) return; // DPAPI uses its own integrity mechanism, not GCM tags
+
         var json = """{"test":true}""";
         var encrypted = SettingsEncryption.Encrypt(json, _tempDir);
 
@@ -84,6 +90,8 @@ public class SettingsEncryptionTests : IDisposable
     [Fact]
     public void Decrypt_DataTooShort_ThrowsCryptographicException()
     {
+        if (IsWindows) return; // DPAPI handles its own format validation
+
         // Minimum is 12 (nonce) + 16 (tag) = 28 bytes
         var shortData = new byte[10];
 
@@ -122,9 +130,13 @@ public class SettingsEncryptionTests : IDisposable
         Assert.Equal(unicode, decrypted);
     }
 
+    // AES-GCM specific: key file is only created on macOS/Linux.
+    // On Windows, DPAPI is used and the key file is intentionally deleted.
     [Fact]
     public void GetOrCreateKey_CreatesKeyFile()
     {
+        if (IsWindows) return; // DPAPI doesn't use a key file
+
         // Trigger key creation via encrypt
         SettingsEncryption.Encrypt("test", _tempDir);
 
@@ -138,6 +150,8 @@ public class SettingsEncryptionTests : IDisposable
     [Fact]
     public void GetOrCreateKey_ReusesExistingKey()
     {
+        if (IsWindows) return; // DPAPI doesn't use a key file
+
         // First encrypt creates the key
         SettingsEncryption.Encrypt("test1", _tempDir);
         var keyPath = Path.Combine(_tempDir, ".settings.key");
@@ -150,9 +164,13 @@ public class SettingsEncryptionTests : IDisposable
         Assert.Equal(key1, key2);
     }
 
+    // AES-GCM specific: different directory = different key = decryption fails.
+    // On Windows, DPAPI is user-scoped, so same user can decrypt from any directory.
     [Fact]
     public void Decrypt_WithDifferentKey_Fails()
     {
+        if (IsWindows) return; // DPAPI is user-scoped, not directory-scoped
+
         var json = """{"test":true}""";
         var encrypted = SettingsEncryption.Encrypt(json, _tempDir);
 
@@ -164,6 +182,47 @@ public class SettingsEncryptionTests : IDisposable
         {
             Assert.ThrowsAny<CryptographicException>(() =>
                 SettingsEncryption.Decrypt(encrypted, otherDir));
+        }
+        finally
+        {
+            try { Directory.Delete(otherDir, recursive: true); } catch { }
+        }
+    }
+
+    // ── Windows DPAPI-specific tests ────────────────────────────────
+
+    [Fact]
+    public void Windows_Dpapi_CleansUpLegacyKeyFile()
+    {
+        if (!IsWindows) return;
+
+        // Simulate a legacy key file that existed before DPAPI migration
+        var keyPath = Path.Combine(_tempDir, ".settings.key");
+        File.WriteAllBytes(keyPath, RandomNumberGenerator.GetBytes(32));
+        Assert.True(File.Exists(keyPath));
+
+        // Encrypting on Windows should clean up the legacy key file
+        SettingsEncryption.Encrypt("test", _tempDir);
+
+        Assert.False(File.Exists(keyPath));
+    }
+
+    [Fact]
+    public void Windows_Dpapi_SameUser_CanDecryptFromAnyDirectory()
+    {
+        if (!IsWindows) return;
+
+        var json = """{"test":"dpapi"}""";
+        var encrypted = SettingsEncryption.Encrypt(json, _tempDir);
+
+        // DPAPI is user-scoped — decryption should work from a different directory
+        var otherDir = Path.Combine(Path.GetTempPath(), "BatteryNotifierTest_" + Guid.NewGuid().ToString("N")[..8]);
+        Directory.CreateDirectory(otherDir);
+
+        try
+        {
+            var decrypted = SettingsEncryption.Decrypt(encrypted, otherDir);
+            Assert.Equal(json, decrypted);
         }
         finally
         {

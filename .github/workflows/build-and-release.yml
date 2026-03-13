@@ -17,6 +17,7 @@ env:
   DOTNET_VERSION: '10.0.x'
   PROJECT: BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj
   APP_NAME: BatteryNotifier
+  APP_ID: com.batterynotifier.app
 
 jobs:
   build:
@@ -67,12 +68,28 @@ jobs:
           --configuration Release
           --runtime ${{ matrix.rid }}
           --self-contained true
-          -p:PublishSingleFile=true
+          -p:PublishSingleFile=false
           -p:PublishTrimmed=true
           -p:TrimMode=partial
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:EnableCompressionInSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=false
           --output ./publish/${{ matrix.artifact }}
+
+      # ── Install Velopack CLI ──
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk
+
+      # ── Extract version from tag or csproj ──
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="3.2.0"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       # ── Windows: Sign executable ──
       - name: Sign Windows executable
@@ -140,7 +157,43 @@ jobs:
           # Staple the notarization ticket
           xcrun stapler staple "$BINARY" || true
 
-      # ── Package artifacts ──
+      # ── Velopack: Create installers ──
+      - name: Velopack pack (Windows)
+        if: startsWith(matrix.rid, 'win-')
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_NAME }}" \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir "./publish/${{ matrix.artifact }}" \
+            --mainExe "BatteryNotifier.exe" \
+            --icon "BatteryNotifier.Avalonia/Assets/battery-notifier-logo.ico" \
+            --outputDir "./installers/${{ matrix.artifact }}"
+
+      - name: Velopack pack (macOS)
+        if: contains(matrix.rid, 'osx')
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_NAME }}" \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir "./publish/${{ matrix.artifact }}" \
+            --mainExe "BatteryNotifier" \
+            --icon "BatteryNotifier.Avalonia/Assets/battery-notifier-logo.icns" \
+            --outputDir "./installers/${{ matrix.artifact }}"
+
+      - name: Velopack pack (Linux)
+        if: contains(matrix.rid, 'linux-')
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_NAME }}" \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir "./publish/${{ matrix.artifact }}" \
+            --mainExe "BatteryNotifier" \
+            --outputDir "./installers/${{ matrix.artifact }}"
+
+      # ── Upload portable artifact (zip/tarball) ──
       - name: Create Windows ZIP
         if: startsWith(matrix.rid, 'win-')
         shell: pwsh
@@ -150,7 +203,7 @@ jobs:
         if: "!startsWith(matrix.rid, 'win-')"
         run: tar -czf ./publish/${{ matrix.artifact }}.tar.gz -C ./publish/${{ matrix.artifact }} .
 
-      - name: Upload artifact
+      - name: Upload portable artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ${{ matrix.artifact }}
@@ -158,6 +211,14 @@ jobs:
             ./publish/${{ matrix.artifact }}.zip
             ./publish/${{ matrix.artifact }}.tar.gz
           if-no-files-found: ignore
+
+      # ── Upload Velopack installer artifact ──
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.artifact }}-installer
+          path: ./installers/${{ matrix.artifact }}/*
+          if-no-files-found: warn
 
   # ── Create GitHub Release ──
   release:
@@ -178,7 +239,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd artifacts
-          find . -type f \( -name "*.zip" -o -name "*.tar.gz" \) -exec sha256sum {} \; > checksums-sha256.txt
+          find . -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.pkg" -o -name "*.AppImage" -o -name "*.nupkg" \) -exec sha256sum {} \; > checksums-sha256.txt
           cat checksums-sha256.txt
 
       - name: Create Release
@@ -189,6 +250,10 @@ jobs:
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
+            artifacts/**/*.exe
+            artifacts/**/*.pkg
+            artifacts/**/*.AppImage
+            artifacts/**/*.nupkg
             artifacts/checksums-sha256.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

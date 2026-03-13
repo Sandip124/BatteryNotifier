@@ -7,6 +7,7 @@ using Avalonia.ReactiveUI;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Services;
 using ReactiveUI;
+using Velopack;
 
 namespace BatteryNotifier.Avalonia;
 
@@ -15,6 +16,10 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Velopack must run FIRST — handles install/uninstall/update hooks
+        // and exits the process early when invoked by the installer.
+        VelopackApp.Build().Run();
+
         // Initialize logging FIRST — before any other code can log
         BatteryNotifierLoggerConfig.InitializeLogger();
         BatteryNotifierAppLogger.LogStartup();
