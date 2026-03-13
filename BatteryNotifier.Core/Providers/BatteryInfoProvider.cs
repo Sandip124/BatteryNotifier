@@ -97,8 +97,14 @@ namespace BatteryNotifier.Core.Providers
                     info.BatteryLifePercent = ps.BatteryLifePercent / 100f;
                 }
 
-                // Charge status from BatteryFlag
-                if ((ps.BatteryFlag & 8) != 0)
+                // Charge status from BatteryFlag.
+                // 255 = Unknown — must check before individual bits since 255 has all bits set.
+                // 0   = No flags — derive from percentage (common when plugged in, not actively charging).
+                if (ps.BatteryFlag == 255)
+                {
+                    info.BatteryChargeStatus = DeriveChargeStatusFromPercent(info.BatteryLifePercent);
+                }
+                else if ((ps.BatteryFlag & 8) != 0)
                 {
                     info.BatteryChargeStatus = BatteryChargeStatus.Charging;
                 }
@@ -114,6 +120,10 @@ namespace BatteryNotifier.Core.Providers
                 {
                     info.BatteryChargeStatus = BatteryChargeStatus.High;
                 }
+                else
+                {
+                    info.BatteryChargeStatus = DeriveChargeStatusFromPercent(info.BatteryLifePercent);
+                }
 
                 // Time remaining (seconds), only valid when discharging
                 if (ps.BatteryLifeTime >= 0)
@@ -127,6 +137,14 @@ namespace BatteryNotifier.Core.Providers
             }
 
             return info;
+        }
+
+        private static BatteryChargeStatus DeriveChargeStatusFromPercent(float lifePercent)
+        {
+            var pct = (int)(lifePercent * 100);
+            return pct > 66 ? BatteryChargeStatus.High
+                 : pct > 33 ? BatteryChargeStatus.Low
+                 : BatteryChargeStatus.Critical;
         }
 
         private static BatteryInfo GetBatteryInfoMacOS()

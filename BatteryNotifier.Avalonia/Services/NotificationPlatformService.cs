@@ -143,31 +143,24 @@ public static class NotificationPlatformService
             // Use PowerShell's own registered AppUserModelID. Custom AUMID requires
             // a Start Menu shortcut with the AUMID stamped in its property store —
             // without that, CreateToastNotifier silently drops notifications.
-            // PowerShell's AUMID is always registered and works reliably.
             var psAumid = @"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
 
-            var script = $@"
-                [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-                [Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-                [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+            // Build XML as a simple string — NOT a here-string.
+            // PowerShell 5.1 requires here-string terminators ("@) at column 0,
+            // which is impossible to guarantee when the script is passed via stdin
+            // from an indented C# string. A single-line XML string avoids this entirely.
+            var toastXml = $"<toast><visual><binding template='ToastGeneric'><text>{safeTitle}</text><text>{safeMessage}</text>{iconXml}</binding></visual></toast>";
 
-                $template = @""
-                <toast>
-                    <visual>
-                        <binding template='ToastGeneric'>
-                            <text>{safeTitle}</text>
-                            <text>{safeMessage}</text>
-                            {iconXml}
-                        </binding>
-                    </visual>
-                </toast>
-                ""@
-
-                $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-                $xml.LoadXml($template)
-                $toast = New-Object Windows.UI.Notifications.ToastNotification $xml
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{psAumid}').Show($toast)
-            ";
+            // Build the script with each statement on its own line.
+            // No here-strings, no indentation-sensitive syntax.
+            var script = string.Join("\n",
+                "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null",
+                "[Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null",
+                "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null",
+                "$xml = New-Object Windows.Data.Xml.Dom.XmlDocument",
+                $"$xml.LoadXml('{toastXml}')",
+                "$toast = New-Object Windows.UI.Notifications.ToastNotification $xml",
+                $"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{psAumid}').Show($toast)");
 
             ExecuteCommandWithStdin("powershell",
                 ["-NoProfile", "-NonInteractive", "-Command", "-"],
@@ -287,6 +280,13 @@ public static class NotificationPlatformService
             if (!process.WaitForExit(5000))
             {
                 try { process.Kill(); } catch { }
+                Logger.Warning("Command {Command} timed out after 5s", command);
+            }
+            else if (process.ExitCode != 0)
+            {
+                var stderr = process.StandardError.ReadToEnd();
+                Logger.Warning("Command {Command} exited with code {Code}: {Error}",
+                    command, process.ExitCode, stderr.Length > 500 ? stderr[..500] : stderr);
             }
         }
         catch (Exception ex)
