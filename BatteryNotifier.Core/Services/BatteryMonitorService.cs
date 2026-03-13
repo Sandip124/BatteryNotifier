@@ -18,10 +18,15 @@ public sealed class BatteryMonitorService : IDisposable
     private volatile int _lowBatteryThreshold = 25;
     private volatile int _fullBatteryThreshold = 96;
 
-    // Windows has WMI events and macOS has Darwin notify for instant power-state detection,
-    // so poll infrequently on those platforms. Linux has no easy event API — poll every 15s.
-    private static readonly int BatteryLevelCheckThresholdMs =
-        OperatingSystem.IsLinux() ? 15_000 : 120_000;
+    // macOS has Darwin notify for instant power-state detection — poll infrequently.
+    // Windows has WMI events but they may fail (trimming, WMI service) — use moderate polling as fallback.
+    // Linux has no easy event API — poll every 15s.
+    private static readonly int DefaultPollMs =
+        OperatingSystem.IsLinux() ? 15_000
+        : OperatingSystem.IsMacOS() ? 120_000
+        : 30_000; // Windows: 30s default, reduced to 10s if WMI fails
+
+    private int _actualPollMs = DefaultPollMs;
 
     public event EventHandler<BatteryStatusEventArgs>? BatteryStatusChanged;
     public event EventHandler<BatteryStatusEventArgs>? PowerLineStatusChanged;
@@ -70,12 +75,16 @@ public sealed class BatteryMonitorService : IDisposable
             watcher.Start();
             _powerEventWatcher = watcher;
             _logger.Information("WMI Power event watcher initialized.");
+            return;
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Failed to initialize WMI Power event watcher.");
+            _logger.Error(ex, "Failed to initialize WMI Power event watcher. Falling back to faster polling.");
         }
 #endif
+        // WMI not available (not compiled, trimmed, or failed) — poll more aggressively
+        _actualPollMs = 10_000;
+        _logger.Information("WMI unavailable — Windows poll interval set to {Ms}ms", _actualPollMs);
     }
 
 #if WINDOWS
@@ -113,7 +122,8 @@ public sealed class BatteryMonitorService : IDisposable
             if (status != 0)
             {
                 _logger.Warning("Failed to register Darwin power notify (status={Status}). " +
-                                "Falling back to polling only.", status);
+                                "Falling back to faster polling.", status);
+                _actualPollMs = 15_000;
                 return;
             }
 
@@ -152,7 +162,7 @@ public sealed class BatteryMonitorService : IDisposable
 
     private async Task RunBatteryLevelMonitorAsync(CancellationToken token)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(BatteryLevelCheckThresholdMs));
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_actualPollMs));
         try
         {
             while (await timer.WaitForNextTickAsync(token))
