@@ -314,7 +314,9 @@ internal class NotificationTracker
     public bool IsSilenced { get; set; }
 }
 
-public class NotificationMessage
+#pragma warning disable CA1710 // Kept as NotificationMessage for domain clarity
+public class NotificationMessage : EventArgs
+#pragma warning restore CA1710
 {
     public string Message { get; set; } = string.Empty;
     public DateTime Timestamp { get; protected set; } = DateTime.Now;

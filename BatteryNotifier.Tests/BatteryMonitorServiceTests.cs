@@ -1,3 +1,4 @@
+using BatteryNotifier.Core.Providers;
 using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Tests;

@@ -245,13 +245,17 @@ public class GitHubRelease
     public string Body { get; set; } = "";
 
     [JsonPropertyName("html_url")]
+#pragma warning disable CA1056 // JSON DTO — Uri type breaks System.Text.Json deserialization
     public string HtmlUrl { get; set; } = "";
+#pragma warning restore CA1056
 
     [JsonPropertyName("published_at")]
     public DateTimeOffset? PublishedAt { get; set; }
 
     [JsonPropertyName("assets")]
+#pragma warning disable CA1819 // JSON DTO — array required for System.Text.Json deserialization
     public GitHubAsset[] Assets { get; set; } = [];
+#pragma warning restore CA1819
 }
 
 public class GitHubAsset
@@ -260,7 +264,9 @@ public class GitHubAsset
     public string Name { get; set; } = "";
 
     [JsonPropertyName("browser_download_url")]
+#pragma warning disable CA1056 // JSON DTO — Uri type breaks System.Text.Json deserialization
     public string BrowserDownloadUrl { get; set; } = "";
+#pragma warning restore CA1056
 
     [JsonPropertyName("size")]
     public long Size { get; set; }

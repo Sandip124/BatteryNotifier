@@ -14,7 +14,7 @@ public sealed class BatteryMonitorService : IDisposable
     public static BatteryMonitorService Instance => _instance.Value;
 
     private readonly object _statusLock = new();
-    private BatteryInfo? _lastPowerStatus = null;
+    private BatteryInfo? _lastPowerStatus;
     private volatile int _lowBatteryThreshold = 25;
     private volatile int _fullBatteryThreshold = 96;
 

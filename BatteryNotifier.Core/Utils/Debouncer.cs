@@ -3,7 +3,7 @@ using System.Threading;
 
 namespace BatteryNotifier.Core.Utils
 {
-    public class Debouncer : IDisposable
+    public sealed class Debouncer : IDisposable
     {
         private Timer? _timer;
         private Action? _taskToRun;

@@ -2,7 +2,7 @@ using System.Reflection;
 
 namespace BatteryNotifier.Core;
 
-public class Constants
+public static class Constants
 {
     public const string SourceRepositoryUrl = "https://github.com/Sandip124/BatteryNotifier";
     public const string ReleaseUrl = "https://github.com/Sandip124/BatteryNotifier/releases/latest";
