@@ -7,9 +7,9 @@ public class BuiltInSoundsTests
     [Theory]
     [InlineData("builtin:Chime")]
     [InlineData("builtin:Alert")]
-    [InlineData("builtin:Gentle")]
-    [InlineData("builtin:Ping")]
     [InlineData("builtin:Beacon")]
+    [InlineData("builtin:Harp")]
+    [InlineData("builtin:Klaxon")]
     public void IsBuiltIn_ValidPrefix_ReturnsTrue(string value)
     {
         Assert.True(BuiltInSounds.IsBuiltIn(value));
@@ -29,9 +29,9 @@ public class BuiltInSoundsTests
     [Theory]
     [InlineData("builtin:Chime", "Chime")]
     [InlineData("builtin:Alert", "Alert")]
-    [InlineData("builtin:Gentle", "Gentle")]
-    [InlineData("builtin:Ping", "Ping")]
     [InlineData("builtin:Beacon", "Beacon")]
+    [InlineData("builtin:Harp", "Harp")]
+    [InlineData("builtin:Klaxon", "Klaxon")]
     public void GetName_ExtractsCorrectName(string value, string expected)
     {
         Assert.Equal(expected, BuiltInSounds.GetName(value));
@@ -60,12 +60,20 @@ public class BuiltInSoundsTests
     public void Names_ContainsAllBuiltInSounds()
     {
         var names = BuiltInSounds.Names;
+        // General purpose
         Assert.Contains("Chime", names);
         Assert.Contains("Alert", names);
-        Assert.Contains("Gentle", names);
-        Assert.Contains("Ping", names);
         Assert.Contains("Beacon", names);
-        Assert.Equal(5, names.Count);
+        // Full battery (calm)
+        Assert.Contains("Zen", names);
+        Assert.Contains("Harp", names);
+        Assert.Contains("Breeze", names);
+        Assert.Contains("Bloom", names);
+        // Low battery (warning)
+        Assert.Contains("Pulse", names);
+        Assert.Contains("Klaxon", names);
+        Assert.Contains("Rattle", names);
+        Assert.Equal(10, names.Count);
     }
 
     [Fact]
@@ -93,9 +101,14 @@ public class BuiltInSoundsTests
     [Theory]
     [InlineData("builtin:Chime")]
     [InlineData("builtin:Alert")]
-    [InlineData("builtin:Gentle")]
-    [InlineData("builtin:Ping")]
     [InlineData("builtin:Beacon")]
+    [InlineData("builtin:Zen")]
+    [InlineData("builtin:Harp")]
+    [InlineData("builtin:Breeze")]
+    [InlineData("builtin:Bloom")]
+    [InlineData("builtin:Pulse")]
+    [InlineData("builtin:Klaxon")]
+    [InlineData("builtin:Rattle")]
     public void Resolve_ValidBuiltIn_ReturnsExistingWavFile(string settingsValue)
     {
         var path = BuiltInSounds.Resolve(settingsValue);
@@ -120,9 +133,14 @@ public class BuiltInSoundsTests
     [Theory]
     [InlineData("builtin:Chime")]
     [InlineData("builtin:Alert")]
-    [InlineData("builtin:Gentle")]
-    [InlineData("builtin:Ping")]
     [InlineData("builtin:Beacon")]
+    [InlineData("builtin:Zen")]
+    [InlineData("builtin:Harp")]
+    [InlineData("builtin:Breeze")]
+    [InlineData("builtin:Bloom")]
+    [InlineData("builtin:Pulse")]
+    [InlineData("builtin:Klaxon")]
+    [InlineData("builtin:Rattle")]
     public void GeneratedWav_HasValidRiffHeader(string settingsValue)
     {
         var path = BuiltInSounds.Resolve(settingsValue)!;

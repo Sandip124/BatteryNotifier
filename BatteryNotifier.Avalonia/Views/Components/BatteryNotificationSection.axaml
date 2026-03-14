@@ -34,45 +34,36 @@
                 Value="{Binding ThresholdValue}"
                 Classes="material" />
 
-        <!-- Sound: label left, ComboBox right -->
+        <!-- Sound: clickable button that opens the picker modal -->
         <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">
             <TextBlock Grid.Column="0" VerticalAlignment="Center"
                        FontSize="13" Margin="0,0,10,0">Sound : </TextBlock>
-            <ComboBox Grid.Column="1"
-                      ItemsSource="{Binding SoundOptions}"
-                      SelectedItem="{Binding SelectedSound}"
-                      FontSize="11" Padding="6,5"
-                      HorizontalAlignment="Stretch" />
-        </Grid>
-
-        <!-- Custom file path (shown only when "Custom file..." is selected) -->
-        <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,4,0,0"
-              IsVisible="{Binding IsCustomSound}">
-            <TextBox Grid.Column="0"
-                     Text="{Binding SoundPath}"
-                     IsReadOnly="True"
-                     Watermark="No file selected"
-                     FontSize="11" Padding="6,5"
-                     MinHeight="30" />
-            <Button Grid.Column="1" Margin="4,0,0,0"
-                    Command="{Binding BrowseSoundCommand}"
+            <Button Grid.Column="1"
+                    Command="{Binding OpenSoundPickerCommand}"
                     Theme="{StaticResource SecondaryButton}"
-                    FontSize="11" Padding="8,5"
-                    MinHeight="30">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <PathIcon Data="{StaticResource Icon.FolderOpen}"
-                        Width="12" Height="12" VerticalAlignment="Center" />
-                    <TextBlock VerticalAlignment="Center">Browse</TextBlock>
-                </StackPanel>
-            </Button>
-            <Button Grid.Column="2" Margin="4,0,0,0"
-                    Command="{Binding ResetSoundCommand}"
-                    Theme="{StaticResource SecondaryButton}"
-                    FontSize="11" Padding="8,5"
-                    MinHeight="30"
-                    IsVisible="{Binding SoundPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <PathIcon Data="{StaticResource Icon.X}"
-                    Width="12" Height="12" />
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
+                    Padding="8,6" MinHeight="30"
+                    CornerRadius="4">
+                <Grid ColumnDefinitions="Auto,*,Auto">
+                    <PathIcon Grid.Column="0"
+                              Data="{StaticResource Icon.SpeakerHigh}"
+                              Width="13" Height="13"
+                              Foreground="{DynamicResource AppSubtleText}"
+                              Margin="0,0,8,0"
+                              VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding SoundDisplayName}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               TextTrimming="CharacterEllipsis" />
+                    <PathIcon Grid.Column="2"
+                              Data="{StaticResource Icon.CaretLeft}"
+                              Width="10" Height="10"
+                              Foreground="{DynamicResource AppSubtleText}"
+                              VerticalAlignment="Center"
+                              RenderTransform="rotate(270deg)" />
+                </Grid>
             </Button>
         </Grid>
     </StackPanel>

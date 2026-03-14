@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -20,29 +19,18 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
 
     private bool _isEnabled;
     private int _thresholdValue;
-    private string? _soundPath;
-    private SoundOption _selectedSound = SoundOption.Default;
-    private bool _isCustomSound;
+    private string? _soundSettingsValue;
+    private string _soundDisplayName = "Default (none)";
     private bool _disposed;
 
     public string Title { get; }
     public Bitmap? Icon { get; }
     public int SliderMinimum { get; }
     public int SliderMaximum { get; }
-    public List<SoundOption> SoundOptions { get; } = SoundOption.BuildList();
 
-    public Interaction<string?, string?> BrowseSoundInteraction { get; } = new();
-    public ReactiveCommand<Unit, Unit> BrowseSoundCommand { get; }
-    public ReactiveCommand<Unit, Unit> ResetSoundCommand { get; }
+    public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; } = new();
+    public ReactiveCommand<Unit, Unit> OpenSoundPickerCommand { get; }
 
-    /// <param name="title">Section title, e.g. "Full Battery"</param>
-    /// <param name="iconSource">Asset path, e.g. "/Assets/FullBattery.png"</param>
-    /// <param name="sliderMin">Slider minimum</param>
-    /// <param name="sliderMax">Slider maximum</param>
-    /// <param name="isEnabled">Initial enabled state</param>
-    /// <param name="thresholdValue">Initial threshold value</param>
-    /// <param name="soundSettingsValue">Initial sound settings value (path or "builtin:...")</param>
-    /// <param name="onSettingsChanged">Callback(soundSettingsValue, thresholdValue) to persist changes</param>
     public BatteryNotificationSectionViewModel(
         string title, string iconSource,
         int sliderMin, int sliderMax,
@@ -56,61 +44,45 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         SliderMaximum = sliderMax;
         _isEnabled = isEnabled;
         _thresholdValue = thresholdValue;
-        _soundPath = BuiltInSounds.IsBuiltIn(soundSettingsValue) ? null : soundSettingsValue;
+        _soundSettingsValue = soundSettingsValue;
         _onSettingsChanged = onSettingsChanged;
 
-        _selectedSound = SoundOption.FromSettingsValue(soundSettingsValue, SoundOptions);
-        _isCustomSound = _selectedSound.IsCustom;
+        UpdateSoundDisplayName();
 
-        BrowseSoundCommand = ReactiveCommand.CreateFromTask(async () =>
+        OpenSoundPickerCommand = ReactiveCommand.CreateFromTask(async () =>
         {
-            var result = await BrowseSoundInteraction.Handle(SoundPath ?? string.Empty);
-            if (result != null && ValidateSoundFilePath(result))
+            var result = await OpenSoundPickerInteraction.Handle((_soundSettingsValue, Title));
+            if (result != null)
             {
-                SoundPath = result;
-                SelectedSound = SoundOptions.First(s => s.IsCustom);
-                IsCustomSound = true;
-                _onSettingsChanged(result, ThresholdValue);
+                string? newValue;
+                if (result.IsCustom)
+                {
+                    newValue = result.CustomPath;
+                    if (string.IsNullOrEmpty(newValue) || !ValidateSoundFilePath(newValue))
+                        return;
+                }
+                else
+                {
+                    newValue = result.SettingsValue;
+                }
+
+                _soundSettingsValue = newValue;
+                UpdateSoundDisplayName();
+                _onSettingsChanged(newValue, ThresholdValue);
             }
         });
 
-        ResetSoundCommand = ReactiveCommand.Create(() =>
-        {
-            SoundPath = null;
-            SelectedSound = SoundOptions.First(s => s.IsDefault);
-            _onSettingsChanged(null, ThresholdValue);
-        });
-
-        this.WhenAnyValue(x => x.SelectedSound)
-            .Skip(1)
-            .Subscribe(option =>
-            {
-                if (option == null) return;
-                IsCustomSound = option.IsCustom;
-                if (option.IsCustom) return; // browse handles save
-                SoundPath = null;
-                _onSettingsChanged(option.SettingsValue, ThresholdValue);
-            })
-            .DisposeWith(_disposables);
-
         this.WhenAnyValue(x => x.IsEnabled)
             .Skip(1)
-            .Subscribe(_ => _onSettingsChanged(GetCurrentSoundValue(), ThresholdValue))
+            .Subscribe(_ => _onSettingsChanged(_soundSettingsValue, ThresholdValue))
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.ThresholdValue)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(500))
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(val => _onSettingsChanged(GetCurrentSoundValue(), val))
+            .Subscribe(val => _onSettingsChanged(_soundSettingsValue, val))
             .DisposeWith(_disposables);
-    }
-
-    private string? GetCurrentSoundValue()
-    {
-        if (IsCustomSound && !string.IsNullOrEmpty(SoundPath))
-            return SoundPath;
-        return SelectedSound?.SettingsValue;
     }
 
     public bool IsEnabled
@@ -125,36 +97,38 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _thresholdValue, value);
     }
 
-    public string? SoundPath
+    public string SoundDisplayName
     {
-        get => _soundPath;
-        set => this.RaiseAndSetIfChanged(ref _soundPath, value);
+        get => _soundDisplayName;
+        private set => this.RaiseAndSetIfChanged(ref _soundDisplayName, value);
     }
 
-    public SoundOption SelectedSound
+    private void UpdateSoundDisplayName()
     {
-        get => _selectedSound;
-        set => this.RaiseAndSetIfChanged(ref _selectedSound, value);
-    }
-
-    public bool IsCustomSound
-    {
-        get => _isCustomSound;
-        set => this.RaiseAndSetIfChanged(ref _isCustomSound, value);
+        if (string.IsNullOrEmpty(_soundSettingsValue))
+        {
+            SoundDisplayName = "Default (none)";
+        }
+        else if (BuiltInSounds.IsBuiltIn(_soundSettingsValue))
+        {
+            SoundDisplayName = BuiltInSounds.GetName(_soundSettingsValue) ?? "Unknown";
+        }
+        else
+        {
+            SoundDisplayName = Path.GetFileName(_soundSettingsValue) ?? "Custom file";
+        }
     }
 
     private static readonly HashSet<string> AllowedExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".wav", ".mp3", ".m4a", ".wma", ".ogg", ".flac", ".aac" };
 
-    private const long MaxSoundFileSizeBytes = 50 * 1024 * 1024; // 50 MB
+    private const long MaxSoundFileSizeBytes = 50 * 1024 * 1024;
 
     private static bool ValidateSoundFilePath(string path)
     {
-        // Must be an absolute path
         if (!Path.IsPathRooted(path))
             return false;
 
-        // Normalize to canonical form (handles / vs \ on Windows, .., symlink text)
         string canonical;
         try
         {
@@ -165,19 +139,16 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
             return false;
         }
 
-        // Validate file extension
         var ext = Path.GetExtension(canonical);
         if (string.IsNullOrEmpty(ext) || !AllowedExtensions.Contains(ext))
             return false;
 
-        // Check file exists, is not a symlink, and size is within limit
         try
         {
             var info = new FileInfo(canonical);
             if (!info.Exists || info.Length > MaxSoundFileSizeBytes)
                 return false;
 
-            // Reject symlinks — could point to sensitive files
             if (info.LinkTarget != null)
                 return false;
         }

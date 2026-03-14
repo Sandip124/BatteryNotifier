@@ -20,11 +20,21 @@ public static class BuiltInSounds
 
     private static readonly Dictionary<string, Func<short[]>> Generators = new()
     {
+        // ── General purpose ──
         ["Chime"] = GenerateChime,
         ["Alert"] = GenerateAlert,
-        ["Gentle"] = GenerateGentle,
-        ["Ping"] = GeneratePing,
         ["Beacon"] = GenerateBeacon,
+
+        // ── Full battery (calm / positive) ──
+        ["Zen"] = GenerateZen,
+        ["Harp"] = GenerateHarp,
+        ["Breeze"] = GenerateBreeze,
+        ["Bloom"] = GenerateBloom,
+
+        // ── Low battery (warning / urgent) ──
+        ["Pulse"] = GeneratePulse,
+        ["Klaxon"] = GenerateKlaxon,
+        ["Rattle"] = GenerateRattle,
     };
 
     /// <summary>Names of all available built-in sounds.</summary>
@@ -114,24 +124,6 @@ public static class BuiltInSounds
         return samples;
     }
 
-    /// <summary>Soft single tone with long fade (G4).</summary>
-    private static short[] GenerateGentle()
-    {
-        var duration = 1.0;
-        var samples = new short[(int)(SampleRate * duration)];
-        FillTone(samples, 0, samples.Length, 392.0, 0.35, fadeIn: 0.1, fadeOut: 0.6);
-        return samples;
-    }
-
-    /// <summary>Short high-pitched ping (E6).</summary>
-    private static short[] GeneratePing()
-    {
-        var duration = 0.3;
-        var samples = new short[(int)(SampleRate * duration)];
-        FillTone(samples, 0, samples.Length, 1318.5, 0.45, fadeIn: 0.005, fadeOut: 0.2);
-        return samples;
-    }
-
     /// <summary>Three ascending notes: C5 → E5 → G5 (major triad arpeggio).</summary>
     private static short[] GenerateBeacon()
     {
@@ -146,6 +138,180 @@ public static class BuiltInSounds
         FillTone(samples, offset, noteLen, 659.25, 0.45, fadeIn: 0.01, fadeOut: 0.06); // E5
         offset += noteLen + gap;
         FillTone(samples, offset, noteLen, 783.99, 0.45, fadeIn: 0.01, fadeOut: 0.10); // G5
+
+        return samples;
+    }
+
+    // ── Full Battery Sounds (calm, positive) ─────────────────────
+
+    /// <summary>
+    /// Zen: soft low tone with gentle overtone shimmer. Very calming.
+    /// Two layered notes (C4 + G4) with long fade-out — like a meditation bowl.
+    /// </summary>
+    private static short[] GenerateZen()
+    {
+        var duration = 2.0;
+        var samples = new short[(int)(SampleRate * duration)];
+
+        // Fundamental: C4 (261 Hz) — warm base
+        FillTone(samples, 0, samples.Length, 261.63, 0.25, fadeIn: 0.15, fadeOut: 1.2);
+        // Overtone: G4 (392 Hz) — gentle fifth
+        MixTone(samples, 0, samples.Length, 392.0, 0.12, fadeIn: 0.3, fadeOut: 1.4);
+        // Soft shimmer: E5 (659 Hz) — very quiet high harmonic
+        MixTone(samples, 0, samples.Length, 659.25, 0.05, fadeIn: 0.5, fadeOut: 1.0);
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Harp: descending arpeggio G5 → E5 → C5 → G4. Peaceful and complete.
+    /// </summary>
+    private static short[] GenerateHarp()
+    {
+        var noteLen = (int)(SampleRate * 0.35);
+        var overlap = (int)(SampleRate * 0.15); // notes overlap for a harp-like sustain
+        var step = noteLen - overlap;
+        var total = step * 3 + noteLen + (int)(SampleRate * 0.3); // extra tail
+        var samples = new short[total];
+
+        double[] freqs = [783.99, 659.25, 523.25, 392.0]; // G5, E5, C5, G4
+        for (int i = 0; i < freqs.Length; i++)
+        {
+            var offset = i * step;
+            var len = Math.Min(noteLen + (int)(SampleRate * 0.2), total - offset);
+            MixTone(samples, offset, len, freqs[i], 0.3 - i * 0.03, fadeIn: 0.008, fadeOut: 0.35);
+        }
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Breeze: slow ascending sweep from C4 to G4 with soft attack. Airy and gentle.
+    /// </summary>
+    private static short[] GenerateBreeze()
+    {
+        var duration = 1.5;
+        var count = (int)(SampleRate * duration);
+        var samples = new short[count];
+
+        double startFreq = 261.63; // C4
+        double endFreq = 392.0;    // G4
+        var fadeInSamples = (int)(0.2 * SampleRate);
+        var fadeOutSamples = (int)(0.8 * SampleRate);
+
+        for (int i = 0; i < count; i++)
+        {
+            double t = (double)i / SampleRate;
+            double progress = (double)i / count;
+            // Smooth frequency sweep (ease-in-out)
+            double ease = progress * progress * (3 - 2 * progress);
+            double freq = startFreq + (endFreq - startFreq) * ease;
+
+            double sample = Math.Sin(2 * Math.PI * freq * t) * 0.28;
+            // Add soft second harmonic
+            sample += Math.Sin(2 * Math.PI * freq * 2 * t) * 0.06;
+
+            // Envelope
+            if (i < fadeInSamples)
+                sample *= (double)i / fadeInSamples;
+            else if (i > count - fadeOutSamples)
+                sample *= (double)(count - i) / fadeOutSamples;
+
+            samples[i] = ClampSample(sample);
+        }
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Bloom: two warm chords that "bloom" open. Major 7th feel (C4+E4 → G4+B4).
+    /// </summary>
+    private static short[] GenerateBloom()
+    {
+        var chordLen = (int)(SampleRate * 0.8);
+        var gap = (int)(SampleRate * 0.1);
+        var total = chordLen * 2 + gap;
+        var samples = new short[total];
+
+        // Chord 1: C4 + E4
+        MixTone(samples, 0, chordLen, 261.63, 0.22, fadeIn: 0.08, fadeOut: 0.3);
+        MixTone(samples, 0, chordLen, 329.63, 0.18, fadeIn: 0.12, fadeOut: 0.3);
+
+        // Chord 2: G4 + B4 — brighter resolution
+        var offset2 = chordLen + gap;
+        var len2 = total - offset2;
+        MixTone(samples, offset2, len2, 392.0, 0.22, fadeIn: 0.06, fadeOut: 0.4);
+        MixTone(samples, offset2, len2, 493.88, 0.16, fadeIn: 0.10, fadeOut: 0.4);
+
+        return samples;
+    }
+
+    // ── Low Battery Sounds (warning, urgent) ───────────────────
+
+    /// <summary>
+    /// Pulse: rapid repeating beeps with increasing urgency. Three short beeps.
+    /// </summary>
+    private static short[] GeneratePulse()
+    {
+        var beepLen = (int)(SampleRate * 0.1);
+        var gapLen = (int)(SampleRate * 0.08);
+        var total = beepLen * 3 + gapLen * 2 + (int)(SampleRate * 0.15);
+        var samples = new short[total];
+
+        double[] freqs = [784.0, 880.0, 988.0]; // G5, A5, B5 — ascending urgency
+        for (int i = 0; i < 3; i++)
+        {
+            var offset = i * (beepLen + gapLen);
+            FillTone(samples, offset, beepLen, freqs[i], 0.55, fadeIn: 0.005, fadeOut: 0.02);
+        }
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Klaxon: harsh low buzz (two dissonant tones). Feels like a real alarm.
+    /// A3 + Bb3 played together — tritone-adjacent dissonance.
+    /// </summary>
+    private static short[] GenerateKlaxon()
+    {
+        var buzzLen = (int)(SampleRate * 0.25);
+        var gapLen = (int)(SampleRate * 0.1);
+        var total = buzzLen * 2 + gapLen + (int)(SampleRate * 0.1);
+        var samples = new short[total];
+
+        // Buzz 1
+        FillTone(samples, 0, buzzLen, 220.0, 0.4, fadeIn: 0.005, fadeOut: 0.04);   // A3
+        MixTone(samples, 0, buzzLen, 233.08, 0.3, fadeIn: 0.005, fadeOut: 0.04);    // Bb3
+
+        // Buzz 2 — slightly higher
+        var offset2 = buzzLen + gapLen;
+        FillTone(samples, offset2, buzzLen, 246.94, 0.4, fadeIn: 0.005, fadeOut: 0.06); // B3
+        MixTone(samples, offset2, buzzLen, 261.63, 0.3, fadeIn: 0.005, fadeOut: 0.06); // C4
+
+        return samples;
+    }
+
+    /// <summary>
+    /// Rattle: fast staccato clicks at descending pitch. Sounds like a rattlesnake warning.
+    /// </summary>
+    private static short[] GenerateRattle()
+    {
+        var clickLen = (int)(SampleRate * 0.04);
+        var gapLen = (int)(SampleRate * 0.03);
+        var clickCount = 6;
+        var total = (clickLen + gapLen) * clickCount + (int)(SampleRate * 0.1);
+        var samples = new short[total];
+
+        for (int i = 0; i < clickCount; i++)
+        {
+            var offset = i * (clickLen + gapLen);
+            // Descending pitch: starts at B5, drops
+            double freq = 988.0 - i * 80;
+            double amp = 0.5 - i * 0.04;
+            FillTone(samples, offset, clickLen, freq, amp, fadeIn: 0.002, fadeOut: 0.015);
+            // Add noise-like second harmonic for click texture
+            MixTone(samples, offset, clickLen, freq * 2.73, amp * 0.25, fadeIn: 0.001, fadeOut: 0.01);
+        }
 
         return samples;
     }
@@ -172,6 +338,34 @@ public static class BuiltInSounds
             buffer[offset + i] = (short)(sample * short.MaxValue);
         }
     }
+
+    /// <summary>
+    /// Like FillTone but adds (mixes) into existing buffer content instead of overwriting.
+    /// </summary>
+    private static void MixTone(short[] buffer, int offset, int count,
+        double frequency, double amplitude, double fadeIn, double fadeOut)
+    {
+        var fadeInSamples = (int)(fadeIn * SampleRate);
+        var fadeOutSamples = (int)(fadeOut * SampleRate);
+
+        for (int i = 0; i < count && offset + i < buffer.Length; i++)
+        {
+            double t = (double)i / SampleRate;
+            double sample = Math.Sin(2 * Math.PI * frequency * t) * amplitude;
+
+            if (i < fadeInSamples)
+                sample *= (double)i / fadeInSamples;
+            else if (i > count - fadeOutSamples)
+                sample *= (double)(count - i) / fadeOutSamples;
+
+            // Mix: add to existing and clamp
+            double existing = buffer[offset + i] / (double)short.MaxValue;
+            buffer[offset + i] = ClampSample(existing + sample);
+        }
+    }
+
+    private static short ClampSample(double sample) =>
+        (short)Math.Clamp(sample * short.MaxValue, short.MinValue, short.MaxValue);
 
     private static void WriteWav(string path, short[] samples)
     {

@@ -1,7 +1,6 @@
 using System;
-using System.Threading.Tasks;
 using Avalonia.Controls;
-using Avalonia.Platform.Storage;
+using Avalonia.Media;
 using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
@@ -19,42 +18,61 @@ public partial class BatteryNotificationSection : UserControl
     {
         base.OnDataContextChanged(e);
 
-        // Dispose previous handler to prevent duplicate registrations
         _interactionHandler?.Dispose();
         _interactionHandler = null;
 
         if (DataContext is BatteryNotificationSectionViewModel vm)
         {
-            _interactionHandler = vm.BrowseSoundInteraction.RegisterHandler(async ctx =>
+            _interactionHandler = vm.OpenSoundPickerInteraction.RegisterHandler(async ctx =>
             {
-                var path = await BrowseAudioFile().ConfigureAwait(false);
-                ctx.SetOutput(path);
+                var topLevel = TopLevel.GetTopLevel(this);
+                if (topLevel is not Window ownerWindow)
+                {
+                    ctx.SetOutput(null);
+                    return;
+                }
+
+                // Add backdrop overlay (non-interactive — clicks pass through to owner window)
+                var backdrop = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
+                    IsHitTestVisible = false
+                };
+
+                Panel? overlayHost = null;
+                Control? existingContent = null;
+                if (ownerWindow.Content is Control content)
+                {
+                    existingContent = content;
+                    overlayHost = new Panel();
+                    ownerWindow.Content = null;
+                    overlayHost.Children.Add(existingContent);
+                    overlayHost.Children.Add(backdrop);
+                    ownerWindow.Content = overlayHost;
+                }
+
+                try
+                {
+                    var (settingsValue, title) = ctx.Input;
+                    var pickerVm = new SoundPickerViewModel(settingsValue, title);
+                    var pickerWindow = new SoundPickerWindow
+                    {
+                        DataContext = pickerVm
+                    };
+
+                    var result = await pickerWindow.ShowLightDismiss(ownerWindow);
+                    ctx.SetOutput(result);
+                }
+                finally
+                {
+                    // Remove backdrop — restore original content
+                    if (overlayHost != null && existingContent != null)
+                    {
+                        overlayHost.Children.Clear();
+                        ownerWindow.Content = existingContent;
+                    }
+                }
             });
         }
-    }
-
-    private async Task<string?> BrowseAudioFile()
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel == null) return null;
-
-        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Select Sound File",
-            AllowMultiple = false,
-            FileTypeFilter =
-            [
-                new FilePickerFileType("Audio Files")
-                {
-                    Patterns = ["*.wav", "*.mp3", "*.m4a", "*.wma"]
-                },
-                new FilePickerFileType("All Files")
-                {
-                    Patterns = ["*.*"]
-                }
-            ]
-        }).ConfigureAwait(false);
-
-        return files.Count > 0 ? files[0].Path.LocalPath : null;
     }
 }

@@ -23,8 +23,8 @@ public class AppSettingsTests
         Assert.True(settings.LowBatteryNotification);
         Assert.Equal(96, settings.FullBatteryNotificationValue);
         Assert.Equal(25, settings.LowBatteryNotificationValue);
-        Assert.Null(settings.FullBatteryNotificationMusic);
-        Assert.Null(settings.LowBatteryNotificationMusic);
+        Assert.Equal("builtin:Harp", settings.FullBatteryNotificationMusic);
+        Assert.Equal("builtin:Klaxon", settings.LowBatteryNotificationMusic);
         Assert.Equal(ThemeMode.System, settings.ThemeMode);
         Assert.True(settings.LaunchAtStartup);
     }

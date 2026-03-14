@@ -1,12 +1,9 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Styling;
-using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using ReactiveUI;
 
@@ -169,49 +166,4 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         _disposables.Dispose();
         _disposed = true;
     }
-}
-
-/// <summary>
-/// Represents a sound option in the settings UI (built-in, custom, or default/none).
-/// </summary>
-public class SoundOption
-{
-    public string DisplayName { get; init; } = string.Empty;
-    public string? SettingsValue { get; init; }
-    public bool IsDefault { get; init; }
-    public bool IsCustom { get; init; }
-
-    public static readonly SoundOption Default = new() { DisplayName = "Default (none)", IsDefault = true };
-    public static readonly SoundOption Custom = new() { DisplayName = "Custom file...", IsCustom = true };
-
-    public static List<SoundOption> BuildList()
-    {
-        var list = new List<SoundOption> { Default };
-
-        foreach (var name in BuiltInSounds.Names)
-        {
-            list.Add(new SoundOption
-            {
-                DisplayName = name,
-                SettingsValue = BuiltInSounds.ToSettingsValue(name)
-            });
-        }
-
-        list.Add(Custom);
-        return list;
-    }
-
-    public static SoundOption FromSettingsValue(string? value, List<SoundOption> options)
-    {
-        if (string.IsNullOrEmpty(value))
-            return options.First(o => o.IsDefault);
-
-        if (BuiltInSounds.IsBuiltIn(value))
-            return options.FirstOrDefault(o => o.SettingsValue == value) ?? options.First(o => o.IsDefault);
-
-        // Custom file path
-        return options.First(o => o.IsCustom);
-    }
-
-    public override string ToString() => DisplayName;
 }

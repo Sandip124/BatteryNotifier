@@ -19,8 +19,8 @@ public sealed class AppSettings
     public bool LowBatteryNotification { get; set; } = true;
     public int FullBatteryNotificationValue { get; set; } = 96;
     public int LowBatteryNotificationValue { get; set; } = 25;
-    public string? FullBatteryNotificationMusic { get; set; }
-    public string? LowBatteryNotificationMusic { get; set; }
+    public string? FullBatteryNotificationMusic { get; set; } = "builtin:Harp";
+    public string? LowBatteryNotificationMusic { get; set; } = "builtin:Klaxon";
 
     // Window Settings
     public bool StartMinimized { get; set; } = true;
@@ -173,8 +173,8 @@ public sealed class AppSettings
         LowBatteryNotification = true;
         FullBatteryNotificationValue = 96;
         LowBatteryNotificationValue = 25;
-        FullBatteryNotificationMusic = null;
-        LowBatteryNotificationMusic = null;
+        FullBatteryNotificationMusic = "builtin:Harp";
+        LowBatteryNotificationMusic = "builtin:Klaxon";
         StartMinimized = true;
         ThemeMode = ThemeMode.System;
         LaunchAtStartup = true;

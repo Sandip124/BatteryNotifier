@@ -1,0 +1,136 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+        mc:Ignorable="d"
+        x:Class="BatteryNotifier.Avalonia.Views.SoundPickerWindow"
+        x:DataType="vm:SoundPickerViewModel"
+        Title="Choose Sound"
+        Width="340" Height="350"
+        MinWidth="300" MinHeight="350"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppWindowBackground}"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="0"
+        SystemDecorations="BorderOnly">
+
+    <Grid RowDefinitions="Auto,Auto,*,Auto">
+
+        <!-- Header -->
+        <Border Grid.Row="0" Padding="16,14,16,10"
+                Background="{DynamicResource AppHeaderBackground}">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding PickerTitle}"
+                           FontSize="15" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppForeground}"
+                           VerticalAlignment="Center" />
+                <Button Grid.Column="1"
+                        Theme="{StaticResource PrimaryButton}"
+                        Command="{Binding CancelCommand}"
+                        Padding="4" ToolTip.Tip="Close">
+                    <PathIcon Data="{StaticResource Icon.X}"
+                              Width="14" Height="14"
+                              Foreground="{DynamicResource AppSubtleText}" />
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- Search bar -->
+        <Border Grid.Row="1" Padding="12,6,12,4">
+            <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+                     Watermark="Search sounds..."
+                     FontSize="12"
+                     Padding="8,6"
+                     CornerRadius="6" />
+        </Border>
+
+        <!-- Sound list -->
+        <ScrollViewer Grid.Row="2" Padding="12,0,12,0"
+                      HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="0,0,0,12">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SoundPickerGroup">
+                        <StackPanel Margin="0,6,0,2">
+                            <!-- Group header -->
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppSubtleText}"
+                                       Margin="4,0,0,4" />
+
+                            <!-- Sound items -->
+                            <ItemsControl ItemsSource="{Binding Items}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:SoundPickerItem">
+                                        <Button x:Name="SoundItemButton"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Stretch"
+                                                Padding="10,8"
+                                                Margin="0,1"
+                                                CornerRadius="6"
+                                                Cursor="Hand"
+                                                Background="Transparent"
+                                                BorderThickness="0"
+                                                Click="OnSoundItemClick">
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <PathIcon Grid.Column="0"
+                                                          Data="{StaticResource Icon.MusicNote}"
+                                                          Width="14" Height="14"
+                                                          Foreground="{DynamicResource AppSubtleText}"
+                                                          Margin="0,0,8,0"
+                                                          VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding DisplayName}"
+                                                           FontSize="13"
+                                                           Foreground="{DynamicResource AppForeground}"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <PathIcon Grid.Column="2"
+                                                          x:Name="CheckIcon"
+                                                          Data="{StaticResource Icon.Check}"
+                                                          Width="14" Height="14"
+                                                          Foreground="{DynamicResource AppAccentForeground}"
+                                                          IsVisible="False"
+                                                          VerticalAlignment="Center" />
+                                            </Grid>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <Border Grid.Row="3"
+                Padding="12,10,12,12"
+                BorderThickness="0,1,0,0"
+                BorderBrush="{DynamicResource AppCardBorder}">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <Button Grid.Column="0"
+                        Theme="{StaticResource SecondaryButton}"
+                        Command="{Binding BrowseCustomCommand}"
+                        FontSize="12" Padding="10,6"
+                        HorizontalAlignment="Left"
+                        ToolTip.Tip="Choose a custom sound file">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                        <PathIcon Data="{StaticResource Icon.FolderOpen}"
+                                  Width="13" Height="13" VerticalAlignment="Center" />
+                        <TextBlock Text="Custom..." VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+                <Button Grid.Column="2"
+                        Theme="{StaticResource SecondaryButton}"
+                        Command="{Binding SelectCommand}"
+                        FontSize="12" Padding="14,6"
+                        Foreground="{DynamicResource AppAccentForeground}">
+                    Select
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
