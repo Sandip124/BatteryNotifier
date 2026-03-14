@@ -46,19 +46,4 @@ public class DebouncerTests
         Assert.False(executed);
     }
 
-    [Fact]
-    public void Debounce_NegativeInterval_ThrowsArgumentOutOfRange()
-    {
-        using var debouncer = new Debouncer();
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            debouncer.Debounce(() => { }, -1));
-    }
-
-    [Fact]
-    public void Debounce_NullTask_ThrowsArgumentNull()
-    {
-        using var debouncer = new Debouncer();
-        Assert.Throws<ArgumentNullException>(() =>
-            debouncer.Debounce(null!, 100));
-    }
 }

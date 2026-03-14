@@ -7,7 +7,6 @@ using System.Reactive.Linq;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using BatteryNotifier.Core.Managers;
-using BatteryNotifier.Core.Services;
 using ReactiveUI;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
@@ -15,12 +14,10 @@ namespace BatteryNotifier.Avalonia.ViewModels;
 public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
 {
     private readonly CompositeDisposable _disposables = new();
-    private readonly Action<string?, int> _onSettingsChanged;
 
     private bool _isEnabled;
     private int _thresholdValue;
     private string? _soundSettingsValue;
-    private string _soundDisplayName = "Default (none)";
     private bool _disposed;
 
     public string Title { get; }
@@ -45,7 +42,7 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         _isEnabled = isEnabled;
         _thresholdValue = thresholdValue;
         _soundSettingsValue = soundSettingsValue;
-        _onSettingsChanged = onSettingsChanged;
+        var onSettingsChanged1 = onSettingsChanged;
 
         UpdateSoundDisplayName();
 
@@ -68,20 +65,20 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
 
                 _soundSettingsValue = newValue;
                 UpdateSoundDisplayName();
-                _onSettingsChanged(newValue, ThresholdValue);
+                onSettingsChanged1(newValue, ThresholdValue);
             }
         });
 
         this.WhenAnyValue(x => x.IsEnabled)
             .Skip(1)
-            .Subscribe(_ => _onSettingsChanged(_soundSettingsValue, ThresholdValue))
+            .Subscribe(_ => onSettingsChanged1(_soundSettingsValue, ThresholdValue))
             .DisposeWith(_disposables);
 
         this.WhenAnyValue(x => x.ThresholdValue)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(500))
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(val => _onSettingsChanged(_soundSettingsValue, val))
+            .Subscribe(val => onSettingsChanged1(_soundSettingsValue, val))
             .DisposeWith(_disposables);
     }
 
@@ -99,9 +96,9 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
 
     public string SoundDisplayName
     {
-        get => _soundDisplayName;
-        private set => this.RaiseAndSetIfChanged(ref _soundDisplayName, value);
-    }
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "Default (none)";
 
     private void UpdateSoundDisplayName()
     {

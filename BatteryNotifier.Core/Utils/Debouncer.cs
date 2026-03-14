@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-
-namespace BatteryNotifier.Core.Utils
+﻿namespace BatteryNotifier.Core.Utils
 {
     public sealed class Debouncer : IDisposable
     {

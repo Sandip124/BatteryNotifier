@@ -1,10 +1,5 @@
-using System;
-using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 
@@ -76,10 +71,7 @@ public sealed class UpdateService : IDisposable
             var response = await _httpClient.GetAsync(apiUrl, ct).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
-            {
-                _logger.Debug("GitHub API returned {StatusCode}", response.StatusCode);
                 return null;
-            }
 
             var release = await response.Content.ReadFromJsonAsync(
                 GitHubReleaseContext.Default.GitHubRelease, ct).ConfigureAwait(false);
@@ -100,23 +92,16 @@ public sealed class UpdateService : IDisposable
             var currentVersion = ParseVersion(Constants.ApplicationVersion);
 
             if (remoteVersion != null && currentVersion != null && remoteVersion > currentVersion)
-            {
-                _logger.Information("Update available: {Current} → {Remote}",
-                    currentVersion, remoteVersion);
                 return release;
-            }
 
-            _logger.Debug("No update available (current: {Current}, latest: {Remote})",
-                Constants.ApplicationVersion, release.TagName);
             return null;
         }
         catch (OperationCanceledException)
         {
             return null;
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.Debug(ex, "Update check failed");
             return null;
         }
     }

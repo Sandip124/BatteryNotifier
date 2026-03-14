@@ -1,5 +1,4 @@
 using System;
-using System.Reactive;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -135,7 +134,7 @@ public partial class SoundPickerWindow : Window
         vm.SelectedItem = item;
         UpdateCheckIcons(vm);
 
-        await vm.PreviewItem(item);
+        await vm.PreviewItem(item).ConfigureAwait(false);
     }
 
     private void UpdateCheckIcons(SoundPickerViewModel vm)

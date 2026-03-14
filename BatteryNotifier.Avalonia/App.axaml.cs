@@ -93,14 +93,14 @@ public partial class App : Application
             // App always starts hidden in tray — user opens via tray icon "Show Window".
             desktop.MainWindow.ShowInTaskbar = false;
             desktop.MainWindow.Hide();
-            Services.MacOSDockIconHelper.HideDockIcon();
+            MacOSDockIconHelper.HideDockIcon();
 
             // Hide to tray on window close (not actually close)
             desktop.MainWindow.Closing += (s, e) =>
             {
                 e.Cancel = true;
                 desktop.MainWindow.Hide();
-                Services.MacOSDockIconHelper.HideDockIcon();
+                MacOSDockIconHelper.HideDockIcon();
             };
 
             desktop.Exit += (s, e) =>
@@ -131,7 +131,7 @@ public partial class App : Application
                 Content = BuildCrashDialogContent(crashDetails)
             };
 
-            await dialog.ShowDialog(mainWindow);
+            await dialog.ShowDialog(mainWindow).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

@@ -60,7 +60,7 @@ public partial class BatteryNotificationSection : UserControl
                         DataContext = pickerVm
                     };
 
-                    var result = await pickerWindow.ShowLightDismiss(ownerWindow);
+                    var result = await pickerWindow.ShowLightDismiss(ownerWindow).ConfigureAwait(false);
                     ctx.SetOutput(result);
                 }
                 finally

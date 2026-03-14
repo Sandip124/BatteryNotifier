@@ -1,5 +1,3 @@
-using System;
-using System.Threading.Tasks;
 using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Core.Managers
@@ -21,7 +19,7 @@ namespace BatteryNotifier.Core.Managers
 
             if (showNotification != null)
             {
-                await showNotification();
+                await showNotification().ConfigureAwait(false);
             }
 
             var settings = AppSettings.Instance;
@@ -31,7 +29,7 @@ namespace BatteryNotifier.Core.Managers
                 if (settings.LowBatteryNotification &&
                     !string.IsNullOrEmpty(settings.LowBatteryNotificationMusic))
                 {
-                    await _soundManager.PlaySoundAsync(settings.LowBatteryNotificationMusic, loop: true);
+                    await _soundManager.PlaySoundAsync(settings.LowBatteryNotificationMusic, loop: true).ConfigureAwait(false);
                 }
             }
             else if (notificationMessage.Tag == Constants.FullBatteryTag)
@@ -39,7 +37,7 @@ namespace BatteryNotifier.Core.Managers
                 if (settings.FullBatteryNotification &&
                     !string.IsNullOrEmpty(settings.FullBatteryNotificationMusic))
                 {
-                    await _soundManager.PlaySoundAsync(settings.FullBatteryNotificationMusic, loop: true);
+                    await _soundManager.PlaySoundAsync(settings.FullBatteryNotificationMusic, loop: true).ConfigureAwait(false);
                 }
             }
         }

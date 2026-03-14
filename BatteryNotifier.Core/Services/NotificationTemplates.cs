@@ -1,5 +1,3 @@
-using System;
-
 namespace BatteryNotifier.Core.Services;
 
 /// <summary>

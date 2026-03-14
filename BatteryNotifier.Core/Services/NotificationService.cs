@@ -1,4 +1,3 @@
-using System.Linq;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 
@@ -91,18 +90,12 @@ public sealed class NotificationService : IDisposable
             // Auto-recover after RecoveryInterval (Duolingo "recovering arm" concept)
             if (tracker.IsSilenced && (DateTime.Now - tracker.LastNotificationTime) >= RecoveryInterval)
             {
-                Logger.Information("Tag {Tag} auto-recovered after {Hours:F1}h silence",
-                    tag, (DateTime.Now - tracker.LastNotificationTime).TotalHours);
                 tracker.Count = 0;
                 tracker.IsSilenced = false;
             }
 
-            // Still silenced — drop the notification
             if (tracker.IsSilenced)
-            {
-                Logger.Debug("Notification silenced for tag {Tag} (sent {Count} already)", tag, tracker.Count);
                 return;
-            }
 
             // Check backoff interval
             var backoffIndex = Math.Min(tracker.Count, BackoffIntervals.Length - 1);
@@ -110,21 +103,14 @@ public sealed class NotificationService : IDisposable
             var elapsed = DateTime.Now - tracker.LastNotificationTime;
 
             if (tracker.Count > 0 && elapsed < requiredDelay)
-            {
-                Logger.Debug("Notification for tag {Tag} deferred — {Elapsed:F0}s elapsed, need {Required:F0}s",
-                    tag, elapsed.TotalSeconds, requiredDelay.TotalSeconds);
                 return;
-            }
 
             // Increment and check cap
             tracker.Count++;
             tracker.LastNotificationTime = DateTime.Now;
 
             if (tracker.Count >= MaxNotificationsBeforeSilence)
-            {
                 tracker.IsSilenced = true;
-                Logger.Information("Tag {Tag} silenced after {Count} notifications", tag, tracker.Count);
-            }
         }
 
         // Apply throttle for rapid-fire prevention
@@ -155,10 +141,7 @@ public sealed class NotificationService : IDisposable
     {
         lock (_trackersLock)
         {
-            if (_trackers.Remove(tag))
-            {
-                Logger.Information("Notification tracker reset for tag {Tag}", tag);
-            }
+            _trackers.Remove(tag);
         }
     }
 
@@ -188,7 +171,6 @@ public sealed class NotificationService : IDisposable
         }
 
         ClearPendingNotifications();
-        Logger.Information("All notification trackers and pending notifications reset");
     }
 
     private void ScheduleFlush()

@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -155,7 +151,6 @@ public static class CrashReporter
             var fileInfo = new FileInfo(CrashMarkerPath);
             if (fileInfo.Length > MaxCrashMarkerSize)
             {
-                Logger.Warning("Crash marker too large ({Size} bytes) — ignoring", fileInfo.Length);
                 CleanupCrashMarker();
                 return null;
             }
@@ -172,21 +167,17 @@ public static class CrashReporter
                         Encoding.UTF8.GetBytes(expectedSig),
                         Encoding.UTF8.GetBytes(actualSig)))
                 {
-                    Logger.Warning("Crash marker HMAC verification failed — ignoring (possible tampering)");
                     CleanupCrashMarker();
                     return null;
                 }
             }
             else
             {
-                // No signature file — marker was not written by our code
-                Logger.Warning("Crash marker has no signature — ignoring (possible injection)");
                 CleanupCrashMarker();
                 return null;
             }
 
             CleanupCrashMarker();
-            Logger.Information("Previous crash detected (verified)");
             return content;
         }
         catch (Exception ex)
@@ -461,11 +452,7 @@ public static class CrashReporter
     public static bool OpenGitHubIssue(string title, string body)
     {
         if (!CanSendReport())
-        {
-            var remaining = GetCooldownRemaining();
-            Logger.Warning("Report rate-limited. Try again in {Minutes:F0} minutes", remaining.TotalMinutes);
             return false;
-        }
 
         try
         {
@@ -489,7 +476,6 @@ public static class CrashReporter
 
             OpenUrl(url);
             RecordReportSent();
-            Logger.Information("Opened GitHub issue form for user review");
             return true;
         }
         catch (Exception ex)
@@ -514,7 +500,6 @@ public static class CrashReporter
             var filePath = Path.Combine(reportsDir, fileName);
 
             File.WriteAllText(filePath, report);
-            Logger.Information("Report saved to {Path}", filePath);
 
             // Clean up old reports (keep last 10)
             var oldReports = Directory.GetFiles(reportsDir, "report-*.md")

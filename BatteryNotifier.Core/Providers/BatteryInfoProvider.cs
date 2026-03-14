@@ -15,7 +15,7 @@ public sealed class BatteryInfoProvider
     {
     }
 
-    public BatteryInfo GetBatteryInfo()
+    public static BatteryInfo GetBatteryInfo()
     {
         try
         {
@@ -26,9 +26,8 @@ public sealed class BatteryInfoProvider
             if (OperatingSystem.IsLinux())
                 return GetBatteryInfoLinux();
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error getting battery information: {ex.Message}");
         }
 
         return new BatteryInfo
@@ -131,9 +130,8 @@ public sealed class BatteryInfoProvider
                 info.BatteryLifeRemaining = ps.BatteryLifeTime;
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error getting Windows battery information: {ex.Message}");
         }
 
         return info;
@@ -229,9 +227,8 @@ public sealed class BatteryInfoProvider
                 info.PowerLineStatus = BatteryPowerLineStatus.Online;
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error getting macOS battery information: {ex.Message}");
         }
 
         return info;
@@ -315,9 +312,8 @@ public sealed class BatteryInfoProvider
             // Estimate time remaining from energy/power readings
             info.BatteryLifeRemaining = EstimateLinuxTimeRemaining(batteryPath, info);
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine($"Error getting Linux battery information: {ex.Message}");
         }
 
         return info;

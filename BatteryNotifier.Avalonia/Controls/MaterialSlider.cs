@@ -131,7 +131,7 @@ public class MaterialSlider : Control
 
     private static bool IsSystemDark()
     {
-        var app = global::Avalonia.Application.Current;
+        var app = Application.Current;
         return app?.ActualThemeVariant == ThemeVariant.Dark;
     }
 

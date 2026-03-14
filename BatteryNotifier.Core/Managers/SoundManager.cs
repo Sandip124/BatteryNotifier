@@ -1,8 +1,4 @@
-using System;
 using System.Diagnostics;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 using SoundFlow.Abstracts.Devices;
@@ -92,7 +88,7 @@ namespace BatteryNotifier.Core.Managers
 
             try
             {
-                await Task.Run(() => PlaySound(resolvedPath, loop, durationMs, token), token);
+                await Task.Run(() => PlaySound(resolvedPath, loop, durationMs, token), token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -166,9 +162,8 @@ namespace BatteryNotifier.Core.Managers
                     }
                 }
                 catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
+                catch
                 {
-                    _logger.Debug(ex, "Subprocess playback failed for {Command}", command);
                     return;
                 }
                 finally
@@ -188,7 +183,6 @@ namespace BatteryNotifier.Core.Managers
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _logger.Debug("paplay failed, falling back to aplay");
                 PlayWithSubprocess("aplay", source, loop, durationMs, token);
             }
         }
@@ -257,7 +251,6 @@ namespace BatteryNotifier.Core.Managers
                     var device = engine.InitializePlaybackDevice(null, AudioFormat.Cd);
                     _sfEngine = engine;
                     _sfDevice = device;
-                    Log.Debug("SoundManager: SoundFlow audio engine initialized");
                     return device;
                 }
                 catch (Exception ex)

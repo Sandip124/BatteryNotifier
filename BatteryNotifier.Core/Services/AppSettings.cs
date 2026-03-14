@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -42,7 +40,7 @@ public sealed class AppSettings
         Load();
     }
 
-    private string GetSettingsDirectory()
+    private static string GetSettingsDirectory()
     {
         var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var settingsDir = Path.Combine(appData, "BatteryNotifier");

@@ -496,9 +496,9 @@ public class BatteryIndicatorControl : Control
         ctx.DrawEllipse(new SolidColorBrush(color), pen, new Point(cx, cy), r, r);
 
         if (IsCharging)
-            DrawBoltIcon(ctx, cx, cy, r);
+            DrawBadgeIcon(ctx, cx, cy, r, s_boltGeo);
         else
-            DrawCheckmarkIcon(ctx, cx, cy, r);
+            DrawBadgeIcon(ctx, cx, cy, r, s_checkGeo);
     }
 
     private void DrawTriangleBadge(DrawingContext ctx, double cx, double cy, double r, Color color)
@@ -508,64 +508,46 @@ public class BatteryIndicatorControl : Control
         DrawTriangle(ctx, cx, cy, r, new SolidColorBrush(color), pen);
 
         if (IsCharging)
-            DrawBoltIcon(ctx, cx, cy, r);
+            DrawBadgeIcon(ctx, cx, cy, r, s_boltGeo);
         else
-            DrawExclamationIcon(ctx, cx, cy, r);
+            DrawBadgeIcon(ctx, cx, cy, r, s_exclamationGeo);
     }
 
-    // ── Badge icons ──────────────────────────────────────────────
+    // ── Badge icons (Phosphor geometries scaled into badge) ─────
 
-    private static void DrawCheckmarkIcon(DrawingContext ctx, double cx, double cy, double r)
+    // Lightning bolt (filled) — Phosphor LightningFill 256×256
+    private static readonly Geometry s_boltGeo = Geometry.Parse(
+        "M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z");
+
+    // Checkmark — Phosphor Check 256×256
+    private static readonly Geometry s_checkGeo = Geometry.Parse(
+        "M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z");
+
+    // Exclamation mark (stem + dot) — custom, 256×256 viewbox
+    private static readonly Geometry s_exclamationGeo = Geometry.Parse(
+        "M116,52a12,12,0,0,1,24,0L140,152a12,12,0,0,1,-24,0Z M112,196a16,16,0,0,1,32,0a16,16,0,0,1,-32,0Z");
+
+    /// <summary>
+    /// Draws a pre-parsed icon geometry scaled and centered inside the badge.
+    /// </summary>
+    private static void DrawBadgeIcon(DrawingContext ctx, double cx, double cy, double r,
+        Geometry geo)
     {
-        var s = r * 0.50;
-        var geo = new StreamGeometry();
-        using (var c = geo.Open())
+        var bounds = geo.Bounds;
+        if (bounds.Width <= 0 || bounds.Height <= 0) return;
+
+        var targetSize = r * 1.2;
+        var scale = targetSize / Math.Max(bounds.Width, bounds.Height);
+        var geoCx = bounds.X + bounds.Width / 2;
+        var geoCy = bounds.Y + bounds.Height / 2;
+
+        using (ctx.PushTransform(
+            Matrix.CreateTranslation(-geoCx, -geoCy) *
+            Matrix.CreateScale(scale, scale) *
+            Matrix.CreateTranslation(cx, cy)))
         {
-            c.BeginFigure(new Point(cx - s * 0.65, cy + s * 0.05), false);
-            c.LineTo(new Point(cx - s * 0.08, cy + s * 0.55));
-            c.LineTo(new Point(cx + s * 0.70, cy - s * 0.42));
+            ctx.DrawGeometry(Brushes.White, null, geo);
         }
-        ctx.DrawGeometry(null,
-            new Pen(Brushes.White, r * 0.18) { LineCap = PenLineCap.Round, LineJoin = PenLineJoin.Round },
-            geo);
-    }
-
-    private static void DrawExclamationIcon(DrawingContext ctx, double cx, double cy, double r)
-    {
-        var strokeW = r * 0.16;
-        var lineH = r * 0.50;
-        var lineTop = cy - lineH * 0.45;
-
-        var geo = new StreamGeometry();
-        using (var c = geo.Open())
-        {
-            c.BeginFigure(new Point(cx, lineTop), false);
-            c.LineTo(new Point(cx, lineTop + lineH));
-        }
-        ctx.DrawGeometry(null, new Pen(Brushes.White, strokeW * 2) { LineCap = PenLineCap.Round }, geo);
-
-        var dotR = strokeW * 1.1;
-        ctx.DrawEllipse(Brushes.White, null, new Point(cx, lineTop + lineH + dotR * 2.8), dotR, dotR);
-    }
-
-    private static void DrawBoltIcon(DrawingContext ctx, double cx, double cy, double r)
-    {
-        var s = r * 1.1;
-        var bx = cx - s * 0.5;
-        var by = cy - s * 0.5;
-
-        var geo = new StreamGeometry();
-        using (var c = geo.Open())
-        {
-            c.BeginFigure(new Point(bx + s * 0.55, by), true);
-            c.LineTo(new Point(bx + s * 0.18, by + s * 0.47));
-            c.LineTo(new Point(bx + s * 0.45, by + s * 0.47));
-            c.LineTo(new Point(bx + s * 0.32, by + s));
-            c.LineTo(new Point(bx + s * 0.82, by + s * 0.53));
-            c.LineTo(new Point(bx + s * 0.55, by + s * 0.53));
-            c.EndFigure(true);
-        }
-        ctx.DrawGeometry(Brushes.White, null, geo);
     }
 
     // ── State helpers ────────────────────────────────────────────

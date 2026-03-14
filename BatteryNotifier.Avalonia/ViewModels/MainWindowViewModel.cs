@@ -16,7 +16,6 @@ using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using ReactiveUI;
-using Serilog;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
@@ -24,18 +23,11 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly AppSettings _settings = AppSettings.Instance;
 
-    private double _batteryPercentage;
-    private bool _isCharging;
-    private string _batteryStatus = string.Empty;
-    private Bitmap? _batteryImage;
-    private string _timeRemaining = string.Empty;
     private bool _fullBatteryNotification;
     private bool _lowBatteryNotification;
-    private string _statusMessage = string.Empty;
-    private SettingsViewModel? _currentView;
     private bool _disposed;
-    private IDisposable? _fullBatteryNotificationSub;
-    private IDisposable? _lowBatteryNotificationSub;
+    private readonly IDisposable? _fullBatteryNotificationSub;
+    private readonly IDisposable? _lowBatteryNotificationSub;
 
     /// <summary>True when the main window is visible to the user.</summary>
     private bool _isWindowVisible;
@@ -151,12 +143,12 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         try
         {
             // Show greeting for 5 seconds, then clear it
-            await Task.Delay(5000, ct);
+            await Task.Delay(5000, ct).ConfigureAwait(false);
             Dispatcher.UIThread.Post(() => StatusMessage = string.Empty);
 
             // Cycle the time remaining phrase every 2 minutes (only funny phrases, not real estimates)
             using var timer = new PeriodicTimer(TimeSpan.FromMinutes(2));
-            while (await timer.WaitForNextTickAsync(ct))
+            while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
             {
                 Dispatcher.UIThread.Post(RefreshTimeRemainingPhrase);
             }
@@ -208,7 +200,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                 {
                     ct.ThrowIfCancellationRequested();
                     Dispatcher.UIThread.Post(() => TimeRemaining = new string('.', dots));
-                    await Task.Delay(300, ct);
+                    await Task.Delay(300, ct).ConfigureAwait(false);
                 }
             }
 
@@ -218,7 +210,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                 ct.ThrowIfCancellationRequested();
                 var partial = phrase[..i];
                 Dispatcher.UIThread.Post(() => TimeRemaining = partial);
-                await Task.Delay(35, ct);
+                await Task.Delay(35, ct).ConfigureAwait(false);
             }
         }
         catch (OperationCanceledException)
@@ -315,33 +307,33 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     public double BatteryPercentage
     {
-        get => _batteryPercentage;
-        set => this.RaiseAndSetIfChanged(ref _batteryPercentage, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public bool IsCharging
     {
-        get => _isCharging;
-        set => this.RaiseAndSetIfChanged(ref _isCharging, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string BatteryStatus
     {
-        get => _batteryStatus;
-        set => this.RaiseAndSetIfChanged(ref _batteryStatus, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     public Bitmap? BatteryImage
     {
-        get => _batteryImage;
-        set => this.RaiseAndSetIfChanged(ref _batteryImage, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string TimeRemaining
     {
-        get => _timeRemaining;
-        set => this.RaiseAndSetIfChanged(ref _timeRemaining, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     public bool FullBatteryNotification
     {
@@ -357,8 +349,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     public SettingsViewModel? CurrentView
     {
-        get => _currentView;
-        set => this.RaiseAndSetIfChanged(ref _currentView, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public ReactiveCommand<Unit, Unit> NavigateToSettingsCommand { get; }
@@ -369,13 +361,13 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> SendLogsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
 
-    public string Version => Constants.ApplicationVersion;
+    public static string Version => Constants.ApplicationVersion;
 
     public string StatusMessage
     {
-        get => _statusMessage;
-        set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
-    }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     // ── Funny phrases & greetings ────────────────────────────────
 
@@ -489,7 +481,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task CheckForUpdates()
     {
-        var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+        var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
 
         switch (result.Status)
         {

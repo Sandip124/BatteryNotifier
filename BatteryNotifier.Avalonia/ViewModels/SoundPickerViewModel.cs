@@ -7,8 +7,6 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using BatteryNotifier.Core.Managers;
 using ReactiveUI;
-using Serilog;
-
 namespace BatteryNotifier.Avalonia.ViewModels;
 
 public class SoundPickerViewModel : ViewModelBase, IDisposable
@@ -18,9 +16,6 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
     private readonly List<SoundPickerGroup> _allGroups;
     private readonly SoundPickerItem? _customItem;
 
-    private SoundPickerItem? _selectedItem;
-    private string? _searchText;
-    private List<SoundPickerGroup> _filteredGroups = [];
     private bool _disposed;
 
     public string PickerTitle { get; }
@@ -33,21 +28,21 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
 
     public SoundPickerItem? SelectedItem
     {
-        get => _selectedItem;
-        set => this.RaiseAndSetIfChanged(ref _selectedItem, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public string? SearchText
     {
-        get => _searchText;
-        set => this.RaiseAndSetIfChanged(ref _searchText, value);
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
     public List<SoundPickerGroup> FilteredGroups
     {
-        get => _filteredGroups;
-        private set => this.RaiseAndSetIfChanged(ref _filteredGroups, value);
-    }
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = [];
 
     public SoundPickerViewModel(string? currentSettingsValue, string sectionTitle)
     {
@@ -135,16 +130,15 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
         try
         {
             _soundManager.StopSound();
-            await Task.Delay(100);
+            await Task.Delay(100).ConfigureAwait(false);
 
             string? source = item.IsCustom ? item.CustomPath : item.SettingsValue;
             if (string.IsNullOrEmpty(source)) return;
 
-            await _soundManager.PlaySoundAsync(source, loop: false, durationMs: 5000);
+            await _soundManager.PlaySoundAsync(source, loop: false, durationMs: 5000).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch
         {
-            Log.Warning(ex, "Sound preview failed for {Name}", item.Name);
         }
     }
 
@@ -198,18 +192,16 @@ public class SoundPickerGroup(string title, List<SoundPickerItem> items)
 
 public class SoundPickerItem : ReactiveObject
 {
-    private string? _customPath;
-
     public string Name { get; }
     public string? SettingsValue { get; }
     public bool IsCustom { get; init; }
 
     public string? CustomPath
     {
-        get => _customPath;
+        get;
         set
         {
-            this.RaiseAndSetIfChanged(ref _customPath, value);
+            this.RaiseAndSetIfChanged(ref field, value);
             this.RaisePropertyChanged(nameof(DisplayName));
         }
     }

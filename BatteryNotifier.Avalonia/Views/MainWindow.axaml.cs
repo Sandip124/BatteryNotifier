@@ -22,7 +22,7 @@ public partial class MainWindow : Window
         _logger = BatteryNotifierAppLogger.ForContext<MainWindow>();
     }
 
-    protected override void OnPropertyChanged(global::Avalonia.AvaloniaPropertyChangedEventArgs change)
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
 
@@ -65,7 +65,7 @@ public partial class MainWindow : Window
                 try
                 {
                     var aboutWindow = new AboutWindow();
-                    await aboutWindow.ShowLightDismiss(this);
+                    await aboutWindow.ShowLightDismiss(this).ConfigureAwait(false);
                 }
                 finally
                 {

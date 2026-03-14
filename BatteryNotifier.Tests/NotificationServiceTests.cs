@@ -5,7 +5,7 @@ namespace BatteryNotifier.Tests;
 [Collection("NotificationService")]
 public class NotificationServiceTests
 {
-    private NotificationService CreateService()
+    private static NotificationService CreateService()
     {
         var svc = NotificationService.Instance;
         svc.ClearNotifications();

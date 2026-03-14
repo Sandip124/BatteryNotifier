@@ -1,13 +1,11 @@
 using System;
 using System.Diagnostics;
-using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using BatteryNotifier.Avalonia.Views;
 using BatteryNotifier.Core;
@@ -125,7 +123,6 @@ public class TrayIconService : IDisposable
                 _logger.Warning(updateEx, "Update service could not be initialized");
             }
 
-            _logger.Information("TrayIcon initialized successfully");
         }
         catch (Exception ex)
         {
@@ -169,12 +166,7 @@ public class TrayIconService : IDisposable
         UpdateToolTipWithNotification(notification);
 
         if (suppression.ShouldSuppressToast && !isCritical)
-        {
-            _logger.Information(
-                "Notification suppressed — DND: {DND}, Fullscreen: {FS}, Tag: {Tag}",
-                suppression.IsDoNotDisturb, suppression.IsFullscreen, notification.Tag);
             return;
-        }
 
         // Show native notification
         ShowNativeNotification(notification);
@@ -192,8 +184,8 @@ public class TrayIconService : IDisposable
 
         string title = notification.Tag switch
         {
-            Core.Constants.LowBatteryTag => "Low Battery",
-            Core.Constants.FullBatteryTag => "Full Battery",
+            Constants.LowBatteryTag => "Low Battery",
+            Constants.FullBatteryTag => "Full Battery",
             _ => "BatteryNotifier"
         };
 
@@ -211,7 +203,7 @@ public class TrayIconService : IDisposable
     {
         try
         {
-            await Task.Delay(5000, ct);
+            await Task.Delay(5000, ct).ConfigureAwait(false);
             UpdateToolTip();
         }
         catch (OperationCanceledException)
@@ -228,8 +220,8 @@ public class TrayIconService : IDisposable
 
             string title = notification.Tag switch
             {
-                Core.Constants.LowBatteryTag => "Low Battery",
-                Core.Constants.FullBatteryTag => "Full Battery",
+                Constants.LowBatteryTag => "Low Battery",
+                Constants.FullBatteryTag => "Full Battery",
                 _ => "BatteryNotifier"
             };
 
@@ -285,7 +277,7 @@ public class TrayIconService : IDisposable
         }
     }
 
-    private void HideMainWindow()
+    private static void HideMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -294,7 +286,7 @@ public class TrayIconService : IDisposable
         MacOSDockIconHelper.HideDockIcon();
     }
 
-    private void ShowMainWindow()
+    private static void ShowMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -322,8 +314,6 @@ private void OnSendLogs(object? sender, EventArgs e)
         {
             if (!CrashReporter.CanSendReport())
             {
-                var remaining = CrashReporter.GetCooldownRemaining();
-                _logger.Warning("Send logs rate-limited. {Minutes:F0} minutes remaining", remaining.TotalMinutes);
                 // Still save to file (not rate-limited)
                 var report = CrashReporter.BuildManualReport();
                 CrashReporter.SaveReportToFile(report);
@@ -337,10 +327,9 @@ private void OnSendLogs(object? sender, EventArgs e)
 
             // Open GitHub issue form for user review
             CrashReporter.OpenGitHubIssue(
-                $"[Log Report] v{Core.Constants.ApplicationVersion}",
+                $"[Log Report] v{Constants.ApplicationVersion}",
                 manualReport);
 
-            _logger.Information("User-initiated log report sent. Saved to {Path}", filePath);
         }
         catch (Exception ex)
         {
@@ -403,7 +392,7 @@ private void OnSendLogs(object? sender, EventArgs e)
             if (_trayIcon != null)
                 _trayIcon.ToolTipText = "BatteryNotifier — Checking for updates...";
 
-            var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+            var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
 
             switch (result.Status)
             {

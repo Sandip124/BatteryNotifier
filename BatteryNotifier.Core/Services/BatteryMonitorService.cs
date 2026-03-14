@@ -31,7 +31,7 @@ public sealed class BatteryMonitorService : IDisposable
     public event EventHandler<BatteryStatusEventArgs>? BatteryStatusChanged;
     public event EventHandler<BatteryStatusEventArgs>? PowerLineStatusChanged;
 
-    private ILogger _logger;
+    private readonly ILogger _logger;
     private CancellationTokenSource? _cts;
     private IDisposable? _powerEventWatcher;
     private int _macNotifyToken = -1;
@@ -74,7 +74,6 @@ public sealed class BatteryMonitorService : IDisposable
             watcher.EventArrived += OnWmiPowerEvent;
             watcher.Start();
             _powerEventWatcher = watcher;
-            _logger.Information("WMI Power event watcher initialized.");
             return;
         }
         catch (Exception ex)
@@ -84,13 +83,11 @@ public sealed class BatteryMonitorService : IDisposable
 #endif
         // WMI not available (not compiled, trimmed, or failed) — poll more aggressively
         _actualPollMs = 10_000;
-        _logger.Information("WMI unavailable — Windows poll interval set to {Ms}ms", _actualPollMs);
     }
 
 #if WINDOWS
     private void OnWmiPowerEvent(object sender, System.Management.EventArrivedEventArgs e)
     {
-        _logger.Information("WMI Power event detected at {Timestamp:yyyy-MM-dd HH:mm:ss}", DateTime.Now);
         CheckBatteryAndPowerStatus(forceCheck: true);
     }
 #endif
@@ -137,7 +134,6 @@ public sealed class BatteryMonitorService : IDisposable
             };
             _macNotifyThread.Start();
 
-            _logger.Information("macOS Darwin power source watcher initialized (fd={Fd}, token={Token}).", fd, token);
         }
         catch (Exception ex)
         {
@@ -155,7 +151,6 @@ public sealed class BatteryMonitorService : IDisposable
             var bytesRead = read(_macNotifyFd, buf, 4);
             if (bytesRead <= 0 || _disposed) break;
 
-            _logger.Information("macOS power source change detected at {Timestamp:yyyy-MM-dd HH:mm:ss}", DateTime.Now);
             CheckBatteryAndPowerStatus(forceCheck: true);
         }
     }
@@ -165,7 +160,7 @@ public sealed class BatteryMonitorService : IDisposable
         using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(_actualPollMs));
         try
         {
-            while (await timer.WaitForNextTickAsync(token))
+            while (await timer.WaitForNextTickAsync(token).ConfigureAwait(false))
             {
                 CheckBatteryAndPowerStatus();
             }
@@ -180,7 +175,7 @@ public sealed class BatteryMonitorService : IDisposable
     {
         if (_disposed) return;
 
-        var currentStatus = BatteryInfoProvider.Instance.GetBatteryInfo();
+        var currentStatus = BatteryInfoProvider.GetBatteryInfo();
 
         if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown)
             return;
@@ -219,10 +214,6 @@ public sealed class BatteryMonitorService : IDisposable
 
         if (anythingChanged)
         {
-            _logger.Information(
-                "[{Timestamp:yyyy-MM-dd HH:mm:ss}] Invoked by: {Source}, Battery Level: {Level}%, Power Line Status: {PowerLine}",
-                DateTime.Now, forceCheck ? "Force Check" : "Periodic Timer", currentLevel, currentStatus.PowerLineStatus);
-
             if (powerLineChanged && wasAlreadyTracking)
             {
                 PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
@@ -239,7 +230,6 @@ public sealed class BatteryMonitorService : IDisposable
             if (powerLineChanged && wasAlreadyTracking)
             {
                 NotificationService.Instance.ResetAllTrackers();
-                _logger.Information("Power line state changed — notification trackers reset");
             }
         }
 
@@ -248,11 +238,7 @@ public sealed class BatteryMonitorService : IDisposable
         // This prevents spurious "unplug charger" notifications on app startup.
         if (publishNotifications && (powerLineChanged || levelChanged) && (isLowBattery || isFullBattery))
         {
-            if (ShouldSuppressNotifications(currentStatus))
-            {
-                _logger.Information("Suppressing battery notification — macOS external display detected while on AC power.");
-            }
-            else
+            if (!ShouldSuppressNotifications(currentStatus))
             {
                 var settings = AppSettings.Instance;
 
