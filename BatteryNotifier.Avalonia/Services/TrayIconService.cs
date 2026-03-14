@@ -31,7 +31,7 @@ public class TrayIconService : IDisposable
     // Store menu items for clean unsubscription in Dispose
     private NativeMenuItem? _showHideMenuItem;
     private NativeMenuItem? _sendLogsMenuItem;
-    private NativeMenuItem? _githubMenuItem;
+    private NativeMenuItem? _viewSourceMenuItem;
     private NativeMenuItem? _updateMenuItem;
     private NativeMenuItem? _exitMenuItem;
 
@@ -69,8 +69,8 @@ public class TrayIconService : IDisposable
             _sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
             _sendLogsMenuItem.Click += OnSendLogs;
 
-            _githubMenuItem = new NativeMenuItem { Header = "GitHub" };
-            _githubMenuItem.Click += OnOpenGitHub;
+            _viewSourceMenuItem = new NativeMenuItem { Header = "View Source" };
+            _viewSourceMenuItem.Click += OnOpenGitHub;
 
             _updateMenuItem = new NativeMenuItem { Header = "Check for Updates..." };
             _updateMenuItem.Click += OnCheckForUpdates;
@@ -82,7 +82,7 @@ public class TrayIconService : IDisposable
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_updateMenuItem);
             _trayMenu.Add(_sendLogsMenuItem);
-            _trayMenu.Add(_githubMenuItem);
+            _trayMenu.Add(_viewSourceMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_exitMenuItem);
 
@@ -481,7 +481,7 @@ private void OnSendLogs(object? sender, EventArgs e)
             // Unsubscribe menu item Click handlers to prevent event leaks
             if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }
             if (_sendLogsMenuItem != null) { _sendLogsMenuItem.Click -= OnSendLogs; _sendLogsMenuItem = null; }
-            if (_githubMenuItem != null) { _githubMenuItem.Click -= OnOpenGitHub; _githubMenuItem = null; }
+            if (_viewSourceMenuItem != null) { _viewSourceMenuItem.Click -= OnOpenGitHub; _viewSourceMenuItem = null; }
             if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
             if (_exitMenuItem != null) { _exitMenuItem.Click -= OnExit; _exitMenuItem = null; }
             _trayMenu = null;
