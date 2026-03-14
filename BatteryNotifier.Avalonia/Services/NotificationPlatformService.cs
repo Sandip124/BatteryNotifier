@@ -36,7 +36,6 @@ public static class NotificationPlatformService
             }
 
             _iconPath = iconFile;
-            Logger.Information("Notification icon extracted to {Path}", _iconPath);
         }
         catch (Exception ex)
         {
@@ -126,49 +125,159 @@ public static class NotificationPlatformService
         }
     }
 
+    // ── Windows: Shell_NotifyIcon balloon tip (same API WinForms used) ──
+
+    private static WindowsBalloonNotifier? _winNotifier;
+
     private static void ShowWindowsNotification(string title, string message)
     {
         try
         {
-            var safeTitle = SanitizeForXml(SanitizeForPowerShell(title));
-            var safeMessage = SanitizeForXml(SanitizeForPowerShell(message));
-
-            var iconXml = "";
-            if (_iconPath != null)
-            {
-                var safeIconPath = _iconPath.Replace("\\", "/");
-                iconXml = $"<image placement='appLogoOverride' src='file:///{SanitizeForXml(SanitizeForPowerShell(safeIconPath))}'/>";
-            }
-
-            // Use PowerShell's own registered AppUserModelID. Custom AUMID requires
-            // a Start Menu shortcut with the AUMID stamped in its property store —
-            // without that, CreateToastNotifier silently drops notifications.
-            var psAumid = @"{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe";
-
-            // Build XML as a simple string — NOT a here-string.
-            // PowerShell 5.1 requires here-string terminators ("@) at column 0,
-            // which is impossible to guarantee when the script is passed via stdin
-            // from an indented C# string. A single-line XML string avoids this entirely.
-            var toastXml = $"<toast><visual><binding template='ToastGeneric'><text>{safeTitle}</text><text>{safeMessage}</text>{iconXml}</binding></visual></toast>";
-
-            // Build the script with each statement on its own line.
-            // No here-strings, no indentation-sensitive syntax.
-            var script = string.Join("\n",
-                "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null",
-                "[Windows.UI.Notifications.ToastNotification, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null",
-                "[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null",
-                "$xml = New-Object Windows.Data.Xml.Dom.XmlDocument",
-                $"$xml.LoadXml('{toastXml}')",
-                "$toast = New-Object Windows.UI.Notifications.ToastNotification $xml",
-                $"[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{psAumid}').Show($toast)");
-
-            ExecuteCommandWithStdin("powershell",
-                ["-NoProfile", "-NonInteractive", "-Command", "-"],
-                script);
+            _winNotifier ??= new WindowsBalloonNotifier();
+            _winNotifier.ShowBalloonTip(title, message);
         }
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to show Windows notification");
+        }
+    }
+    
+    
+    private sealed class WindowsBalloonNotifier : IDisposable
+    {
+        private const int NimAdd = 0x00;
+        private const int NimModify = 0x01;
+        private const int NimDelete = 0x02;
+        private const int NimSetVersion = 0x04;
+        private const int NifTip = 0x04;
+        private const int NifInfo = 0x10;
+        private const int NiifInfo = 0x01;
+        private const int NotifyIconVersion4 = 4;
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        private struct NotifyIconData
+        {
+            public int cbSize;
+            public IntPtr hWnd;
+            public int uID;
+            public int uFlags;
+            public int uCallbackMessage;
+            public IntPtr hIcon;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+            public string szTip;
+            public int dwState;
+            public int dwStateMask;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string szInfo;
+            public int uTimeoutOrVersion;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            public string szInfoTitle;
+            public int dwInfoFlags;
+            public Guid guidItem;
+            public IntPtr hBalloonIcon;
+        }
+
+        [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool Shell_NotifyIconW(int dwMessage, ref NotifyIconData lpData);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern IntPtr CreateWindowExW(
+            int dwExStyle, string lpClassName, string lpWindowName,
+            int dwStyle, int x, int y, int nWidth, int nHeight,
+            IntPtr hWndParent, IntPtr hMenu, IntPtr hInstance, IntPtr lpParam);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool DestroyWindow(IntPtr hWnd);
+
+        [DllImport("kernel32.dll")]
+        private static extern IntPtr GetModuleHandleW(IntPtr lpModuleName);
+
+        private IntPtr _hWnd;
+        private bool _iconAdded;
+        private bool _disposed;
+        private const int IconId = 1;
+
+        public WindowsBalloonNotifier()
+        {
+            // Create a hidden message-only window (HWND_MESSAGE parent)
+            var hInstance = GetModuleHandleW(IntPtr.Zero);
+            _hWnd = CreateWindowExW(
+                0, "STATIC", "BatteryNotifier_NotifyWnd", 0,
+                0, 0, 0, 0,
+                new IntPtr(-3), // HWND_MESSAGE
+                IntPtr.Zero, hInstance, IntPtr.Zero);
+
+            if (_hWnd == IntPtr.Zero) return;
+
+            // Register a hidden tray icon (no visible icon, just for balloon tips)
+            var nid = new NotifyIconData
+            {
+                cbSize = Marshal.SizeOf<NotifyIconData>(),
+                hWnd = _hWnd,
+                uID = IconId,
+                uFlags = NifTip,
+                szTip = "BatteryNotifier",
+                szInfo = "",
+                szInfoTitle = ""
+            };
+
+            _iconAdded = Shell_NotifyIconW(NimAdd, ref nid);
+            if (_iconAdded)
+            {
+                nid.uTimeoutOrVersion = NotifyIconVersion4;
+                Shell_NotifyIconW(NimSetVersion, ref nid);
+            }
+        }
+
+        public void ShowBalloonTip(string title, string message)
+        {
+            if (!_iconAdded || _hWnd == IntPtr.Zero) return;
+
+            // Truncate to Win32 limits
+            if (title.Length > 63) title = title[..63];
+            if (message.Length > 255) message = message[..255];
+
+            var nid = new NotifyIconData
+            {
+                cbSize = Marshal.SizeOf<NotifyIconData>(),
+                hWnd = _hWnd,
+                uID = IconId,
+                uFlags = NifInfo,
+                szInfo = message,
+                szInfoTitle = title,
+                dwInfoFlags = NiifInfo,
+                szTip = "BatteryNotifier"
+            };
+
+            Shell_NotifyIconW(NimModify, ref nid);
+        }
+
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+
+            if (_iconAdded)
+            {
+                var nid = new NotifyIconData
+                {
+                    cbSize = Marshal.SizeOf<NotifyIconData>(),
+                    hWnd = _hWnd,
+                    uID = IconId,
+                    szInfo = "",
+                    szInfoTitle = "",
+                    szTip = ""
+                };
+                Shell_NotifyIconW(NimDelete, ref nid);
+            }
+
+            if (_hWnd != IntPtr.Zero)
+            {
+                DestroyWindow(_hWnd);
+                _hWnd = IntPtr.Zero;
+            }
         }
     }
 
@@ -216,25 +325,6 @@ public static class NotificationPlatformService
             .Replace("\"", "\\\"")
             .Replace("\n", "\\n")
             .Replace("\r", "");
-    }
-
-    private static string SanitizeForPowerShell(string input)
-    {
-        return input
-            .Replace("$", "")
-            .Replace("`", "")
-            .Replace("\"", "'")
-            .Replace("\n", " ")
-            .Replace("\r", "");
-    }
-
-    private static string SanitizeForXml(string input)
-    {
-        return input
-            .Replace("&", "&amp;")
-            .Replace("<", "&lt;")
-            .Replace(">", "&gt;")
-            .Replace("'", "&apos;");
     }
 
     private static string SanitizePlainText(string input)
