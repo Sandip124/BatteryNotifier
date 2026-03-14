@@ -113,11 +113,12 @@ public class TrayIconService : IDisposable
                     .Subscribe(_ => UpdateShowHideMenuLabel());
             }
 
-            // Start background update checks
+            // Start background update checks (if enabled)
             try
             {
                 UpdateService.Instance.UpdateAvailable += OnUpdateAvailable;
-                UpdateService.Instance.StartBackgroundChecks();
+                if (AppSettings.Instance.AutoCheckForUpdates)
+                    UpdateService.Instance.StartBackgroundChecks();
             }
             catch (Exception updateEx)
             {

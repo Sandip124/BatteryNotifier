@@ -31,6 +31,9 @@ public sealed class AppSettings
     // Startup Settings
     public bool LaunchAtStartup { get; set; } = true;
 
+    // Update Settings
+    public bool AutoCheckForUpdates { get; set; } = true;
+
     // App Identity
     public string AppId { get; set; } = Guid.NewGuid().ToString();
 
@@ -89,6 +92,7 @@ public sealed class AppSettings
                 StartMinimized = settings.StartMinimized;
                 ThemeMode = settings.ThemeMode;
                 LaunchAtStartup = settings.LaunchAtStartup;
+                AutoCheckForUpdates = settings.AutoCheckForUpdates;
                 AppId = settings.AppId;
             }
 
@@ -178,6 +182,7 @@ public sealed class AppSettings
         StartMinimized = true;
         ThemeMode = ThemeMode.System;
         LaunchAtStartup = true;
+        AutoCheckForUpdates = true;
 
         Save();
     }

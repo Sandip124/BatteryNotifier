@@ -18,6 +18,7 @@ public class SettingsViewModel : ViewModelBase, IDisposable
     private bool _isLightTheme;
     private bool _isDarkTheme;
     private bool _launchAtStartup;
+    private bool _autoCheckForUpdates;
     private bool _disposed;
 
     public ReactiveCommand<Unit, Unit> BackCommand { get; }
@@ -80,6 +81,15 @@ public class SettingsViewModel : ViewModelBase, IDisposable
             })
             .DisposeWith(_disposables);
 
+        this.WhenAnyValue(x => x.AutoCheckForUpdates)
+            .Skip(1)
+            .Subscribe(enabled =>
+            {
+                _settings.AutoCheckForUpdates = enabled;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
+
     }
 
     private void UpdateThresholds()
@@ -99,6 +109,7 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         _isLightTheme = _settings.ThemeMode == ThemeMode.Light;
         _isDarkTheme = _settings.ThemeMode == ThemeMode.Dark;
         _launchAtStartup = _settings.LaunchAtStartup;
+        _autoCheckForUpdates = _settings.AutoCheckForUpdates;
     }
 
     private void ApplySystemTheme()
@@ -156,6 +167,12 @@ public class SettingsViewModel : ViewModelBase, IDisposable
     {
         get => _launchAtStartup;
         set => this.RaiseAndSetIfChanged(ref _launchAtStartup, value);
+    }
+
+    public bool AutoCheckForUpdates
+    {
+        get => _autoCheckForUpdates;
+        set => this.RaiseAndSetIfChanged(ref _autoCheckForUpdates, value);
     }
 
     public void Dispose()

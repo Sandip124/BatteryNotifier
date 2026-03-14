@@ -40,7 +40,7 @@
         </Border>
 
         <ScrollViewer Grid.Row="1" Padding="0,10,0,0">
-            <StackPanel Spacing="10" Margin="10,0,10,10">
+            <StackPanel Spacing="10" Margin="10,0,10,40">
 
                 <!-- Appearance & Behaviour -->
                 <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
@@ -88,6 +88,14 @@
                                                   Margin="0" Padding="0" />
                                 </Grid>
 
+                                <!-- Auto check for updates -->
+                                <Grid ColumnDefinitions="*,42">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Automatically check for updates</TextBlock>
+                                    <ToggleSwitch Grid.Column="1"
+                                                  IsChecked="{Binding AutoCheckForUpdates}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
 
                             </StackPanel>
                         </Border>
