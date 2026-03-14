@@ -14,27 +14,6 @@
             <Setter Property="Foreground" Value="White" />
         </Style>
 
-        <!-- Material-style slider: thin track, round thumb, accent fill -->
-        <Style Selector="Slider.material">
-            <Setter Property="Margin" Value="0,2,0,2" />
-            <Setter Property="Padding" Value="0" />
-        </Style>
-        <Style Selector="Slider.material /template/ RepeatButton#PART_DecreaseButton">
-            <Setter Property="Height" Value="3" />
-            <Setter Property="CornerRadius" Value="1.5" />
-        </Style>
-        <Style Selector="Slider.material /template/ RepeatButton#PART_IncreaseButton">
-            <Setter Property="Height" Value="3" />
-            <Setter Property="CornerRadius" Value="1.5" />
-        </Style>
-        <Style Selector="Slider.material /template/ Thumb">
-            <Setter Property="Width" Value="16" />
-            <Setter Property="Height" Value="16" />
-        </Style>
-        <Style Selector="Slider.material /template/ Thumb /template/ Border">
-            <Setter Property="CornerRadius" Value="8" />
-            <Setter Property="Background" Value="{DynamicResource AppAccentForeground}" />
-        </Style>
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -60,8 +39,8 @@
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" Padding="10,10,10,0">
-            <StackPanel Spacing="10" Margin="0,0,0,30">
+        <ScrollViewer Grid.Row="1" Padding="0,10,0,0">
+            <StackPanel Spacing="10" Margin="10,0,10,10">
 
                 <!-- Appearance & Behaviour -->
                 <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
@@ -101,7 +80,7 @@
                                 </Grid>
 
                                 <!-- Launch at Startup -->
-                                <Grid ColumnDefinitions="*,Auto">
+                                <Grid ColumnDefinitions="*,42">
                                     <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Launch at system startup</TextBlock>
                                     <ToggleSwitch Grid.Column="1"
                                                   IsChecked="{Binding LaunchAtStartup}"
@@ -127,7 +106,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Row="1" Padding="12,0,12,10">
+                        <Border Grid.Row="1" Padding="12">
                             <StackPanel Spacing="12">
                                 <components:BatteryNotificationSection DataContext="{Binding FullBatterySection}" />
                                 <components:BatteryNotificationSection DataContext="{Binding LowBatterySection}" />

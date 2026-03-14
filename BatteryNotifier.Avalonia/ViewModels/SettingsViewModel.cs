@@ -41,13 +41,13 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         FullBatterySection = new BatteryNotificationSectionViewModel(
             title: "Full Battery",
             iconSource: "/Assets/FullBattery.png",
-            sliderMin: 50, sliderMax: 100,
+            sliderMin: 0, sliderMax: 100,
             isEnabled: _settings.FullBatteryNotification,
             thresholdValue: _settings.FullBatteryNotificationValue,
             soundSettingsValue: _settings.FullBatteryNotificationMusic,
             onSettingsChanged: (sound, threshold) =>
             {
-                _settings.FullBatteryNotification = FullBatterySection.IsEnabled;
+                _settings.FullBatteryNotification = FullBatterySection?.IsEnabled ?? false;
                 _settings.FullBatteryNotificationValue = threshold;
                 _settings.FullBatteryNotificationMusic = sound;
                 _settings.Save();
@@ -57,13 +57,13 @@ public class SettingsViewModel : ViewModelBase, IDisposable
         LowBatterySection = new BatteryNotificationSectionViewModel(
             title: "Low Battery",
             iconSource: "/Assets/LowBattery.png",
-            sliderMin: 5, sliderMax: 50,
+            sliderMin: 0, sliderMax: 100,
             isEnabled: _settings.LowBatteryNotification,
             thresholdValue: _settings.LowBatteryNotificationValue,
             soundSettingsValue: _settings.LowBatteryNotificationMusic,
             onSettingsChanged: (sound, threshold) =>
             {
-                _settings.LowBatteryNotification = LowBatterySection.IsEnabled;
+                _settings.LowBatteryNotification = LowBatterySection?.IsEnabled ?? false;
                 _settings.LowBatteryNotificationValue = threshold;
                 _settings.LowBatteryNotificationMusic = sound;
                 _settings.Save();

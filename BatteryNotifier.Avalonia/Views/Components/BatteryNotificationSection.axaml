@@ -3,13 +3,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
              mc:Ignorable="d"
              x:Class="BatteryNotifier.Avalonia.Views.Components.BatteryNotificationSection"
              x:DataType="vm:BatteryNotificationSectionViewModel">
 
     <StackPanel Spacing="0">
         <!-- Header: icon + title + toggle -->
-        <Grid ColumnDefinitions="28,*,Auto" VerticalAlignment="Center">
+        <Grid ColumnDefinitions="28,*,42" VerticalAlignment="Center">
             <Image Grid.Column="0" Margin="0,0,6,0"
                    Source="{Binding Icon}"
                    RenderOptions.BitmapInterpolationMode="MediumQuality" />
@@ -30,9 +31,9 @@
                        FontSize="13" FontWeight="SemiBold"
                        Text="{Binding ThresholdValue, StringFormat='{}{0}%'}" />
         </Grid>
-        <Slider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}"
-                Value="{Binding ThresholdValue}"
-                Classes="material" />
+        <controls:MaterialSlider Minimum="{Binding SliderMinimum}" Maximum="{Binding SliderMaximum}"
+                                 Value="{Binding ThresholdValue}"
+                                 HorizontalAlignment="Stretch" Margin="0,4" />
 
         <!-- Sound: clickable button that opens the picker modal -->
         <Grid ColumnDefinitions="Auto,*" Margin="0,2,0,0">

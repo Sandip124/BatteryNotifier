@@ -89,13 +89,12 @@
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             Padding="{TemplateBinding Padding}"
-                            HorizontalAlignment="{TemplateBinding HorizontalAlignment}"
-                            VerticalAlignment="{TemplateBinding VerticalAlignment}"
                             Cursor="{TemplateBinding Cursor}"
                             CornerRadius="{TemplateBinding CornerRadius}"
                             ClipToBounds="True">
                         <ContentPresenter
                             Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                             Content="{TemplateBinding Content}" />
                     </Border>
                 </ControlTemplate>

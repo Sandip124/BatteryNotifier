@@ -120,7 +120,7 @@
                                            Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
                                 <Grid Margin="12,6,12,10" Grid.Row="1" RowDefinitions="Auto,6,Auto" ColumnDefinitions="*">
 
-                                    <Grid Grid.Row="0" ColumnDefinitions="42,*,Auto" VerticalAlignment="Center">
+                                    <Grid Grid.Row="0" ColumnDefinitions="42,*,42" VerticalAlignment="Center">
                                         <Image Grid.Column="0" Margin="0,0,8,0"
                                                Source="/Assets/FullBattery.png"
                                                RenderOptions.BitmapInterpolationMode="MediumQuality" />
@@ -131,7 +131,7 @@
                                                       Margin="0" Padding="0" />
                                     </Grid>
 
-                                    <Grid Grid.Row="2" ColumnDefinitions="42,*,Auto" VerticalAlignment="Center">
+                                    <Grid Grid.Row="2" ColumnDefinitions="42,*,42" VerticalAlignment="Center">
                                         <Image Grid.Column="0" Margin="0,0,8,0"
                                                Source="/Assets/LowBattery.png"
                                                RenderOptions.BitmapInterpolationMode="MediumQuality" />
