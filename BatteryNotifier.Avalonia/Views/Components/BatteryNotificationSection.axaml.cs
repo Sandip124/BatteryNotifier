@@ -1,6 +1,7 @@
 using System;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
@@ -60,16 +61,19 @@ public partial class BatteryNotificationSection : UserControl
                         DataContext = pickerVm
                     };
 
-                    var result = await pickerWindow.ShowLightDismiss(ownerWindow).ConfigureAwait(false);
+                    var result = await pickerWindow.ShowLightDismiss(ownerWindow);
                     ctx.SetOutput(result);
                 }
                 finally
                 {
-                    // Remove backdrop — restore original content
+                    // Remove backdrop — restore original content (must run on UI thread)
                     if (overlayHost != null && existingContent != null)
                     {
-                        overlayHost.Children.Clear();
-                        ownerWindow.Content = existingContent;
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            overlayHost.Children.Clear();
+                            ownerWindow.Content = existingContent;
+                        });
                     }
                 }
             });

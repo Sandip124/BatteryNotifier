@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Logger;
 using Serilog;
@@ -65,14 +66,17 @@ public partial class MainWindow : Window
                 try
                 {
                     var aboutWindow = new AboutWindow();
-                    await aboutWindow.ShowLightDismiss(this).ConfigureAwait(false);
+                    await aboutWindow.ShowLightDismiss(this);
                 }
                 finally
                 {
                     if (overlayHost != null && existingContent != null)
                     {
-                        overlayHost.Children.Clear();
-                        Content = existingContent;
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            overlayHost.Children.Clear();
+                            Content = existingContent;
+                        });
                     }
                 }
 
