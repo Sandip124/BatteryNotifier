@@ -27,7 +27,7 @@ public partial class BatteryNotificationSection : UserControl
         {
             _interactionHandler = vm.BrowseSoundInteraction.RegisterHandler(async ctx =>
             {
-                var path = await BrowseAudioFile();
+                var path = await BrowseAudioFile().ConfigureAwait(false);
                 ctx.SetOutput(path);
             });
         }
@@ -53,7 +53,7 @@ public partial class BatteryNotificationSection : UserControl
                     Patterns = ["*.*"]
                 }
             ]
-        });
+        }).ConfigureAwait(false);
 
         return files.Count > 0 ? files[0].Path.LocalPath : null;
     }

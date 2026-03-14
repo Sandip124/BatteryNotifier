@@ -23,7 +23,7 @@
         </Grid>
 
         <!-- Notify At + Slider -->
-        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+        <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
             <TextBlock Grid.Column="0" VerticalAlignment="Center"
                        FontSize="13">Notify At</TextBlock>
             <TextBlock Grid.Column="1" VerticalAlignment="Center"

@@ -70,10 +70,7 @@
                     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
                         <Border Grid.Row="0" Padding="12,10,12,4">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <PathIcon Data="{StaticResource Icon.Sliders}"
-                                    VerticalAlignment="Center" Width="12" Height="12"
-                                    Foreground="{DynamicResource AppSubtleText}" />
-                                <TextBlock Margin="6,0,0,0" FontSize="12" FontWeight="Normal"
+                             <TextBlock Margin="0,0,0,0" FontSize="12" FontWeight="Normal"
                                            Foreground="{DynamicResource AppSubtleText}">APPEARANCE &amp; BEHAVIOUR</TextBlock>
                             </StackPanel>
                         </Border>
@@ -125,10 +122,7 @@
                     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
                         <Border Grid.Row="0" Padding="12,10,12,4">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <PathIcon Data="{StaticResource Icon.BellSimple}"
-                                    VerticalAlignment="Center" Width="12" Height="12"
-                                    Foreground="{DynamicResource AppSubtleText}" />
-                                <TextBlock Margin="6,0,0,0" FontSize="12" FontWeight="Normal"
+                                <TextBlock Margin="0,0,0,0" FontSize="12" FontWeight="Normal"
                                            Foreground="{DynamicResource AppSubtleText}">NOTIFICATIONS &amp; SOUNDS</TextBlock>
                             </StackPanel>
                         </Border>
