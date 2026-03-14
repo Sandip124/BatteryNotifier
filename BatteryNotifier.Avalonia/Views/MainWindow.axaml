@@ -54,7 +54,7 @@
                                  </MenuItem>
                                 <MenuItem Header="Send Logs..." Command="{Binding SendLogsCommand}">
                                    </MenuItem>
-                                <MenuItem Header="View Source" Command="{Binding OpenGitHubCommand}">
+                                <MenuItem Header="About" Command="{Binding OpenAboutCommand}">
                                 </MenuItem>
                                 <Separator />
                                 <MenuItem Header="Exit" Command="{Binding ExitCommand}">

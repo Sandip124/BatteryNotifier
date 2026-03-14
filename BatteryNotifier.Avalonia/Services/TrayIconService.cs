@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Reactive.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ public class TrayIconService : IDisposable
     // Store menu items for clean unsubscription in Dispose
     private NativeMenuItem? _showHideMenuItem;
     private NativeMenuItem? _sendLogsMenuItem;
-    private NativeMenuItem? _viewSourceMenuItem;
+    private NativeMenuItem? _aboutMenuItem;
     private NativeMenuItem? _updateMenuItem;
     private NativeMenuItem? _exitMenuItem;
 
@@ -69,8 +70,8 @@ public class TrayIconService : IDisposable
             _sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
             _sendLogsMenuItem.Click += OnSendLogs;
 
-            _viewSourceMenuItem = new NativeMenuItem { Header = "View Source" };
-            _viewSourceMenuItem.Click += OnOpenGitHub;
+            _aboutMenuItem = new NativeMenuItem { Header = "About" };
+            _aboutMenuItem.Click += OnOpenAbout;
 
             _updateMenuItem = new NativeMenuItem { Header = "Check for Updates..." };
             _updateMenuItem.Click += OnCheckForUpdates;
@@ -82,7 +83,7 @@ public class TrayIconService : IDisposable
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_updateMenuItem);
             _trayMenu.Add(_sendLogsMenuItem);
-            _trayMenu.Add(_viewSourceMenuItem);
+            _trayMenu.Add(_aboutMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_exitMenuItem);
 
@@ -346,10 +347,22 @@ private void OnSendLogs(object? sender, EventArgs e)
         }
     }
 
-    private void OnOpenGitHub(object? sender, EventArgs e)
+    private void OnOpenAbout(object? sender, EventArgs e)
     {
-        try { OpenUrl(Constants.SourceRepositoryUrl); }
-        catch { }
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return;
+
+        // Ensure main window is visible so the About dialog has an owner
+        if (desktop.MainWindow is not MainWindow mainWindow)
+            return;
+
+        if (!mainWindow.IsVisible)
+            ShowMainWindow();
+
+        if (mainWindow.DataContext is ViewModels.MainWindowViewModel vm)
+        {
+            vm.OpenAboutCommand.Execute().Subscribe();
+        }
     }
 
     private void OnUpdateAvailable(object? sender, UpdateAvailableEventArgs e)
@@ -481,7 +494,7 @@ private void OnSendLogs(object? sender, EventArgs e)
             // Unsubscribe menu item Click handlers to prevent event leaks
             if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }
             if (_sendLogsMenuItem != null) { _sendLogsMenuItem.Click -= OnSendLogs; _sendLogsMenuItem = null; }
-            if (_viewSourceMenuItem != null) { _viewSourceMenuItem.Click -= OnOpenGitHub; _viewSourceMenuItem = null; }
+            if (_aboutMenuItem != null) { _aboutMenuItem.Click -= OnOpenAbout; _aboutMenuItem = null; }
             if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
             if (_exitMenuItem != null) { _exitMenuItem.Click -= OnExit; _exitMenuItem = null; }
             _trayMenu = null;

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Logger;
 using Serilog;
@@ -13,6 +14,7 @@ public partial class MainWindow : Window
 {
     private readonly ILogger _logger;
     private const int TrayMargin = 8;
+    private IDisposable? _aboutInteractionHandler;
 
     public MainWindow()
     {
@@ -27,6 +29,55 @@ public partial class MainWindow : Window
         if (change.Property == IsVisibleProperty && DataContext is MainWindowViewModel vm)
         {
             vm.OnWindowVisibilityChanged(IsVisible);
+        }
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        _aboutInteractionHandler?.Dispose();
+        _aboutInteractionHandler = null;
+
+        if (DataContext is MainWindowViewModel vm)
+        {
+            _aboutInteractionHandler = vm.OpenAboutInteraction.RegisterHandler(async ctx =>
+            {
+                // Add backdrop overlay
+                Panel? overlayHost = null;
+                Control? existingContent = null;
+                var backdrop = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
+                    IsHitTestVisible = false
+                };
+
+                if (Content is Control content)
+                {
+                    existingContent = content;
+                    overlayHost = new Panel();
+                    Content = null;
+                    overlayHost.Children.Add(existingContent);
+                    overlayHost.Children.Add(backdrop);
+                    Content = overlayHost;
+                }
+
+                try
+                {
+                    var aboutWindow = new AboutWindow();
+                    await aboutWindow.ShowLightDismiss(this);
+                }
+                finally
+                {
+                    if (overlayHost != null && existingContent != null)
+                    {
+                        overlayHost.Children.Clear();
+                        Content = existingContent;
+                    }
+                }
+
+                ctx.SetOutput(System.Reactive.Unit.Default);
+            });
         }
     }
 
@@ -73,5 +124,13 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
         PositionNearNotificationArea();
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _aboutInteractionHandler?.Dispose();
+        if (DataContext is MainWindowViewModel vm)
+            vm.PropertyChanged -= (_, _) => { };
+        base.OnClosed(e);
     }
 }

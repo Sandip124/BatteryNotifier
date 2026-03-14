@@ -56,7 +56,10 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
         NavigateToSettingsCommand = ReactiveCommand.Create(NavigateToSettings);
         HideWindowCommand = ReactiveCommand.Create(HideWindow);
-        OpenGitHubCommand = ReactiveCommand.Create(OpenGitHub);
+        OpenAboutCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await OpenAboutInteraction.Handle(Unit.Default);
+        });
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
         SendLogsCommand = ReactiveCommand.Create(SendLogs);
         ExitCommand = ReactiveCommand.Create(ExitApplication);
@@ -360,7 +363,8 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     public ReactiveCommand<Unit, Unit> NavigateToSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> HideWindowCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenGitHubCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
+    public Interaction<Unit, Unit> OpenAboutInteraction { get; } = new();
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
     public ReactiveCommand<Unit, Unit> SendLogsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
@@ -475,11 +479,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             desktop.MainWindow?.Hide();
             Services.MacOSDockIconHelper.HideDockIcon();
         }
-    }
-
-    private static void OpenGitHub()
-    {
-        OpenUrlInBrowser(Constants.SourceRepositoryUrl);
     }
 
     private static void ExitApplication()
