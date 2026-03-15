@@ -306,6 +306,7 @@ public class NotificationMessage : EventArgs
     public int Duration { get; set; } = 3000;
     public string? Tag { get; set; }
     public NotificationPriority Priority { get; set; } = NotificationPriority.Normal;
+    public InlineNotificationLevel Level { get; set; } = InlineNotificationLevel.Info;
 
     public override bool Equals(object? obj)
     {
@@ -336,4 +337,12 @@ public enum NotificationPriority
     Normal = 1,
     High = 2,
     Critical = 3
+}
+
+public enum InlineNotificationLevel
+{
+    Info,
+    Success,
+    Warning,
+    Error
 }

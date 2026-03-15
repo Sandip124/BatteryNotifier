@@ -13,6 +13,7 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using ReactiveUI;
@@ -55,6 +56,9 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
         SendLogsCommand = ReactiveCommand.Create(SendLogs);
         ExitCommand = ReactiveCommand.Create(ExitApplication);
+        DismissInlineNotificationCommand = ReactiveCommand.Create(DismissInlineNotification);
+
+        _inlineNotifications.StateChanged += OnInlineNotificationStateChanged;
 
         // Access BatteryMonitorService FIRST — its constructor does a synchronous
         // initial check that populates BatteryManagerStore, so the store has real
@@ -360,6 +364,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
     public ReactiveCommand<Unit, Unit> SendLogsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
+    public ReactiveCommand<Unit, Unit> DismissInlineNotificationCommand { get; }
 
     public static string Version => Constants.ApplicationVersion;
 
@@ -368,6 +373,37 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
+
+    // ── Inline notification (state lives in Core's InlineNotificationManager) ──
+
+    private readonly InlineNotificationManager _inlineNotifications = InlineNotificationManager.Instance;
+
+    public string InlineNotificationMessage => _inlineNotifications.Message;
+    public bool IsInlineNotificationVisible => _inlineNotifications.IsVisible;
+    public InlineNotificationLevel InlineNotificationLevel => _inlineNotifications.Level;
+
+    public bool IsInlineSuccess => _inlineNotifications.Level == InlineNotificationLevel.Success;
+    public bool IsInlineWarning => _inlineNotifications.Level == InlineNotificationLevel.Warning;
+    public bool IsInlineError => _inlineNotifications.Level == InlineNotificationLevel.Error;
+
+    public void ShowInlineNotification(string message, InlineNotificationLevel level = InlineNotificationLevel.Info, int durationMs = 3000)
+        => _inlineNotifications.Show(message, level, durationMs);
+
+    public void DismissInlineNotification()
+        => _inlineNotifications.Dismiss();
+
+    private void OnInlineNotificationStateChanged()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            this.RaisePropertyChanged(nameof(InlineNotificationMessage));
+            this.RaisePropertyChanged(nameof(IsInlineNotificationVisible));
+            this.RaisePropertyChanged(nameof(InlineNotificationLevel));
+            this.RaisePropertyChanged(nameof(IsInlineSuccess));
+            this.RaisePropertyChanged(nameof(IsInlineWarning));
+            this.RaisePropertyChanged(nameof(IsInlineError));
+        });
+    }
 
     // ── Funny phrases & greetings ────────────────────────────────
 
@@ -483,36 +519,39 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     {
         var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
 
-        switch (result.Status)
+        Dispatcher.UIThread.Post(() =>
         {
-            case CheckStatus.UpdateAvailable when result.Release != null:
-                OpenUrlInBrowser(result.Release.HtmlUrl);
-                break;
+            switch (result.Status)
+            {
+                case CheckStatus.UpdateAvailable when result.Release != null:
+                    OpenUrlInBrowser(result.Release.HtmlUrl);
+                    break;
 
-            case CheckStatus.UpToDate:
-                Services.NotificationPlatformService.ShowNativeNotification(
-                    "No Updates",
-                    $"You're running the latest version ({Constants.ApplicationVersion}).");
-                break;
+                case CheckStatus.UpToDate:
+                    ShowInlineNotification(
+                        $"You're running the latest version (v{Constants.ApplicationVersion}).",
+                        InlineNotificationLevel.Success);
+                    break;
 
-            case CheckStatus.Failed:
-                Services.NotificationPlatformService.ShowNativeNotification(
-                    "Update Check Failed",
-                    "Could not reach GitHub. Check your internet connection.");
-                break;
-        }
+                case CheckStatus.Failed:
+                    ShowInlineNotification(
+                        "Could not reach GitHub. Check your internet connection.",
+                        InlineNotificationLevel.Error);
+                    break;
+            }
+        });
     }
 
-    private static void SendLogs()
+    private void SendLogs()
     {
         try
         {
             if (!CrashReporter.CanSendReport())
             {
                 var remaining = CrashReporter.GetCooldownRemaining();
-                Services.NotificationPlatformService.ShowNativeNotification(
-                    "Rate Limited",
-                    $"Please wait {remaining.TotalMinutes:F0} minutes before sending another report.");
+                ShowInlineNotification(
+                    $"Please wait {remaining.TotalMinutes:F0} minutes before sending another report.",
+                    InlineNotificationLevel.Warning);
                 var report = CrashReporter.BuildManualReport();
                 CrashReporter.SaveReportToFile(report);
                 return;
@@ -580,6 +619,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
         }
         catch { }
+        _inlineNotifications.StateChanged -= OnInlineNotificationStateChanged;
         _disposed = true;
     }
 }

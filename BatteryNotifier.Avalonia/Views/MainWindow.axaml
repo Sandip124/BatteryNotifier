@@ -158,6 +158,46 @@
         <ContentControl Content="{Binding CurrentView}"
                         IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNotNull}}" />
 
+        <!-- Inline notification toast -->
+        <Border IsVisible="{Binding IsInlineNotificationVisible}"
+                VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                Margin="8,56,8,0"
+                CornerRadius="8" Padding="10,8"
+                ZIndex="10"
+                BoxShadow="0 2 8 0 #40000000"
+                Name="InlineNotificationBar"
+                Classes.Success="{Binding IsInlineSuccess}"
+                Classes.Warning="{Binding IsInlineWarning}"
+                Classes.Error="{Binding IsInlineError}">
+            <Border.Styles>
+                <Style Selector="Border#InlineNotificationBar">
+                    <Setter Property="Background" Value="#1976D2" />
+                </Style>
+                <Style Selector="Border#InlineNotificationBar.Success">
+                    <Setter Property="Background" Value="#388E3C" />
+                </Style>
+                <Style Selector="Border#InlineNotificationBar.Warning">
+                    <Setter Property="Background" Value="#F57A00" />
+                </Style>
+                <Style Selector="Border#InlineNotificationBar.Error">
+                    <Setter Property="Background" Value="#D32F2F" />
+                </Style>
+            </Border.Styles>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding InlineNotificationMessage}"
+                           Foreground="White" FontSize="12.5"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+                <Button Grid.Column="1" Command="{Binding DismissInlineNotificationCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="4" Margin="4,0,0,0"
+                        VerticalAlignment="Center" Cursor="Hand">
+                    <PathIcon Data="{StaticResource Icon.X}" Width="10" Height="10"
+                              Foreground="#CCFFFFFF" />
+                </Button>
+            </Grid>
+        </Border>
+
         </Grid>
       </Border>
     </Border>
