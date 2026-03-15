@@ -39,7 +39,7 @@
         <PackageReference Include="System.Management" Version="9.0.8" />
         <PackageReference Include="WindowsShortcutFactory" Version="1.2.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.4" />
-        <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
+        <PackageReference Include="NAudio" Version="2.2.1" />
         <!-- WMI uses reflection heavily — prevent the trimmer from breaking it -->
         <TrimmerRootAssembly Include="System.Management" />
     </ItemGroup>
