@@ -7,6 +7,8 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Services;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Avalonia.Views;
@@ -14,6 +16,7 @@ namespace BatteryNotifier.Avalonia.Views;
 public partial class MainWindow : Window
 {
     private readonly ILogger _logger;
+    private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
     private IDisposable? _aboutInteractionHandler;
 
@@ -127,11 +130,51 @@ public partial class MainWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        PositionNearNotificationArea();
+
+        var settings = AppSettings.Instance;
+        if (settings.WindowPositionX.HasValue && settings.WindowPositionY.HasValue)
+        {
+            var saved = new PixelPoint(settings.WindowPositionX.Value, settings.WindowPositionY.Value);
+
+            // Validate the saved position is still on a visible screen
+            var isOnScreen = false;
+            foreach (var screen in Screens.All)
+            {
+                if (screen.WorkingArea.Contains(saved))
+                {
+                    isOnScreen = true;
+                    break;
+                }
+            }
+
+            if (isOnScreen)
+                Position = saved;
+            else
+                PositionNearNotificationArea();
+        }
+        else
+        {
+            PositionNearNotificationArea();
+        }
+
+        PositionChanged += OnPositionChanged;
+    }
+
+    private void OnPositionChanged(object? sender, PixelPointEventArgs e)
+    {
+        _positionSaveDebouncer.Debounce(() =>
+        {
+            var settings = AppSettings.Instance;
+            settings.WindowPositionX = e.Point.X;
+            settings.WindowPositionY = e.Point.Y;
+            settings.Save();
+        }, 500);
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        PositionChanged -= OnPositionChanged;
+        _positionSaveDebouncer.Dispose();
         _aboutInteractionHandler?.Dispose();
         if (DataContext is MainWindowViewModel vm)
             vm.PropertyChanged -= (_, _) => { };

@@ -22,6 +22,8 @@ public sealed class AppSettings
 
     // Window Settings
     public bool StartMinimized { get; set; } = true;
+    public int? WindowPositionX { get; set; }
+    public int? WindowPositionY { get; set; }
 
     // Theme Settings
     public ThemeMode ThemeMode { get; set; } = ThemeMode.System;
@@ -88,6 +90,8 @@ public sealed class AppSettings
                 FullBatteryNotificationMusic = SanitizeSoundPath(settings.FullBatteryNotificationMusic);
                 LowBatteryNotificationMusic = SanitizeSoundPath(settings.LowBatteryNotificationMusic);
                 StartMinimized = settings.StartMinimized;
+                WindowPositionX = settings.WindowPositionX;
+                WindowPositionY = settings.WindowPositionY;
                 ThemeMode = settings.ThemeMode;
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AutoCheckForUpdates = settings.AutoCheckForUpdates;
