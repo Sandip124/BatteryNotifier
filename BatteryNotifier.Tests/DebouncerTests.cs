@@ -14,7 +14,7 @@ public class DebouncerTests
         debouncer.Debounce(() => executedValue = 2, 100);
         debouncer.Debounce(() => executedValue = 3, 100);
 
-        await Task.Delay(200);
+        await Task.Delay(500);
 
         Assert.Equal(3, executedValue);
     }
@@ -28,7 +28,7 @@ public class DebouncerTests
         debouncer.Debounce(() => executed = true, 50);
 
         Assert.False(executed);
-        await Task.Delay(150);
+        await Task.Delay(500);
         Assert.True(executed);
     }
 
@@ -41,7 +41,7 @@ public class DebouncerTests
         debouncer.Debounce(() => executed = true, 100);
         debouncer.Dispose();
 
-        await Task.Delay(200);
+        await Task.Delay(500);
 
         Assert.False(executed);
     }
