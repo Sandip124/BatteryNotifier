@@ -496,9 +496,9 @@ public class BatteryIndicatorControl : Control
         ctx.DrawEllipse(new SolidColorBrush(color), pen, new Point(cx, cy), r, r);
 
         if (IsCharging)
-            DrawBadgeIcon(ctx, cx, cy, r, s_boltGeo);
+            DrawBadgeIcon(ctx, cx, cy, r, BoltGeo, BoltGoldBrush);
         else
-            DrawBadgeIcon(ctx, cx, cy, r, s_checkGeo);
+            DrawBadgeIcon(ctx, cx, cy, r, CheckGeo);
     }
 
     private void DrawTriangleBadge(DrawingContext ctx, double cx, double cy, double r, Color color)
@@ -508,30 +508,33 @@ public class BatteryIndicatorControl : Control
         DrawTriangle(ctx, cx, cy, r, new SolidColorBrush(color), pen);
 
         if (IsCharging)
-            DrawBadgeIcon(ctx, cx, cy, r, s_boltGeo);
+            DrawBadgeIcon(ctx, cx, cy, r, BoltGeo, BoltGoldBrush);
         else
-            DrawBadgeIcon(ctx, cx, cy, r, s_exclamationGeo);
+            DrawBadgeIcon(ctx, cx, cy, r, ExclamationGeo);
     }
 
-    // ── Badge icons (Phosphor geometries scaled into badge) ─────
+    // ── Badge icons (loaded from Icons.axaml resource dictionary) ─────
 
-    // Lightning bolt (filled) — Phosphor LightningFill 256×256
-    private static readonly Geometry s_boltGeo = Geometry.Parse(
-        "M213.85,125.46l-112,120a8,8,0,0,1-13.69-7l14.66-73.33L45.19,143.49a8,8,0,0,1-3-13l112-120a8,8,0,0,1,13.69,7L153.18,90.9l57.63,21.61a8,8,0,0,1,3,12.95Z");
+    private static Geometry? _boltGeo;
+    private static Geometry? _checkGeo;
+    private static Geometry? _exclamationGeo;
 
-    // Checkmark — Phosphor Check 256×256
-    private static readonly Geometry s_checkGeo = Geometry.Parse(
-        "M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z");
+    private static Geometry GetBadgeIcon(string key)
+    {
+        if (Application.Current!.TryFindResource(key, out var res) && res is Geometry geo)
+            return geo;
+        return new StreamGeometry();
+    }
 
-    // Exclamation mark (stem + dot) — custom, 256×256 viewbox
-    private static readonly Geometry s_exclamationGeo = Geometry.Parse(
-        "M116,52a12,12,0,0,1,24,0L140,152a12,12,0,0,1,-24,0Z M112,196a16,16,0,0,1,32,0a16,16,0,0,1,-32,0Z");
+    private static Geometry BoltGeo => _boltGeo ??= GetBadgeIcon("Icon.LightningFill");
+    private static Geometry CheckGeo => _checkGeo ??= GetBadgeIcon("Icon.CheckFat");
+    private static Geometry ExclamationGeo => _exclamationGeo ??= GetBadgeIcon("Icon.ExclamationMarkFill");
 
     /// <summary>
     /// Draws a pre-parsed icon geometry scaled and centered inside the badge.
     /// </summary>
     private static void DrawBadgeIcon(DrawingContext ctx, double cx, double cy, double r,
-        Geometry geo)
+        Geometry geo, IBrush? brush = null)
     {
         var bounds = geo.Bounds;
         if (bounds.Width <= 0 || bounds.Height <= 0) return;
@@ -546,7 +549,7 @@ public class BatteryIndicatorControl : Control
             Matrix.CreateScale(scale, scale) *
             Matrix.CreateTranslation(cx, cy)))
         {
-            ctx.DrawGeometry(Brushes.White, null, geo);
+            ctx.DrawGeometry(brush ?? Brushes.White, null, geo);
         }
     }
 
@@ -576,6 +579,7 @@ public class BatteryIndicatorControl : Control
     private static readonly Color BadgeBlue  = Color.FromRgb(60, 130, 210);
     private static readonly Color BadgeAmber = Color.FromRgb(225, 168, 32);
     private static readonly Color BadgeRed   = Color.FromRgb(220, 55, 42);
+    private static readonly SolidColorBrush BoltGoldBrush = new(Color.FromRgb(0xFF, 0xD7, 0x60));
 
     private static Color Lighten(Color c, double amt) => Color.FromRgb(
         (byte)Math.Min(255, c.R + (255 - c.R) * amt),
