@@ -12,10 +12,10 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppWindowBackground}"
+        SystemDecorations="Full"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="0"
-        SystemDecorations="BorderOnly">
+        ExtendClientAreaTitleBarHeightHint="-1">
 
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 
