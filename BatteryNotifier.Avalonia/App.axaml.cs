@@ -209,25 +209,8 @@ public partial class App : Application
             CloseParentWindow(s as Button);
         };
 
-        var canSend = CrashReporter.CanSendReport();
-        var sendButton = new Button
-        {
-            Content = canSend ? "Send Report" : "Rate Limited",
-            MinWidth = 100,
-            IsEnabled = canSend
-        };
-        sendButton.Click += (s, _) =>
-        {
-            var report = CrashReporter.BuildCrashReport(crashDetails);
-            CrashReporter.OpenGitHubIssue(
-                $"[Crash] v{Core.Constants.ApplicationVersion} — unhandled exception",
-                report);
-            CloseParentWindow(s as Button);
-        };
-
         buttonPanel.Children.Add(dismissButton);
         buttonPanel.Children.Add(saveButton);
-        buttonPanel.Children.Add(sendButton);
         panel.Children.Add(buttonPanel);
 
         return panel;

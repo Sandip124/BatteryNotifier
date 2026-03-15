@@ -24,7 +24,6 @@ public static class CrashReporter
     private const string CrashMarkerFileName = ".crash-report";
     private const string CrashMarkerSigFileName = ".crash-report.sig";
     private const string RateLimitFileName = ".last-report";
-    private const string IssueRepoUrl = Constants.SourceRepositoryUrl;
     private const int MaxLogLines = 200;
     private const int MaxLogFileSize = 512 * 1024; // 512 KB per file
     private const int MaxCrashMarkerSize = 64 * 1024; // 64 KB
@@ -445,43 +444,51 @@ public static class CrashReporter
     // ── Delivery ─────────────────────────────────────────────────
 
     /// <summary>
-    /// Opens a pre-filled GitHub issue in the default browser.
-    /// Enforces rate limiting — returns false if cooldown hasn't elapsed.
-    /// The user reviews the content and submits manually.
+    /// Opens the file explorer with the given file selected.
+    /// Works on Windows (explorer /select), macOS (open -R), and Linux (xdg-open folder).
     /// </summary>
-    public static bool OpenGitHubIssue(string title, string body)
+    public static void RevealInExplorer(string filePath)
     {
-        if (!CanSendReport())
-            return false;
-
         try
         {
-            // Sanitize the title — no markdown, no newlines
-            title = Regex.Replace(title, @"[\r\n]+", " ");
-            if (title.Length > 100)
-                title = title[..100];
-            title = NeutralizeMarkdown(title);
-
-            var encodedTitle = Uri.EscapeDataString(title);
-
-            // GitHub has a ~8000 char URL limit. Truncate body if needed.
-            const int maxBodyLength = 6000;
-            if (body.Length > maxBodyLength)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                body = body[..maxBodyLength] + "\n\n_(truncated — full log available locally)_";
+                var psi = new ProcessStartInfo("explorer")
+                {
+                    UseShellExecute = false
+                };
+                psi.ArgumentList.Add("/select,");
+                psi.ArgumentList.Add(filePath);
+                Process.Start(psi);
             }
-
-            var encodedBody = Uri.EscapeDataString(body);
-            var url = $"{IssueRepoUrl}/issues/new?title={encodedTitle}&body={encodedBody}&labels=bug,crash-report";
-
-            OpenUrl(url);
-            RecordReportSent();
-            return true;
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                var psi = new ProcessStartInfo("open")
+                {
+                    UseShellExecute = false
+                };
+                psi.ArgumentList.Add("-R");
+                psi.ArgumentList.Add(filePath);
+                Process.Start(psi);
+            }
+            else
+            {
+                // Linux: open the containing folder
+                var dir = Path.GetDirectoryName(filePath);
+                if (dir != null)
+                {
+                    var psi = new ProcessStartInfo("xdg-open")
+                    {
+                        UseShellExecute = false
+                    };
+                    psi.ArgumentList.Add(dir);
+                    Process.Start(psi);
+                }
+            }
         }
         catch (Exception ex)
         {
-            Logger.Error(ex, "Failed to open GitHub issue URL");
-            return false;
+            Logger.Warning(ex, "Failed to reveal file in explorer: {Path}", filePath);
         }
     }
 
@@ -519,23 +526,4 @@ public static class CrashReporter
         }
     }
 
-    private static void OpenUrl(string url)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var psi = new ProcessStartInfo("open") { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        else
-        {
-            var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-    }
 }

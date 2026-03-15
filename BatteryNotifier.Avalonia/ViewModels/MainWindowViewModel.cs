@@ -54,7 +54,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
             await OpenAboutInteraction.Handle(Unit.Default);
         });
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
-        SendLogsCommand = ReactiveCommand.Create(SendLogs);
         ExitCommand = ReactiveCommand.Create(ExitApplication);
         DismissInlineNotificationCommand = ReactiveCommand.Create(DismissInlineNotification);
 
@@ -362,7 +361,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
     public Interaction<Unit, Unit> OpenAboutInteraction { get; } = new();
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
-    public ReactiveCommand<Unit, Unit> SendLogsCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
     public ReactiveCommand<Unit, Unit> DismissInlineNotificationCommand { get; }
 
@@ -540,33 +538,6 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
                     break;
             }
         });
-    }
-
-    private void SendLogs()
-    {
-        try
-        {
-            if (!CrashReporter.CanSendReport())
-            {
-                var remaining = CrashReporter.GetCooldownRemaining();
-                ShowInlineNotification(
-                    $"Please wait {remaining.TotalMinutes:F0} minutes before sending another report.",
-                    InlineNotificationLevel.Warning);
-                var report = CrashReporter.BuildManualReport();
-                CrashReporter.SaveReportToFile(report);
-                return;
-            }
-
-            var manualReport = CrashReporter.BuildManualReport();
-            CrashReporter.SaveReportToFile(manualReport);
-            CrashReporter.OpenGitHubIssue(
-                $"[Log Report] v{Constants.ApplicationVersion}",
-                manualReport);
-        }
-        catch (Exception ex)
-        {
-            BatteryNotifierAppLogger.Error(ex, "Failed to send logs from menu");
-        }
     }
 
     private static void OpenUrlInBrowser(string url)

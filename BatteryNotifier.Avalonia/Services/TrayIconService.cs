@@ -29,7 +29,6 @@ public class TrayIconService : IDisposable
 
     // Store menu items for clean unsubscription in Dispose
     private NativeMenuItem? _showHideMenuItem;
-    private NativeMenuItem? _sendLogsMenuItem;
     private NativeMenuItem? _aboutMenuItem;
     private NativeMenuItem? _updateMenuItem;
     private NativeMenuItem? _exitMenuItem;
@@ -65,9 +64,6 @@ public class TrayIconService : IDisposable
             _showHideMenuItem = new NativeMenuItem { Header = "Show Window" };
             _showHideMenuItem.Click += OnShowHideWindow;
 
-            _sendLogsMenuItem = new NativeMenuItem { Header = "Send Logs..." };
-            _sendLogsMenuItem.Click += OnSendLogs;
-
             _aboutMenuItem = new NativeMenuItem { Header = "About" };
             _aboutMenuItem.Click += OnOpenAbout;
 
@@ -80,7 +76,6 @@ public class TrayIconService : IDisposable
             _trayMenu.Add(_showHideMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_updateMenuItem);
-            _trayMenu.Add(_sendLogsMenuItem);
             _trayMenu.Add(_aboutMenuItem);
             _trayMenu.Add(new NativeMenuItemSeparator());
             _trayMenu.Add(_exitMenuItem);
@@ -308,35 +303,6 @@ public class TrayIconService : IDisposable
         }
     }
 
-private void OnSendLogs(object? sender, EventArgs e)
-    {
-        try
-        {
-            if (!CrashReporter.CanSendReport())
-            {
-                // Still save to file (not rate-limited)
-                var report = CrashReporter.BuildManualReport();
-                CrashReporter.SaveReportToFile(report);
-                return;
-            }
-
-            var manualReport = CrashReporter.BuildManualReport();
-
-            // Save to file first (always available)
-            var filePath = CrashReporter.SaveReportToFile(manualReport);
-
-            // Open GitHub issue form for user review
-            CrashReporter.OpenGitHubIssue(
-                $"[Log Report] v{Constants.ApplicationVersion}",
-                manualReport);
-
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex, "Failed to send logs");
-        }
-    }
-
     private void OnOpenAbout(object? sender, EventArgs e)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
@@ -483,7 +449,6 @@ private void OnSendLogs(object? sender, EventArgs e)
 
             // Unsubscribe menu item Click handlers to prevent event leaks
             if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }
-            if (_sendLogsMenuItem != null) { _sendLogsMenuItem.Click -= OnSendLogs; _sendLogsMenuItem = null; }
             if (_aboutMenuItem != null) { _aboutMenuItem.Click -= OnOpenAbout; _aboutMenuItem = null; }
             if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
             if (_exitMenuItem != null) { _exitMenuItem.Click -= OnExit; _exitMenuItem = null; }

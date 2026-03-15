@@ -54,8 +54,6 @@
                                  </MenuItem>
                                 <MenuItem Header="Check for Updates..." Command="{Binding CheckForUpdatesCommand}">
                                  </MenuItem>
-                                <MenuItem Header="Send Logs..." Command="{Binding SendLogsCommand}">
-                                   </MenuItem>
                                 <MenuItem Header="About" Command="{Binding OpenAboutCommand}">
                                 </MenuItem>
                                 <Separator />
