@@ -11,9 +11,10 @@
     <StackPanel Spacing="0">
         <!-- Header: icon + title + toggle -->
         <Grid ColumnDefinitions="28,*,42" VerticalAlignment="Center">
-            <Image Grid.Column="0" Margin="0,0,6,0"
-                   Source="{Binding Icon}"
-                   RenderOptions.BitmapInterpolationMode="MediumQuality" />
+            <PathIcon Grid.Column="0" Margin="0,0,6,0"
+                      Data="{Binding IconData}"
+                      Foreground="{Binding IconForeground}"
+                      Width="26" Height="26" />
             <TextBlock Grid.Column="1" VerticalAlignment="Center"
                        FontSize="13" FontWeight="SemiBold"
                        Text="{Binding Title}" />

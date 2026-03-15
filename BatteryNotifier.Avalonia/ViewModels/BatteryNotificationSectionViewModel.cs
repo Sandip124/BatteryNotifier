@@ -4,8 +4,8 @@ using System.IO;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using Avalonia.Media.Imaging;
-using Avalonia.Platform;
+using Avalonia;
+using Avalonia.Media;
 using BatteryNotifier.Core.Managers;
 using ReactiveUI;
 
@@ -21,7 +21,8 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
     private bool _disposed;
 
     public string Title { get; }
-    public Bitmap? Icon { get; }
+    public Geometry? IconData { get; }
+    public IBrush IconForeground { get; }
     public int SliderMinimum { get; }
     public int SliderMaximum { get; }
 
@@ -29,14 +30,15 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> OpenSoundPickerCommand { get; }
 
     public BatteryNotificationSectionViewModel(
-        string title, string iconSource,
+        string title, string iconKey, Color iconColor,
         int sliderMin, int sliderMax,
         bool isEnabled, int thresholdValue,
         string? soundSettingsValue,
         Action<string?, int> onSettingsChanged)
     {
         Title = title;
-        Icon = LoadIcon(iconSource);
+        IconData = LoadIconGeometry(iconKey);
+        IconForeground = new SolidColorBrush(iconColor);
         SliderMinimum = sliderMin;
         SliderMaximum = sliderMax;
         _isEnabled = isEnabled;
@@ -157,18 +159,11 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         return true;
     }
 
-    private static Bitmap? LoadIcon(string assetPath)
+    private static Geometry? LoadIconGeometry(string key)
     {
-        try
-        {
-            var uri = new Uri($"avares://BatteryNotifier{assetPath}");
-            using var stream = AssetLoader.Open(uri);
-            return new Bitmap(stream);
-        }
-        catch
-        {
-            return null;
-        }
+        if (Application.Current!.Resources.TryGetResource(key, null, out var res) && res is Geometry geo)
+            return geo;
+        return null;
     }
 
     public void Dispose()

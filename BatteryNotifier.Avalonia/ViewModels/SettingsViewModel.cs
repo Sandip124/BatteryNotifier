@@ -3,6 +3,7 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Styling;
 using BatteryNotifier.Core.Services;
 using ReactiveUI;
@@ -41,7 +42,7 @@ public class SettingsViewModel : ViewModelBase, IDisposable
 
         FullBatterySection = new BatteryNotificationSectionViewModel(
             title: "Full Battery",
-            iconSource: "/Assets/FullBattery.png",
+            iconKey: "Icon.BatteryFullFill", iconColor: Color.FromRgb(44, 162, 60),
             sliderMin: 0, sliderMax: 100,
             isEnabled: _settings.FullBatteryNotification,
             thresholdValue: _settings.FullBatteryNotificationValue,
@@ -57,7 +58,7 @@ public class SettingsViewModel : ViewModelBase, IDisposable
 
         LowBatterySection = new BatteryNotificationSectionViewModel(
             title: "Low Battery",
-            iconSource: "/Assets/LowBattery.png",
+            iconKey: "Icon.BatteryLowFill", iconColor: Color.FromRgb(225, 168, 32),
             sliderMin: 0, sliderMax: 100,
             isEnabled: _settings.LowBatteryNotification,
             thresholdValue: _settings.LowBatteryNotificationValue,

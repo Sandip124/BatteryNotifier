@@ -79,8 +79,8 @@
                         <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" ClipToBounds="False">
                             <controls:BatteryIndicatorControl
                                 Width="200" Height="110"
-                                Percentage="{Binding BatteryPercentage}"
-                                IsCharging="{Binding IsCharging}" />
+                                Percentage="39"
+                                IsCharging="False" />
                             <TextBlock TextAlignment="Center" FontSize="40" FontWeight="Bold"
                                        Margin="0,12,0,0"
                                        Text="{Binding BatteryPercentage, StringFormat='{}{0:F0}%'}" />
@@ -122,10 +122,11 @@
                                            Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
                                 <Grid Margin="12,6,12,10" Grid.Row="1" RowDefinitions="Auto,6,Auto" ColumnDefinitions="*">
 
-                                    <Grid Grid.Row="0" ColumnDefinitions="42,*,42" VerticalAlignment="Center">
-                                        <Image Grid.Column="0" Margin="0,0,8,0"
-                                               Source="/Assets/FullBattery.png"
-                                               RenderOptions.BitmapInterpolationMode="MediumQuality" />
+                                    <Grid Grid.Row="0" ColumnDefinitions="32,*,42" VerticalAlignment="Center">
+                                        <PathIcon Grid.Column="0" Margin="0,0,8,0"
+                                                  Data="{StaticResource Icon.BatteryFullFill}"
+                                                  Foreground="#2CA23C"
+                                                  Width="26" Height="26" />
                                         <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Full Battery Notification</TextBlock>
                                         <ToggleSwitch Grid.Column="2"
                                                       IsChecked="{Binding FullBatteryNotification}"
@@ -133,10 +134,11 @@
                                                       Margin="0" Padding="0" />
                                     </Grid>
 
-                                    <Grid Grid.Row="2" ColumnDefinitions="42,*,42" VerticalAlignment="Center">
-                                        <Image Grid.Column="0" Margin="0,0,8,0"
-                                               Source="/Assets/LowBattery.png"
-                                               RenderOptions.BitmapInterpolationMode="MediumQuality" />
+                                    <Grid Grid.Row="2" ColumnDefinitions="32,*,42" VerticalAlignment="Center">
+                                        <PathIcon Grid.Column="0" Margin="0,0,8,0"
+                                                  Data="{StaticResource Icon.BatteryLowFill}"
+                                                  Foreground="#E1A820"
+                                                  Width="26" Height="26" />
                                         <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Low Battery Notification</TextBlock>
                                         <ToggleSwitch Grid.Column="2"
                                                       IsChecked="{Binding LowBatteryNotification}"
