@@ -34,11 +34,12 @@
         <PackageReference Include="SoundFlow" Version="1.4.0" />
     </ItemGroup>
 
-    <!-- Windows-only: WMI for battery info, shortcuts, DPAPI for settings encryption -->
+    <!-- Windows-only: WMI for battery info, shortcuts, DPAPI, NAudio for sound -->
     <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
         <PackageReference Include="System.Management" Version="9.0.8" />
         <PackageReference Include="WindowsShortcutFactory" Version="1.2.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.4" />
+        <PackageReference Include="NAudio.WinMM" Version="2.2.1" />
         <!-- WMI uses reflection heavily — prevent the trimmer from breaking it -->
         <TrimmerRootAssembly Include="System.Management" />
     </ItemGroup>

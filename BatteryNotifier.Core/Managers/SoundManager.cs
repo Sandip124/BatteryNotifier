@@ -1,11 +1,15 @@
 using System.Diagnostics;
 using BatteryNotifier.Core.Logger;
 using Serilog;
+#if WINDOWS
+using NAudio.Wave;
+#else
 using SoundFlow.Abstracts.Devices;
 using SoundFlow.Backends.MiniAudio;
 using SoundFlow.Components;
 using SoundFlow.Providers;
 using SoundFlow.Structs;
+#endif
 
 namespace BatteryNotifier.Core.Managers
 {
@@ -113,8 +117,13 @@ namespace BatteryNotifier.Core.Managers
                 PlayWithSubprocess("afplay", source, loop, durationMs, token);
             else if (OperatingSystem.IsLinux())
                 PlayWithLinuxSubprocess(source, loop, durationMs, token);
+#if WINDOWS
+            else if (OperatingSystem.IsWindows())
+                PlayWithNAudio(source, loop, durationMs, token);
+#else
             else if (OperatingSystem.IsWindows())
                 PlayWithSoundFlow(source, loop, durationMs, token);
+#endif
             else
                 _logger.Warning("Unsupported platform for sound playback");
         }
@@ -187,9 +196,80 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 
-        // ── Windows: SoundFlow (MiniAudio) ──────────────────────────
+#if WINDOWS
+        // ── Windows: NAudio (WaveOutEvent + AudioFileReader) ──────────
 
-        // SoundFlow engine — lazy-init, only used on Windows
+        private WaveOutEvent? _naudioDevice;
+        private AudioFileReader? _naudioReader;
+
+        private void PlayWithNAudio(string source, bool loop, int durationMs, CancellationToken token)
+        {
+            using var reader = new AudioFileReader(source);
+            using var device = new WaveOutEvent();
+            using var playbackDone = new ManualResetEventSlim(false);
+
+            WaveStream inputStream = loop ? new LoopStream(reader) : reader;
+
+            device.Init(inputStream);
+            device.PlaybackStopped += (_, _) =>
+            {
+                try { playbackDone.Set(); } catch (ObjectDisposedException) { }
+            };
+
+            _naudioDevice = device;
+            _naudioReader = reader;
+            device.Play();
+
+            try
+            {
+                playbackDone.Wait(durationMs, token);
+            }
+            catch (OperationCanceledException) { }
+            finally
+            {
+                device.Stop();
+                _naudioDevice = null;
+                _naudioReader = null;
+                if (loop) inputStream.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// WaveStream wrapper that loops back to the start when the source ends.
+        /// Standard NAudio pattern from Mark Heath (NAudio author).
+        /// </summary>
+        private sealed class LoopStream : WaveStream
+        {
+            private readonly WaveStream _source;
+
+            public LoopStream(WaveStream source) => _source = source;
+            public override WaveFormat WaveFormat => _source.WaveFormat;
+            public override long Length => _source.Length;
+            public override long Position
+            {
+                get => _source.Position;
+                set => _source.Position = value;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                int totalRead = 0;
+                while (totalRead < count)
+                {
+                    int read = _source.Read(buffer, offset + totalRead, count - totalRead);
+                    if (read == 0)
+                    {
+                        if (_source.Position == 0) break; // empty stream
+                        _source.Position = 0; // loop
+                    }
+                    totalRead += read;
+                }
+                return totalRead;
+            }
+        }
+#else
+        // ── Non-Windows: SoundFlow (MiniAudio) ──────────────────────────
+
         private static MiniAudioEngine? _sfEngine;
         private static AudioPlaybackDevice? _sfDevice;
         private static readonly object _sfLock = new();
@@ -261,6 +341,7 @@ namespace BatteryNotifier.Core.Managers
                 }
             }
         }
+#endif
 
         // ── Stop / Dispose ──────────────────────────────────────────
 
@@ -270,7 +351,11 @@ namespace BatteryNotifier.Core.Managers
             {
                 _cancellationTokenSource?.Cancel();
                 KillProcess(_currentProcess);
+#if WINDOWS
+                _naudioDevice?.Stop();
+#else
                 _sfCurrentPlayer?.Stop();
+#endif
             }
             catch (Exception ex)
             {
