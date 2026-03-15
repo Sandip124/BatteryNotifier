@@ -13,6 +13,7 @@
         WindowStartupLocation="CenterOwner"
         Background="{DynamicResource AppWindowBackground}"
         SystemDecorations="Full"
+        ShowInTaskbar="False"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="0">
