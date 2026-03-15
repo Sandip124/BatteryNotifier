@@ -124,10 +124,13 @@
                     </StackPanel>
                 </Button>
                 <Button Grid.Column="2"
-                        Theme="{StaticResource SecondaryButton}"
                         Command="{Binding SelectCommand}"
                         FontSize="12" Padding="14,6"
-                        Foreground="{DynamicResource AppAccentForeground}">
+                        Background="{DynamicResource AppAccentBackground}"
+                        Foreground="White"
+                        CornerRadius="4"
+                        BorderThickness="0"
+                        Cursor="Hand">
                     Select
                 </Button>
             </Grid>
