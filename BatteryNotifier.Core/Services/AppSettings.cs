@@ -155,6 +155,14 @@ public sealed class AppSettings
         if (path.StartsWith("builtin:", StringComparison.Ordinal))
             return path;
 
+        // Custom library sounds — resolved via CustomSoundsLibrary
+        if (path.StartsWith("custom:", StringComparison.Ordinal))
+            return path;
+
+        // Bundled editor's choice sounds — resolved via BundledSounds
+        if (path.StartsWith("bundled:", StringComparison.Ordinal))
+            return path;
+
         // Normalize to canonical form (resolves / vs \ on Windows, .., etc.)
         string canonical;
         try

@@ -29,7 +29,9 @@ namespace BatteryNotifier.Core.Managers
                 if (settings.LowBatteryNotification &&
                     !string.IsNullOrEmpty(settings.LowBatteryNotificationMusic))
                 {
-                    await _soundManager.PlaySoundAsync(settings.LowBatteryNotificationMusic, loop: true).ConfigureAwait(false);
+                    // Built-in tones are short — loop them. Custom sounds play once in full.
+                    bool shouldLoop = BuiltInSounds.IsBuiltIn(settings.LowBatteryNotificationMusic);
+                    await _soundManager.PlaySoundAsync(settings.LowBatteryNotificationMusic, loop: shouldLoop).ConfigureAwait(false);
                 }
             }
             else if (notificationMessage.Tag == Constants.FullBatteryTag)
@@ -37,7 +39,8 @@ namespace BatteryNotifier.Core.Managers
                 if (settings.FullBatteryNotification &&
                     !string.IsNullOrEmpty(settings.FullBatteryNotificationMusic))
                 {
-                    await _soundManager.PlaySoundAsync(settings.FullBatteryNotificationMusic, loop: true).ConfigureAwait(false);
+                    bool shouldLoop = BuiltInSounds.IsBuiltIn(settings.FullBatteryNotificationMusic);
+                    await _soundManager.PlaySoundAsync(settings.FullBatteryNotificationMusic, loop: shouldLoop).ConfigureAwait(false);
                 }
             }
         }

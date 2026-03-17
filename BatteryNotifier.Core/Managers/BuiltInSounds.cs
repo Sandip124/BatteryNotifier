@@ -58,13 +58,31 @@ public static class BuiltInSounds
     /// For built-in sounds, generates the WAV if not cached. For custom paths, returns as-is.
     /// Returns null for null/empty input (= default/no sound).
     /// </summary>
+    /// <summary>
+    /// Resolver delegate for prefixes handled outside Core (e.g., "bundled:" in the Avalonia project).
+    /// Set by the app at startup. Returns the resolved file path or null.
+    /// </summary>
+    public static Func<string, string?>? ExternalResolver { get; set; }
+
     public static string? Resolve(string? settingsValue)
     {
         if (string.IsNullOrEmpty(settingsValue))
             return null;
 
+        if (CustomSoundsLibrary.IsCustom(settingsValue))
+            return CustomSoundsLibrary.Resolve(settingsValue);
+
         if (!IsBuiltIn(settingsValue))
-            return settingsValue; // custom file path
+        {
+            // Try external resolver for prefixes like "bundled:"
+            if (ExternalResolver != null)
+            {
+                var resolved = ExternalResolver(settingsValue);
+                if (resolved != null) return resolved;
+            }
+
+            return settingsValue; // legacy absolute file path
+        }
 
         var name = GetName(settingsValue)!;
         return GetOrGenerate(name);

@@ -82,6 +82,11 @@
       <ProjectReference Include="..\BatteryNotifier.Core\BatteryNotifier.Core.csproj" />
     </ItemGroup>
 
+
+    <ItemGroup>
+      <Folder Include="Assets\Sounds\" />
+    </ItemGroup>
+
     <!-- Patch Info.plist version from the single-source <Version> property at build time -->
     <Target Name="PatchInfoPlistVersion" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
         <Exec Command="sed -i '' 's|&lt;string&gt;[0-9]*\.[0-9]*\.[0-9]*&lt;/string&gt;|&lt;string&gt;$(Version)&lt;/string&gt;|g' Info.plist" WorkingDirectory="$(MSBuildProjectDirectory)" />

@@ -5,6 +5,7 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Core.Managers;
 using ReactiveUI;
 namespace BatteryNotifier.Avalonia.ViewModels;
@@ -13,15 +14,15 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
 {
     private readonly SoundManager _soundManager = new();
     private readonly CompositeDisposable _disposables = new();
-    private readonly List<SoundPickerGroup> _allGroups;
-    private readonly SoundPickerItem? _customItem;
+    private List<SoundPickerGroup> _allGroups;
 
     private bool _disposed;
 
     public string PickerTitle { get; }
     public ReactiveCommand<Unit, SoundPickerItem?> SelectCommand { get; }
     public ReactiveCommand<Unit, SoundPickerItem?> CancelCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseCustomCommand { get; }
+    public ReactiveCommand<Unit, Unit> ImportSoundCommand { get; }
+    public ReactiveCommand<SoundPickerItem, Unit> DeleteCustomCommand { get; }
 
     public Interaction<Unit, string?> BrowseFileInteraction { get; } = new();
     public event Action? FilterChanged;
@@ -49,22 +50,12 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
         PickerTitle = $"Choose {sectionTitle} Sound";
         _allGroups = BuildGroups();
 
-        // Track custom item separately — only shown in list when it has a path
-        _customItem = new SoundPickerItem("Custom file", null) { IsCustom = true };
-
         // Set initial selection
         if (!string.IsNullOrEmpty(currentSettingsValue))
         {
-            if (BuiltInSounds.IsBuiltIn(currentSettingsValue))
-            {
-                var name = BuiltInSounds.GetName(currentSettingsValue);
-                SelectedItem = _allGroups.SelectMany(g => g.Items).FirstOrDefault(i => i.Name == name);
-            }
-            else
-            {
-                _customItem.CustomPath = currentSettingsValue;
-                SelectedItem = _customItem;
-            }
+            SelectedItem = _allGroups
+                .SelectMany(g => g.Items)
+                .FirstOrDefault(i => string.Equals(i.SettingsValue, currentSettingsValue, StringComparison.Ordinal));
         }
 
         ApplyFilter(null);
@@ -74,15 +65,39 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
         SelectCommand = ReactiveCommand.Create(() => SelectedItem, canSelect);
         CancelCommand = ReactiveCommand.Create(() => (SoundPickerItem?)null);
 
-        BrowseCustomCommand = ReactiveCommand.CreateFromTask(async () =>
+        ImportSoundCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             var path = await BrowseFileInteraction.Handle(Unit.Default);
-            if (!string.IsNullOrEmpty(path))
-            {
-                _customItem!.CustomPath = path;
-                SelectedItem = _customItem;
-                ApplyFilter(SearchText);
-            }
+            if (string.IsNullOrEmpty(path)) return;
+
+            var fileName = CustomSoundsLibrary.Import(path);
+            if (fileName == null) return;
+
+            // Rebuild groups to include the new import
+            _allGroups = BuildGroups();
+            ApplyFilter(SearchText);
+            FilterChanged?.Invoke();
+
+            // Auto-select the newly imported sound
+            var settingsValue = CustomSoundsLibrary.ToSettingsValue(fileName);
+            SelectedItem = _allGroups
+                .SelectMany(g => g.Items)
+                .FirstOrDefault(i => i.SettingsValue == settingsValue);
+        });
+
+        DeleteCustomCommand = ReactiveCommand.Create<SoundPickerItem>(item =>
+        {
+            var fileName = CustomSoundsLibrary.GetFileName(item.SettingsValue);
+            if (fileName == null) return;
+
+            CustomSoundsLibrary.Delete(fileName);
+
+            if (SelectedItem == item)
+                SelectedItem = null;
+
+            _allGroups = BuildGroups();
+            ApplyFilter(SearchText);
+            FilterChanged?.Invoke();
         });
 
         this.WhenAnyValue(x => x.SearchText)
@@ -105,21 +120,11 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
         foreach (var group in _allGroups)
         {
             var items = hasSearch
-                ? group.Items.Where(i => i.Name.Contains(search!, StringComparison.OrdinalIgnoreCase)).ToList()
+                ? group.Items.Where(i => i.DisplayName.Contains(search!, StringComparison.OrdinalIgnoreCase)).ToList()
                 : group.Items.ToList();
 
             if (items.Count > 0)
                 filtered.Add(new SoundPickerGroup(group.Title, items));
-        }
-
-        // Show custom item in its own group only if it has a path
-        if (_customItem != null && !string.IsNullOrEmpty(_customItem.CustomPath))
-        {
-            var customName = _customItem.DisplayName;
-            if (!hasSearch || customName.Contains(search!, StringComparison.OrdinalIgnoreCase))
-            {
-                filtered.Add(new SoundPickerGroup("Custom", [_customItem]));
-            }
         }
 
         FilteredGroups = filtered;
@@ -132,10 +137,13 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
             _soundManager.StopSound();
             await Task.Delay(100).ConfigureAwait(false);
 
-            string? source = item.IsCustom ? item.CustomPath : item.SettingsValue;
+            var source = item.SettingsValue;
             if (string.IsNullOrEmpty(source)) return;
 
-            await _soundManager.PlaySoundAsync(source, loop: false, durationMs: 5000).ConfigureAwait(false);
+            // Built-in tones are short — preview with a cap. Other sounds play in full.
+            bool isShortTone = BuiltInSounds.IsBuiltIn(source);
+            int previewMs = isShortTone ? 5000 : 60_000;
+            await _soundManager.PlaySoundAsync(source, loop: false, durationMs: previewMs).ConfigureAwait(false);
         }
         catch
         {
@@ -150,28 +158,52 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
 
     private static List<SoundPickerGroup> BuildGroups()
     {
-        return
-        [
-            new SoundPickerGroup("Full Battery — Calm",
+        var groups = new List<SoundPickerGroup>
+        {
+            new("Full Battery — Calm",
             [
                 new("Zen", BuiltInSounds.ToSettingsValue("Zen")),
                 new("Harp", BuiltInSounds.ToSettingsValue("Harp")),
                 new("Breeze", BuiltInSounds.ToSettingsValue("Breeze")),
                 new("Bloom", BuiltInSounds.ToSettingsValue("Bloom")),
             ]),
-            new SoundPickerGroup("Low Battery — Warning",
+            new("Low Battery — Warning",
             [
                 new("Pulse", BuiltInSounds.ToSettingsValue("Pulse")),
                 new("Klaxon", BuiltInSounds.ToSettingsValue("Klaxon")),
                 new("Rattle", BuiltInSounds.ToSettingsValue("Rattle")),
             ]),
-            new SoundPickerGroup("General",
+            new("General",
             [
                 new("Chime", BuiltInSounds.ToSettingsValue("Chime")),
                 new("Alert", BuiltInSounds.ToSettingsValue("Alert")),
                 new("Beacon", BuiltInSounds.ToSettingsValue("Beacon")),
             ]),
-        ];
+        };
+
+        // Add bundled "Editor's Choice" sounds grouped by category
+        var catalog = BundledSounds.GetCatalog();
+        var bundledByCategory = catalog
+            .GroupBy(s => s.Category)
+            .Select(g => new SoundPickerGroup(
+                $"Editor's Choice — {g.Key}",
+                g.Select(s => new SoundPickerItem(s.Name, s.SettingsValue)).ToList()))
+            .ToList();
+        groups.AddRange(bundledByCategory);
+
+        // Add custom library sounds if any exist
+        var customFiles = CustomSoundsLibrary.ListAll();
+        if (customFiles.Count > 0)
+        {
+            var customItems = customFiles
+                .Select(f => new SoundPickerItem(
+                    System.IO.Path.GetFileNameWithoutExtension(f),
+                    CustomSoundsLibrary.ToSettingsValue(f)) { IsCustomLibraryItem = true })
+                .ToList();
+            groups.Add(new SoundPickerGroup("Custom", customItems));
+        }
+
+        return groups;
     }
 
     public void Dispose()
@@ -194,21 +226,9 @@ public class SoundPickerItem : ReactiveObject
 {
     public string Name { get; }
     public string? SettingsValue { get; }
-    public bool IsCustom { get; init; }
+    public bool IsCustomLibraryItem { get; init; }
 
-    public string? CustomPath
-    {
-        get;
-        set
-        {
-            this.RaiseAndSetIfChanged(ref field, value);
-            this.RaisePropertyChanged(nameof(DisplayName));
-        }
-    }
-
-    public string DisplayName => IsCustom && !string.IsNullOrEmpty(CustomPath)
-        ? System.IO.Path.GetFileName(CustomPath) ?? "Custom file"
-        : Name;
+    public string DisplayName => Name;
 
     public SoundPickerItem(string name, string? settingsValue)
     {

@@ -24,6 +24,10 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Register bundled sounds resolver so Core can resolve "bundled:" prefixed paths
+        BatteryNotifier.Core.Managers.BuiltInSounds.ExternalResolver = settingsValue =>
+            Services.BundledSounds.IsBundled(settingsValue) ? Services.BundledSounds.Resolve(settingsValue) : null;
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var settings = AppSettings.Instance;

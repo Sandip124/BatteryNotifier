@@ -6,6 +6,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Media;
+using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Core.Managers;
 using ReactiveUI;
 
@@ -53,21 +54,9 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
             var result = await OpenSoundPickerInteraction.Handle((_soundSettingsValue, Title));
             if (result != null)
             {
-                string? newValue;
-                if (result.IsCustom)
-                {
-                    newValue = result.CustomPath;
-                    if (string.IsNullOrEmpty(newValue) || !ValidateSoundFilePath(newValue))
-                        return;
-                }
-                else
-                {
-                    newValue = result.SettingsValue;
-                }
-
-                _soundSettingsValue = newValue;
+                _soundSettingsValue = result.SettingsValue;
                 UpdateSoundDisplayName();
-                onSettingsChanged1(newValue, ThresholdValue);
+                onSettingsChanged1(result.SettingsValue, ThresholdValue);
             }
         });
 
@@ -111,6 +100,20 @@ public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
         else if (BuiltInSounds.IsBuiltIn(_soundSettingsValue))
         {
             SoundDisplayName = BuiltInSounds.GetName(_soundSettingsValue) ?? "Unknown";
+        }
+        else if (CustomSoundsLibrary.IsCustom(_soundSettingsValue))
+        {
+            var fileName = CustomSoundsLibrary.GetFileName(_soundSettingsValue);
+            SoundDisplayName = fileName != null
+                ? Path.GetFileNameWithoutExtension(fileName)
+                : "Custom sound";
+        }
+        else if (BundledSounds.IsBundled(_soundSettingsValue))
+        {
+            var fileName = BundledSounds.GetFileName(_soundSettingsValue);
+            SoundDisplayName = fileName != null
+                ? Path.GetFileNameWithoutExtension(fileName)
+                : "Bundled sound";
         }
         else
         {

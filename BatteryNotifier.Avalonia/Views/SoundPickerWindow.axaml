@@ -75,7 +75,7 @@
                                                 Background="Transparent"
                                                 BorderThickness="0"
                                                 Click="OnSoundItemClick">
-                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                                 <PathIcon Grid.Column="0"
                                                           Data="{StaticResource Icon.MusicNote}"
                                                           Width="14" Height="14"
@@ -88,7 +88,20 @@
                                                            Foreground="{DynamicResource AppForeground}"
                                                            VerticalAlignment="Center"
                                                            TextTrimming="CharacterEllipsis" />
-                                                <PathIcon Grid.Column="2"
+                                                <Button Grid.Column="2"
+                                                        x:Name="DeleteButton"
+                                                        IsVisible="{Binding IsCustomLibraryItem}"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="4" Margin="4,0"
+                                                        Cursor="Hand"
+                                                        ToolTip.Tip="Remove from library"
+                                                        Click="OnDeleteCustomClick">
+                                                    <PathIcon Data="{StaticResource Icon.X}"
+                                                              Width="10" Height="10"
+                                                              Foreground="{DynamicResource AppSubtleText}" />
+                                                </Button>
+                                                <PathIcon Grid.Column="3"
                                                           x:Name="CheckIcon"
                                                           Data="{StaticResource Icon.Check}"
                                                           Width="14" Height="14"
@@ -114,14 +127,14 @@
             <Grid ColumnDefinitions="*,Auto,Auto">
                 <Button Grid.Column="0"
                         Theme="{StaticResource SecondaryButton}"
-                        Command="{Binding BrowseCustomCommand}"
+                        Command="{Binding ImportSoundCommand}"
                         FontSize="12" Padding="10,6"
                         HorizontalAlignment="Left"
-                        ToolTip.Tip="Choose a custom sound file">
+                        ToolTip.Tip="Import a sound file into your library">
                     <StackPanel Orientation="Horizontal" Spacing="5">
                         <PathIcon Data="{StaticResource Icon.FolderOpen}"
                                   Width="13" Height="13" VerticalAlignment="Center" />
-                        <TextBlock Text="Custom..." VerticalAlignment="Center" />
+                        <TextBlock Text="Import Sound..." VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
                 <Button Grid.Column="2"

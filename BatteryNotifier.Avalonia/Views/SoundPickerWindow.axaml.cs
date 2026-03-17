@@ -125,16 +125,21 @@ public partial class SoundPickerWindow : Window
         if (DataContext is not SoundPickerViewModel vm)
             return;
 
-        if (item.IsCustom && string.IsNullOrEmpty(item.CustomPath))
-        {
-            vm.BrowseCustomCommand.Execute().Subscribe();
-            return;
-        }
-
         vm.SelectedItem = item;
         UpdateCheckIcons(vm);
 
         await vm.PreviewItem(item).ConfigureAwait(false);
+    }
+
+    private void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
+    {
+        e.Handled = true; // Prevent the parent button's OnSoundItemClick from firing
+
+        if (sender is not Button button || button.DataContext is not SoundPickerItem item)
+            return;
+
+        if (DataContext is SoundPickerViewModel vm)
+            vm.DeleteCustomCommand.Execute(item).Subscribe();
     }
 
     private void UpdateCheckIcons(SoundPickerViewModel vm)
