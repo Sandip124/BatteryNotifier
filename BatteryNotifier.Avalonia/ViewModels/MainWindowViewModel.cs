@@ -629,29 +629,39 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task CheckForUpdates()
     {
-        var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
-
-        Dispatcher.UIThread.Post(() =>
+        try
         {
-            switch (result.Status)
+            var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
+
+            Dispatcher.UIThread.Post(() =>
             {
-                case CheckStatus.UpdateAvailable when result.Release != null:
-                    OpenUrlInBrowser(result.Release.HtmlUrl);
-                    break;
+                switch (result.Status)
+                {
+                    case CheckStatus.UpdateAvailable when result.Release != null:
+                        OpenUrlInBrowser(result.Release.HtmlUrl);
+                        break;
 
-                case CheckStatus.UpToDate:
-                    ShowInlineNotification(
-                        $"You're running the latest version (v{Constants.ApplicationVersion}).",
-                        InlineNotificationLevel.Success);
-                    break;
+                    case CheckStatus.UpToDate:
+                        ShowInlineNotification(
+                            $"You're running the latest version (v{Constants.ApplicationVersion}).",
+                            InlineNotificationLevel.Success);
+                        break;
 
-                case CheckStatus.Failed:
-                    ShowInlineNotification(
-                        "Could not reach GitHub. Check your internet connection.",
-                        InlineNotificationLevel.Error);
-                    break;
-            }
-        });
+                    case CheckStatus.Failed:
+                        ShowInlineNotification(
+                            "Could not reach GitHub. Check your internet connection.",
+                            InlineNotificationLevel.Error);
+                        break;
+                }
+            });
+        }
+        catch (Exception)
+        {
+            Dispatcher.UIThread.Post(() =>
+                ShowInlineNotification(
+                    "Could not check for updates.",
+                    InlineNotificationLevel.Error));
+        }
     }
 
     private static void OpenUrlInBrowser(string url)
