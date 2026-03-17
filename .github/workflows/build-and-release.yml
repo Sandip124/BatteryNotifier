@@ -290,8 +290,10 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           generate_release_notes: true
           draft: true
+          fail_on_unmatched_files: false
           files: |
             artifacts/**/*.zip
             artifacts/**/*.tar.gz
@@ -300,5 +302,3 @@ jobs:
             artifacts/**/*.AppImage
             artifacts/**/*.nupkg
             artifacts/checksums-sha256.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
