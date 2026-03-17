@@ -18,7 +18,13 @@ public sealed class BatteryMonitorService : IDisposable
     private volatile int _lowBatteryThreshold = 25;
     private volatile int _fullBatteryThreshold = 96;
 
-    private const int DefaultPollMs = 5_000;
+    // macOS: Darwin notify covers plug/unplug AND level changes — poll infrequently as safety net.
+    // Windows: WMI covers plug/unplug only — poll every 60s for level changes (reduced to 5s if WMI fails).
+    // Linux: no event API — poll every 5s.
+    private static readonly int DefaultPollMs =
+        OperatingSystem.IsMacOS() ? 120_000   // 2 min safety net (Darwin notify is primary)
+        : OperatingSystem.IsLinux() ? 5_000   // no events, must poll
+        : 60_000;                             // Windows: WMI handles plug/unplug, poll for % changes
 
     private int _actualPollMs = DefaultPollMs;
 
@@ -75,8 +81,9 @@ public sealed class BatteryMonitorService : IDisposable
             _logger.Error(ex, "Failed to initialize WMI Power event watcher. Falling back to faster polling.");
         }
 #endif
-        // WMI not available (not compiled, trimmed, or failed) — poll more aggressively
+        // WMI not available (not compiled, trimmed, or failed) — poll aggressively for both events and level
         _actualPollMs = 5_000;
+        _logger.Information("WMI unavailable, using {Interval}ms polling fallback", _actualPollMs);
     }
 
 #if WINDOWS
@@ -113,8 +120,9 @@ public sealed class BatteryMonitorService : IDisposable
             if (status != 0)
             {
                 _logger.Warning("Failed to register Darwin power notify (status={Status}). " +
-                                "Falling back to faster polling.", status);
+                                "Falling back to polling.", status);
                 _actualPollMs = 5_000;
+                _logger.Information("Darwin notify unavailable, using {Interval}ms polling fallback", _actualPollMs);
                 return;
             }
 
