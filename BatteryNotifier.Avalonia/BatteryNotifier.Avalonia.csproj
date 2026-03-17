@@ -10,7 +10,7 @@
         <ApplicationIcon>Assets\battery-notifier-logo.ico</ApplicationIcon>
         <AssemblyName>BatteryNotifier</AssemblyName>
         <Product>BatteryNotifier</Product>
-        <Version>4.0.1</Version>
+        <Version>4.0.2</Version>
         <Company>Sandip Sapkota</Company>
         <Description>Cross-platform battery monitoring and notification app</Description>
 
