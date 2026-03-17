@@ -12,8 +12,7 @@
             if (interval < 0)
                 throw new ArgumentOutOfRangeException(nameof(interval), "Interval must be non-negative");
 
-            if (task == null)
-                throw new ArgumentNullException(nameof(task));
+            ArgumentNullException.ThrowIfNull(task);
 
             lock (_lock)
             {
@@ -25,22 +24,21 @@
                 // Create a new timer that fires once after the interval
                 _timer = new Timer(_ =>
                 {
-                    Action? action;
                     lock (_lock)
                     {
                         if (_disposed) return;
-                        action = _taskToRun;
+                        var action = _taskToRun;
                         _taskToRun = null;
-                    }
 
-                    try
-                    {
-                        action?.Invoke();
-                    }
-                    catch (Exception)
-                    {
-                        // Swallow — an unhandled exception on a ThreadPool timer
-                        // callback would crash the process.
+                        try
+                        {
+                            action?.Invoke();
+                        }
+                        catch (Exception)
+                        {
+                            // Swallow — an unhandled exception on a ThreadPool timer
+                            // callback would crash the process.
+                        }
                     }
                 }, null, interval, Timeout.Infinite);
             }
