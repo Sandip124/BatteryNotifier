@@ -53,7 +53,7 @@ public class App : Application
             try
             {
                 using var iconStream = AssetLoader.Open(
-                    new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-48.png"));
+                    AssetUris.Logo48);
                 mainWindow.Icon = new WindowIcon(iconStream);
             }
             catch
@@ -66,7 +66,7 @@ public class App : Application
             if (OperatingSystem.IsMacOS())
             {
                     using var dockIconStream = AssetLoader.Open(
-                        new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-128.png"));
+                        AssetUris.Logo128);
                     using var ms = new System.IO.MemoryStream();
                     dockIconStream.CopyTo(ms);
                     MacOSDockIconHelper.SetDockIcon(ms.ToArray());

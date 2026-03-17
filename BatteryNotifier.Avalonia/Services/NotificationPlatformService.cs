@@ -29,8 +29,7 @@ public static class NotificationPlatformService
             // Only re-extract if missing (survives across app restarts)
             if (!File.Exists(iconFile))
             {
-                using var stream = global::Avalonia.Platform.AssetLoader.Open(
-                    new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-128.png"));
+                using var stream = global::Avalonia.Platform.AssetLoader.Open(AssetUris.Logo128);
                 using var fs = File.Create(iconFile);
                 stream.CopyTo(fs);
             }
@@ -88,16 +87,14 @@ public static class NotificationPlatformService
     {
         try
         {
-            using var process = new System.Diagnostics.Process
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
             {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = Core.Constants.ResolveCommand("terminal-notifier"),
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
+                FileName = Core.Constants.ResolveCommand("terminal-notifier"),
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
             };
             process.StartInfo.ArgumentList.Add("-title");
             process.StartInfo.ArgumentList.Add(title);
@@ -111,14 +108,11 @@ public static class NotificationPlatformService
                 process.StartInfo.ArgumentList.Add(_iconPath);
             }
             process.Start();
-            if (!process.WaitForExit(5000))
-            {
-                try { process.Kill(); } catch { }
-                return false;
-            }
-            return process.ExitCode == 0;
+            if (process.WaitForExit(5000)) return process.ExitCode == 0;
+            process.Kill();
+            return false;
         }
-        catch
+        catch (Exception)
         {
             // terminal-notifier not installed — fall back to osascript
             return false;
@@ -185,16 +179,14 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             var safeTitle = SanitizePlainText(title);
             var safeMessage = SanitizePlainText(message);
 
-            using var process = new System.Diagnostics.Process
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
             {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = Core.Constants.ResolveCommand("notify-send"),
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
+                FileName = Core.Constants.ResolveCommand("notify-send"),
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
             };
             if (_iconPath != null)
             {
@@ -206,7 +198,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             process.Start();
             if (!process.WaitForExit(5000))
             {
-                try { process.Kill(); } catch { }
+                process.Kill();
             }
         }
         catch (Exception ex)
@@ -245,17 +237,15 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
     {
         try
         {
-            using var process = new System.Diagnostics.Process
+            using var process = new System.Diagnostics.Process();
+            process.StartInfo = new System.Diagnostics.ProcessStartInfo
             {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = Core.Constants.ResolveCommand(command),
-                    UseShellExecute = false,
-                    RedirectStandardInput = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
+                FileName = Core.Constants.ResolveCommand(command),
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
             };
 
             foreach (var arg in args)
@@ -266,7 +256,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             process.StandardInput.Close();
             if (!process.WaitForExit(5000))
             {
-                try { process.Kill(); } catch { }
+                process.Kill();
                 Logger.Warning("Command {Command} timed out after 5s", command);
             }
             else if (process.ExitCode != 0)

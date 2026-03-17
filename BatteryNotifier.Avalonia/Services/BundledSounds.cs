@@ -64,7 +64,7 @@ public static class BundledSounds
         // Extract from Avalonia resources
         try
         {
-            var uri = new Uri($"avares://BatteryNotifier/Assets/Sounds/{fileName}");
+            var uri = AssetUris.ForSound(fileName);
             using var stream = AssetLoader.Open(uri);
             using var fileStream = File.Create(cachedPath);
             stream.CopyTo(fileStream);

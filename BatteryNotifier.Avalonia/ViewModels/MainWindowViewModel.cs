@@ -311,7 +311,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             try
             {
-                var uri = new Uri($"avares://BatteryNotifier/Assets/{key}");
+                var uri = AssetUris.ForAsset(key);
                 using var stream = AssetLoader.Open(uri);
                 return new Bitmap(stream);
             }

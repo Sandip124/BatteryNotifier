@@ -47,7 +47,7 @@ public sealed class TrayIconService : IDisposable
             // Set icon using AssetLoader
             try
             {
-                var assetLoader = AssetLoader.Open(new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo.ico"));
+                var assetLoader = AssetLoader.Open(AssetUris.LogoIco);
                 _trayIcon.Icon = new WindowIcon(assetLoader);
             }
             catch (Exception ex)
