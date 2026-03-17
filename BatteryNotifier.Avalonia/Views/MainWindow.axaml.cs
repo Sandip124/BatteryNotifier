@@ -6,16 +6,13 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
-using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Utils;
-using Serilog;
 
 namespace BatteryNotifier.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly ILogger _logger;
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
     private IDisposable? _aboutInteractionHandler;
@@ -23,7 +20,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _logger = BatteryNotifierAppLogger.ForContext<MainWindow>();
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
