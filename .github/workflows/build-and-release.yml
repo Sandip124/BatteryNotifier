@@ -301,6 +301,23 @@ jobs:
             gh api -X DELETE "repos/${{ github.repository }}/releases/$ID" || true
           done
 
+          # Deduplicate installer filenames: Velopack produces identical names for
+          # win-x64 and win-arm64 (e.g., BatteryNotifier-win-Setup.exe).
+          # Inject the RID into the filename (Setup.exe → Setup-win-x64.exe).
+          for dir in artifacts/*-installer; do
+            [ -d "$dir" ] || continue
+            # Extract RID: "BatteryNotifier-win-x64-installer" → "win-x64"
+            RID=$(basename "$dir" | sed 's/^BatteryNotifier-//;s/-installer$//')
+            for f in "$dir"/*; do
+              [ -f "$f" ] || continue
+              BASE=$(basename "$f")
+              EXT="${BASE##*.}"
+              NAME="${BASE%.*}"
+              NEW="${NAME}-${RID}.${EXT}"
+              mv "$f" "$dir/$NEW"
+            done
+          done
+
           # Collect all release assets using find (reliable, no globstar needed)
           FILES=()
           while IFS= read -r f; do
