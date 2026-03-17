@@ -25,8 +25,8 @@ fi
 BUMP_TYPE="$1"
 DO_TAG="${2:-}"
 
-# Extract current version from .csproj
-CURRENT=$(grep -oP '(?<=<Version>)[^<]+' "$CSPROJ")
+# Extract current version from .csproj (works on both macOS and Linux)
+CURRENT=$(grep '<Version>' "$CSPROJ" | head -1 | sed 's/.*<Version>\(.*\)<\/Version>.*/\1/' | tr -d '[:space:]')
 if [[ -z "$CURRENT" ]]; then
     echo "Error: Could not find <Version> in $CSPROJ"
     exit 1
@@ -48,13 +48,22 @@ NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 echo "Bumping version: $CURRENT → $NEW_VERSION"
 
 # Update .csproj (the single source of truth)
-sed -i'' -e "s|<Version>$CURRENT</Version>|<Version>$NEW_VERSION</Version>|" "$CSPROJ"
+# sed -i syntax differs: macOS needs -i '', GNU needs -i''
+if [[ "$(uname)" == "Darwin" ]]; then
+    sed -i '' "s|<Version>$CURRENT</Version>|<Version>$NEW_VERSION</Version>|" "$CSPROJ"
+else
+    sed -i "s|<Version>$CURRENT</Version>|<Version>$NEW_VERSION</Version>|" "$CSPROJ"
+fi
 echo "  Updated: BatteryNotifier.Avalonia.csproj"
 
 # Update Info.plist (also updated at build time, but keep in sync for git)
 PLIST="$ROOT_DIR/BatteryNotifier.Avalonia/Info.plist"
 if [[ -f "$PLIST" ]]; then
-    sed -i'' -e "s|<string>$CURRENT</string>|<string>$NEW_VERSION</string>|g" "$PLIST"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        sed -i '' "s|<string>$CURRENT</string>|<string>$NEW_VERSION</string>|g" "$PLIST"
+    else
+        sed -i "s|<string>$CURRENT</string>|<string>$NEW_VERSION</string>|g" "$PLIST"
+    fi
     echo "  Updated: Info.plist"
 fi
 
