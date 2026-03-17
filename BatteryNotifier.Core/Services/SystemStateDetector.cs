@@ -374,7 +374,7 @@ return ""false""";
             if (string.IsNullOrEmpty(windowId)) return false;
 
             // Validate window ID is numeric to prevent argument injection into xprop
-            if (!Regex.IsMatch(windowId, @"^\d+$"))
+            if (!Regex.IsMatch(windowId, @"^\d+$", RegexOptions.None, TimeSpan.FromSeconds(1)))
             {
                 Logger.Warning("Unexpected non-numeric window ID from xdotool: {Id}",
                     windowId.Length > 50 ? windowId[..50] : windowId);

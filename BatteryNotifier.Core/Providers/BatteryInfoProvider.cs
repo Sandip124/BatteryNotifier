@@ -184,7 +184,7 @@ public sealed class BatteryInfoProvider
                     continue;
 
                 // Extract percentage
-                var percentMatch = Regex.Match(line, @"(\d+)%");
+                var percentMatch = Regex.Match(line, @"(\d+)%", RegexOptions.None, TimeSpan.FromSeconds(1));
                 if (percentMatch.Success && int.TryParse(percentMatch.Groups[1].Value, out int percent))
                 {
                     info.BatteryLifePercent = percent / 100f;
@@ -209,7 +209,7 @@ public sealed class BatteryInfoProvider
                 }
 
                 // Extract time remaining (e.g., "1:23 remaining")
-                var timeMatch = Regex.Match(line, @"(\d+):(\d+) remaining");
+                var timeMatch = Regex.Match(line, @"(\d+):(\d+) remaining", RegexOptions.None, TimeSpan.FromSeconds(1));
                 if (timeMatch.Success &&
                     int.TryParse(timeMatch.Groups[1].Value, out int hours) &&
                     int.TryParse(timeMatch.Groups[2].Value, out int minutes))

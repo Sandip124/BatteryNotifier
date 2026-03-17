@@ -250,7 +250,7 @@ public static class CrashReporter
             // Find the most recent log file matching the prefix.
             // Validate filename format to prevent directory traversal via crafted filenames.
             var logFile = Directory.GetFiles(logDir, $"{prefix}*.log")
-                .Where(f => Regex.IsMatch(Path.GetFileName(f), @"^(app|errors)-\d{8}\.log$"))
+                .Where(f => Regex.IsMatch(Path.GetFileName(f), @"^(app|errors)-\d{8}\.log$", RegexOptions.None, TimeSpan.FromSeconds(1)))
                 .OrderByDescending(File.GetLastWriteTimeUtc)
                 .FirstOrDefault();
 
@@ -321,10 +321,11 @@ public static class CrashReporter
             line = line[..MaxLineLength] + "…";
 
         // PII removal
-        line = Regex.Replace(line, @"[A-Z]:\\Users\\[^\\]+", @"<drive>:\Users\<user>", RegexOptions.IgnoreCase);
-        line = Regex.Replace(line, @"/(?:home|Users)/[^/\s]+", "/<home>/<user>");
-        line = Regex.Replace(line, @"MachineName"":\s*""[^""]+""", @"MachineName"": ""<redacted>""");
-        line = Regex.Replace(line, @"AppId"":\s*""[0-9a-f\-]{36}""", @"AppId"": ""<redacted>""", RegexOptions.IgnoreCase);
+        var timeout = TimeSpan.FromSeconds(1);
+        line = Regex.Replace(line, @"[A-Z]:\\Users\\[^\\]+", @"<drive>:\Users\<user>", RegexOptions.IgnoreCase, timeout);
+        line = Regex.Replace(line, @"/(?:home|Users)/[^/\s]+", "/<home>/<user>", RegexOptions.None, timeout);
+        line = Regex.Replace(line, @"MachineName"":\s*""[^""]+""", @"MachineName"": ""<redacted>""", RegexOptions.None, timeout);
+        line = Regex.Replace(line, @"AppId"":\s*""[0-9a-f\-]{36}""", @"AppId"": ""<redacted>""", RegexOptions.IgnoreCase, timeout);
 
         // Markdown/HTML injection prevention
         // Inside ``` code fences most markdown is neutralized, but defense-in-depth:
@@ -339,19 +340,22 @@ public static class CrashReporter
     /// </summary>
     private static string NeutralizeMarkdown(string text)
     {
+        var timeout = TimeSpan.FromSeconds(1);
+
         // Remove HTML tags entirely
-        text = Regex.Replace(text, @"<[^>]+>", "");
+        text = Regex.Replace(text, @"<[^>]+>", "", RegexOptions.None, timeout);
 
         // Neutralize markdown links: [text](url) → [text](url)
         // Replace the outer brackets to break the link syntax
-        text = Regex.Replace(text, @"\[([^\]]*)\]\(([^)]*)\)", "⟦$1⟧($2)");
+        text = Regex.Replace(text, @"\[([^\]]*)\]\(([^)]*)\)", "⟦$1⟧($2)", RegexOptions.None, timeout);
 
         // Neutralize markdown images: ![alt](url)
-        text = Regex.Replace(text, @"!\[([^\]]*)\]\(([^)]*)\)", "⟦img:$1⟧($2)");
+        text = Regex.Replace(text, @"!\[([^\]]*)\]\(([^)]*)\)", "⟦img:$1⟧($2)", RegexOptions.None, timeout);
 
         // Neutralize bare URLs that GitHub auto-links (outside of code fences)
         // We only do this for http/https — file:// and other schemes are already in code blocks
-        text = Regex.Replace(text, @"https?://\S+", match =>
+        var urlRegex = new Regex(@"https?://\S+", RegexOptions.None, timeout);
+        text = urlRegex.Replace(text, match =>
         {
             var url = match.Value;
             // Allow our own repo URL through
