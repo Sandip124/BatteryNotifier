@@ -33,7 +33,15 @@
                         _taskToRun = null;
                     }
 
-                    action?.Invoke();
+                    try
+                    {
+                        action?.Invoke();
+                    }
+                    catch (Exception)
+                    {
+                        // Swallow — an unhandled exception on a ThreadPool timer
+                        // callback would crash the process.
+                    }
                 }, null, interval, Timeout.Infinite);
             }
         }
