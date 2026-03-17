@@ -93,12 +93,15 @@ jobs:
       - name: Sign Windows executable
         if: startsWith(matrix.rid, 'win-') && startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
-          $cert = [System.Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE }}")
+          $cert = [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
           $certPath = Join-Path $env:RUNNER_TEMP "certificate.pfx"
           [System.IO.File]::WriteAllBytes($certPath, $cert)
           $exePath = Get-ChildItem -Path "./publish/${{ matrix.artifact }}" -Filter "BatteryNotifier.exe" -Recurse | Select-Object -First 1
-          & signtool sign /f $certPath /p "${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}" /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exePath.FullName
+          & signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exePath.FullName
           Remove-Item $certPath
 
       # ── macOS: Sign and notarize ──
