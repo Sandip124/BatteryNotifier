@@ -72,7 +72,7 @@
             <!-- Battery Status -->
             <Grid Grid.Row="1" ColumnDefinitions="*" ClipToBounds="False">
                 <Border Margin="8,4,8,8" ClipToBounds="False">
-                    <Grid RowDefinitions="*,Auto" ColumnDefinitions="*" ClipToBounds="False">
+                    <Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="*" ClipToBounds="False">
 
                         <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" ClipToBounds="False">
                             <controls:BatteryIndicatorControl
@@ -111,8 +111,21 @@
                                        Text="{Binding TimeRemaining}" />
                         </StackPanel>
 
+                        <!-- DND notice -->
+                        <Border Grid.Row="1"
+                                IsVisible="{Binding IsDndActive}"
+                                CornerRadius="8" Padding="10,7"
+                                Margin="0,0,0,6"
+                                Background="#2E1976D2">
+                            <TextBlock Text="{Binding DndMessage}"
+                                       FontSize="11.5"
+                                       Foreground="{DynamicResource AppAccentForeground}"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center" />
+                        </Border>
+
                         <!-- Quick Settings -->
-                        <Border Grid.Row="1" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        <Border Grid.Row="2" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
                                 BorderBrush="{DynamicResource AppCardBorder}"
                                 Background="{DynamicResource AppCardBackground}">
                             <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*">

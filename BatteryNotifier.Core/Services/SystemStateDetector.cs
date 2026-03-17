@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using Serilog;
@@ -24,6 +25,9 @@ public static class SystemStateDetector
 
     /// <summary>Max time to wait for any subprocess.</summary>
     private const int ProcessTimeoutMs = 3000;
+
+    /// <summary>Extended timeout for accessibility-based checks that involve UI interaction.</summary>
+    private const int AccessibilityTimeoutMs = 5000;
 
     /// <summary>
     /// Returns true if the OS is in Do Not Disturb / silent / Focus Assist mode.
@@ -89,8 +93,7 @@ public static class SystemStateDetector
 
     private static bool IsMacDoNotDisturbActive()
     {
-        // macOS Ventura+ uses Focus system. The notification center's DND
-        // assertion count > 0 means Focus/DND is on.
+        // macOS Monterey and earlier: direct defaults key
         try
         {
             var output = RunProcess("defaults",
@@ -100,11 +103,12 @@ public static class SystemStateDetector
         }
         catch
         {
-            // defaults read fails if key doesn't exist — not in DND
+            // Key doesn't exist on this macOS version — not in DND
         }
 
-        // macOS Sonoma+ moved Focus state. Check assertion count.
-        // Resolve home directory explicitly — tilde is NOT expanded without a shell.
+        // macOS Ventura+: Focus state via notification center assertions.
+        // Use the JSON output from plutil and look for active assertions.
+        // On failure or permission denial, fall through to accessibility approach.
         try
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -113,14 +117,90 @@ public static class SystemStateDetector
             if (File.Exists(assertionsPath))
             {
                 var output = RunProcess("plutil",
-                    "-extract", "dnd_prefs", "xml1", "-o", "-", assertionsPath);
+                    "-convert", "json", "-o", "-", assertionsPath);
+
                 if (!string.IsNullOrWhiteSpace(output))
-                    return true;
+                {
+                    using var doc = JsonDocument.Parse(output);
+                    var root = doc.RootElement;
+
+                    // Check for non-empty storeAssertionRecords at the root or nested in "data"
+                    if (HasActiveAssertions(root, "storeAssertionRecords"))
+                        return true;
+
+                    // Some macOS versions nest under "data" array
+                    if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var entry in data.EnumerateArray())
+                        {
+                            if (HasActiveAssertions(entry, "storeAssertionRecords"))
+                                return true;
+                        }
+                    }
+
+                    // File was readable and parsed — no active assertions means DND is off
+                    return false;
+                }
             }
         }
         catch
         {
-            // Fallback — assume not in DND
+            // Permission denied (TCC) or plutil failure — fall through to accessibility approach
+        }
+
+        // macOS Tahoe+ fallback: the Assertions.json file is TCC-protected.
+        // Use accessibility to briefly open the Control Center Focus dropdown,
+        // check for "On" text, and close it. Requires Accessibility permission.
+        // The script is a hardcoded literal — no external input is interpolated.
+        try
+        {
+            var script = @"
+tell application ""System Events""
+    tell process ""ControlCenter""
+        try
+            set focusItem to (first menu bar item of menu bar 1 whose description contains ""Focus"")
+        on error
+            return ""false""
+        end try
+        click focusItem
+        delay 0.4
+        try
+            tell group 1 of window ""Control Center""
+                set allTexts to value of every static text
+                repeat with t in allTexts
+                    if t as text is ""On"" then
+                        click focusItem
+                        return ""true""
+                    end if
+                end repeat
+            end tell
+        end try
+        click focusItem
+        return ""false""
+    end tell
+end tell";
+            var output = RunProcessWithStdin("osascript", script, AccessibilityTimeoutMs);
+            if (output.Trim().Equals("true", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        catch
+        {
+            // Accessibility permission not granted or script failure — fail open
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a JSON element contains a non-empty array property (active Focus assertions).
+    /// </summary>
+    private static bool HasActiveAssertions(JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var records)
+            && records.ValueKind == JsonValueKind.Array
+            && records.GetArrayLength() > 0)
+        {
+            return true;
         }
 
         return false;
@@ -161,7 +241,7 @@ return ""false""";
     // ── Windows ──────────────────────────────────────────────────
 
 #if WINDOWS
-    // P/Invoke declarations for direct fullscreen detection (no PowerShell)
+    // P/Invoke declarations for fullscreen detection
     [DllImport("user32.dll")]
     private static extern IntPtr GetForegroundWindow();
 
@@ -177,20 +257,35 @@ return ""false""";
 
     private const int SM_CXSCREEN = 0;
     private const int SM_CYSCREEN = 1;
+
+    // WNF (Windows Notification Facility) for Focus Assist / DND detection.
+    // Stable across Windows 10 1803+ through Windows 11 24H2.
+    // Source: https://github.com/DCourtel/Windows_10_Focus_Assist
+    [DllImport("ntdll.dll")]
+    private static extern int NtQueryWnfStateData(
+        ref WNF_STATE_NAME stateName,
+        IntPtr typeId,
+        IntPtr explicitScope,
+        out uint changeStamp,
+        ref int buffer,
+        ref int bufferSize);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WNF_STATE_NAME { public uint Data1; public uint Data2; }
 #endif
 
     private static bool IsWindowsFocusAssistActive()
     {
 #if WINDOWS
-        // Direct registry read — no PowerShell subprocess needed
+        // WNF_SHEL_QUIETHOURS_ACTIVE_PROFILE_CHANGED
+        // Returns: 0 = OFF, 1 = PRIORITY_ONLY, 2 = ALARMS_ONLY
         try
         {
-            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
-                @"Software\Microsoft\Windows\CurrentVersion\CloudStore\Store\DefaultAccount\Current\default$windows.quiethourssettings\windows.quiethourssettings");
-            if (key == null) return false;
-
-            var data = key.GetValue("Data") as byte[];
-            return data is { Length: > 15 } && data[15] != 0;
+            var stateName = new WNF_STATE_NAME { Data1 = 0xA3BF1C75, Data2 = 0x0D83063E };
+            int buffer = 0, bufferSize = sizeof(int);
+            int status = NtQueryWnfStateData(ref stateName, IntPtr.Zero, IntPtr.Zero,
+                out _, ref buffer, ref bufferSize);
+            return status == 0 && buffer >= 1;
         }
         catch
         {
@@ -241,7 +336,8 @@ return ""false""";
             // Not GNOME or gsettings unavailable
         }
 
-        // KDE Plasma: check via dbus
+        // KDE Plasma (and other freedesktop-compliant notification daemons):
+        // Query the standardized Inhibited property.
         try
         {
             var output = RunProcess("dbus-send",
@@ -250,8 +346,8 @@ return ""false""";
                 "--print-reply",
                 "/org/freedesktop/Notifications",
                 "org.freedesktop.DBus.Properties.Get",
-                "string:org.kde.NotificationManager",
-                "string:inhibited");
+                "string:org.freedesktop.Notifications",
+                "string:Inhibited");
             if (output.Contains("true", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
@@ -325,6 +421,84 @@ return ""false""";
         return false;
     }
 
+    // ── macOS Focus State Change Monitor (Darwin notifications) ──
+
+    /// <summary>Darwin notification token for Focus/DND state changes. -1 = not initialized.</summary>
+    private static int _macFocusToken = -1;
+
+    private static bool _macFocusMonitorInitialized;
+
+    // P/Invoke for Darwin notification API (libSystem.B.dylib — macOS only).
+    // These are only called when RuntimeInformation.IsOSPlatform(OSPlatform.OSX) is true.
+    [DllImport("libSystem.B.dylib", EntryPoint = "notify_register_check")]
+    private static extern uint DarwinNotifyRegisterCheck(string name, out int outToken);
+
+    [DllImport("libSystem.B.dylib", EntryPoint = "notify_check")]
+    private static extern uint DarwinNotifyCheck(int token, out int check);
+
+    [DllImport("libSystem.B.dylib", EntryPoint = "notify_cancel")]
+    private static extern uint DarwinNotifyCancel(int token);
+
+    private const uint NotifyStatusOk = 0;
+
+    /// <summary>
+    /// Registers for macOS Focus/DND state change notifications via Darwin notification center.
+    /// Call once at app startup. Safe to call on non-macOS platforms (no-op).
+    /// </summary>
+    public static void InitializeFocusMonitor()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || _macFocusMonitorInitialized)
+            return;
+
+        _macFocusMonitorInitialized = true;
+
+        try
+        {
+            if (DarwinNotifyRegisterCheck("com.apple.donotdisturb.stateChanged", out _macFocusToken) != NotifyStatusOk)
+                _macFocusToken = -1;
+
+            // Consume the initial "dirty" flag so the first call to HasPendingFocusChange() is clean
+            if (_macFocusToken >= 0)
+                DarwinNotifyCheck(_macFocusToken, out _);
+        }
+        catch
+        {
+            _macFocusToken = -1;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if a Focus/DND state change has been posted since the last call.
+    /// This is a trivial in-process memory read — no subprocess, no IPC, safe to poll frequently.
+    /// Returns false on non-macOS platforms or if the monitor failed to initialize.
+    /// </summary>
+    public static bool HasPendingFocusChange()
+    {
+        if (_macFocusToken < 0)
+            return false;
+
+        try
+        {
+            if (DarwinNotifyCheck(_macFocusToken, out int check) == NotifyStatusOk)
+                return check != 0;
+        }
+        catch { /* P/Invoke failure — monitor is broken */ }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Cleans up the Darwin notification registration. Call on app shutdown.
+    /// </summary>
+    public static void CleanupFocusMonitor()
+    {
+        if (_macFocusToken >= 0)
+        {
+            try { DarwinNotifyCancel(_macFocusToken); } catch { }
+            _macFocusToken = -1;
+        }
+    }
+
     // ── Secure Process Helpers ───────────────────────────────────
 
     /// <summary>
@@ -354,7 +528,7 @@ return ""false""";
     /// <summary>
     /// Runs a subprocess that receives input via stdin (e.g., osascript with hardcoded scripts).
     /// </summary>
-    private static string RunProcessWithStdin(string command, string stdinContent)
+    private static string RunProcessWithStdin(string command, string stdinContent, int? timeoutMs = null)
     {
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
@@ -370,15 +544,16 @@ return ""false""";
         process.Start();
         process.StandardInput.Write(stdinContent);
         process.StandardInput.Close();
-        return ReadOutputWithTimeout(process);
+        return ReadOutputWithTimeout(process, timeoutMs ?? ProcessTimeoutMs);
     }
 
     /// <summary>
     /// Reads stdout with bounded size and enforced timeout.
     /// Kills the process if it doesn't complete in time to prevent thread deadlocks.
     /// </summary>
-    private static string ReadOutputWithTimeout(Process process)
+    private static string ReadOutputWithTimeout(Process process, int timeoutMs = 0)
     {
+        if (timeoutMs <= 0) timeoutMs = ProcessTimeoutMs;
         var outputBuffer = new StringBuilder();
         using var outputDone = new ManualResetEventSlim(false);
         var bytesRead = 0;
@@ -403,7 +578,7 @@ return ""false""";
         process.BeginOutputReadLine();
 
         // Wait for output AND process exit within timeout
-        if (!outputDone.Wait(ProcessTimeoutMs))
+        if (!outputDone.Wait(timeoutMs))
         {
             // Timeout — kill the process to prevent indefinite blocking
             try { process.Kill(); } catch { /* best effort */ }
