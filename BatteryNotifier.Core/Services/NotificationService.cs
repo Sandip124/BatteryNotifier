@@ -33,16 +33,18 @@ public sealed class NotificationService : IDisposable
 
     private bool _disposed;
 
-    // Escalating backoff intervals: immediate → 5min → 15min → 45min → silenced
     private static readonly TimeSpan[] BackoffIntervals =
     [
         TimeSpan.Zero,
+        TimeSpan.FromMinutes(2),
         TimeSpan.FromMinutes(5),
+        TimeSpan.FromMinutes(10),
         TimeSpan.FromMinutes(15),
+        TimeSpan.FromMinutes(30),
         TimeSpan.FromMinutes(45)
     ];
 
-    private const int MaxNotificationsBeforeSilence = 4;
+    private const int MaxNotificationsBeforeSilence = 7;
 
     // Duolingo "recovering arm" concept: after this duration of silence,
     // the tracker auto-resets so the user gets a fresh reminder cycle.
