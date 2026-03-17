@@ -2,7 +2,9 @@
 
 ## Overview
 
-BatteryNotifier is published as self-contained single-file executables for Windows, macOS (Intel + Apple Silicon), and Linux. Releases are distributed via GitHub Releases with SHA-256 checksums. An in-app update checker notifies users when new versions are available.
+BatteryNotifier is published as self-contained executables for Windows and macOS. Releases are distributed via GitHub Releases with SHA-256 checksums and Velopack installers. An in-app update checker notifies users when new versions are available.
+
+> **Note:** Linux builds are currently disabled in CI. They can be re-enabled in `.github/workflows/build-and-release.yml`.
 
 ---
 
@@ -49,7 +51,7 @@ Add `-p:PublishTrimmed=true -p:TrimMode=partial` to reduce binary size. `partial
 The workflow at `.github/workflows/build-and-release.yml` handles everything:
 
 ### On every push/PR:
-1. Restores, builds, and tests on all 6 targets (win-x64, win-arm64, osx-arm64, osx-x64, linux-x64, linux-arm64)
+1. Restores, builds, and tests on all active targets (win-x64, win-arm64, osx-arm64)
 2. Publishes self-contained single-file executables
 3. Uploads build artifacts
 
@@ -222,7 +224,7 @@ The app checks GitHub Releases API every 6 hours for new versions via `UpdateSer
    git push origin master --tags
    ```
 
-5. **Wait for CI** — builds all 4 platforms, signs (if secrets configured), creates draft release
+5. **Wait for CI** — builds all active targets, signs (if secrets configured), creates draft release
 
 6. **Review draft release** on GitHub — edit release notes if needed, then publish
 

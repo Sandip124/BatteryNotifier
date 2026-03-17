@@ -16,13 +16,14 @@ BatteryNotifier/
 │   │   └── BatteryNotifierLoggerConfig.cs
 │   ├── Managers/
 │   │   ├── BuiltInSounds.cs         # Generates WAV notification tones at runtime
+│   │   ├── CustomSoundsLibrary.cs   # User-imported custom sound library
 │   │   ├── NotificationManager.cs   # Emits notifications + plays sounds
 │   │   └── SoundManager.cs          # Cross-platform audio playback
 │   ├── Providers/
 │   │   └── BatteryInfoProvider.cs   # WMI Win32_Battery query
 │   ├── Services/
 │   │   ├── AppSettings.cs           # AES-256-GCM encrypted settings singleton
-│   │   ├── BatteryMonitorService.cs # PeriodicTimer battery polling + WMI events
+│   │   ├── BatteryMonitorService.cs # 1s polling + WMI/Darwin events
 │   │   ├── NotificationService.cs   # Priority queue, escalating backoff, throttling
 │   │   ├── NotificationTemplates.cs # Level-aware + escalation-aware message templates
 │   │   ├── SettingsEncryption.cs    # AES-GCM encrypt/decrypt for settings at rest
@@ -34,18 +35,23 @@ BatteryNotifier/
 │       └── Debouncer.cs
 │
 ├── BatteryNotifier.Avalonia/      # Avalonia UI app (net10.0)
-│   ├── Assets/                    # Images, icon
+│   ├── Assets/
+│   │   ├── Images, icon
+│   │   └── Sounds/                # Bundled "Editor's Choice" sound files
 │   ├── Services/
+│   │   ├── BundledSounds.cs         # Editor's Choice sounds from Assets/Sounds/
 │   │   ├── NotificationPlatformService.cs  # Native OS toast (osascript/powershell/notify-send)
 │   │   └── TrayIconService.cs       # System tray icon + menu + suppression logic
 │   ├── ViewModels/
 │   │   ├── ViewModelBase.cs
-│   │   ├── MainWindowViewModel.cs   # Hosts CurrentView, battery data, navigation
+│   │   ├── MainWindowViewModel.cs   # Hosts CurrentView, battery data, navigation, DND monitor
 │   │   ├── SettingsViewModel.cs     # All settings with auto-save + SoundOption model
+│   │   ├── SoundPickerViewModel.cs  # Sound picker with built-in, bundled, and custom groups
 │   │   └── BatteryNotificationSectionViewModel.cs  # Reusable notification config section
 │   ├── Views/
 │   │   ├── MainWindow.axaml/.cs
 │   │   ├── SettingsView.axaml/.cs
+│   │   ├── SoundPickerWindow.axaml/.cs  # Sound selection modal
 │   │   └── Components/
 │   │       └── BatteryNotificationSection.axaml/.cs  # Reusable notification UI component
 │   ├── App.axaml/.cs                # Theme init + tray setup + startup behaviour
@@ -114,7 +120,7 @@ Back navigation uses a callback `Action` passed into `SettingsViewModel`. Old `S
 
 ```
 BatteryInfoProvider (WMI / platform-specific)
-  ↓ (PeriodicTimer every 2 min + WMI power events)
+  ↓ (1s polling + WMI power events on Windows + Darwin notify on macOS)
 BatteryMonitorService
   ↓ BatteryStatusChanged / PowerLineStatusChanged events
   ├── BatteryManagerStore  (shared in-memory state)
@@ -132,10 +138,17 @@ BatteryMonitorService
         └── NotificationManager → SoundManager (audio playback)
 ```
 
+### Notification Trigger Rules
+
+- **Full battery**: level >= threshold AND charger plugged in (`PowerLineStatus == Online`)
+- **Low battery**: level <= threshold AND not charging
+- Unplugging while above full threshold does NOT trigger a notification
+- Power state changes reset all notification trackers for eager re-notification
+
 ### Notification Escalation (Duolingo-inspired)
 
 Per-tag escalating backoff replaces flat deduplication:
-- **Backoff**: immediate → 5 min → 15 min → 45 min → silenced
+- **Backoff**: immediate → 2 min → 5 min → 10 min → 15 min → 30 min → 45 min → silenced
 - **Auto-recovery**: after 2 hours of silence, the tracker resets ("recovering arm")
 - **Message templates** (`NotificationTemplates`): vary by battery level tier AND escalation count
 - **Power state change**: resets all trackers so notifications fire eagerly again
@@ -150,18 +163,28 @@ All ViewModel property setters call `_settings.Save()` immediately (or throttled
 
 Theme is stored as `ThemeMode` enum (`System` / `Light` / `Dark`) in `AppSettings`. On startup `App.axaml.cs` sets `Application.Current.RequestedThemeVariant`. Theme commands directly set `RequestedThemeVariant`.
 
-### Sound File Picker (ReactiveUI Interaction pattern)
+### Sound System
+
+Three tiers of sounds, each with a settings prefix:
+
+| Tier | Prefix | Storage | Playback |
+|---|---|---|---|
+| Built-in synthesized | `builtin:Name` | Generated WAV in `$TMPDIR/BatteryNotifier/sounds/` | Loops until stopped |
+| Editor's Choice (bundled) | `bundled:FileName.mp3` | Avalonia resources → extracted to temp cache | Plays once in full |
+| Custom (user-imported) | `custom:filename.wav` | Copied to `{AppData}/BatteryNotifier/sounds/` | Plays once in full |
+
+Sound picker groups: Full Battery — Calm, Low Battery — Warning, General, Editor's Choice — Full Battery, Editor's Choice — Low Battery, Custom.
+
+`BuiltInSounds.Resolve()` is the central resolver — delegates to `CustomSoundsLibrary` for `custom:` and to `ExternalResolver` (set by `App.axaml.cs`) for `bundled:`.
+
+### Sound Picker (ReactiveUI Interaction pattern)
 
 `BatteryNotificationSectionViewModel` exposes:
 ```csharp
-public Interaction<string?, string?> BrowseSoundInteraction { get; }
+public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; }
 ```
 
-`BatteryNotificationSection.axaml.cs` registers the handler in `OnDataContextChanged`.
-
-### Built-in Sounds
-
-`BuiltInSounds` generates 5 notification tones (Chime, Alert, Gentle, Ping, Beacon) as PCM WAV files at runtime using sine wave synthesis. Cached in `$TMPDIR/BatteryNotifier/sounds/`. Settings format: `builtin:Chime`.
+`BatteryNotificationSection.axaml.cs` registers the handler in `OnDataContextChanged`, creating a `SoundPickerWindow` shown via `ShowLightDismiss()`.
 
 ### DND / Fullscreen Suppression
 
@@ -169,9 +192,12 @@ public Interaction<string?, string?> BrowseSoundInteraction { get; }
 
 | Platform | DND Detection | Fullscreen Detection |
 |---|---|---|
-| macOS | `defaults read` notification center | AppleScript window size vs screen |
-| Windows | Registry Focus Assist / Quiet Hours | P/Invoke `GetForegroundWindow` + `GetWindowRect` |
+| macOS (pre-Tahoe) | `defaults read` + `Assertions.json` (plutil) | AppleScript window size vs screen |
+| macOS (Tahoe+) | Control Center accessibility click fallback | AppleScript window size vs screen |
+| Windows | WNF `NtQueryWnfStateData` (Focus Assist) | P/Invoke `GetForegroundWindow` + `GetWindowRect` |
 | Linux | `gsettings` (GNOME) / `dbus-send` (KDE) | `xprop _NET_WM_STATE_FULLSCREEN` / `wmctrl` |
+
+DND monitoring: Darwin notification polling every 5s (`notify_check` — zero-cost memory read) with 2-minute accessibility fallback on macOS Tahoe.
 
 Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority always passes through.
 
@@ -189,8 +215,8 @@ File is AES-256-GCM encrypted. Key stored in `.settings.key` (chmod 600 on Unix)
 | `LowBatteryNotification` | `true` | Enable low battery notification |
 | `FullBatteryNotificationValue` | `96` | Threshold % to trigger full battery alert |
 | `LowBatteryNotificationValue` | `25` | Threshold % to trigger low battery alert |
-| `FullBatteryNotificationMusic` | `null` | Sound path (`builtin:Chime` or absolute file path) |
-| `LowBatteryNotificationMusic` | `null` | Sound path (`builtin:Chime` or absolute file path) |
+| `FullBatteryNotificationMusic` | `builtin:Harp` | Sound (`builtin:Name`, `bundled:File`, `custom:File`, or absolute path) |
+| `LowBatteryNotificationMusic` | `builtin:Klaxon` | Sound (`builtin:Name`, `bundled:File`, `custom:File`, or absolute path) |
 | `StartMinimized` | `true` | Hide to tray on launch |
 | `ThemeMode` | `System` | `System` / `Light` / `Dark` |
 | `LaunchAtStartup` | `true` | Register in OS startup mechanism |
@@ -203,13 +229,14 @@ File is AES-256-GCM encrypted. Key stored in `.settings.key` (chmod 600 on Unix)
 ### Defence-in-Depth for Sound Files
 
 ```
-User picks file (StorageProvider)
-  → BatteryNotificationSectionViewModel.ValidateSoundFilePath()
-      ✓ Absolute path only
+User picks file (StorageProvider / Import Sound)
+  → CustomSoundsLibrary.Import()
       ✓ Extension allowlist (.wav, .mp3, .m4a, .wma, .ogg, .flac, .aac)
       ✓ File exists, ≤ 50 MB, not a symlink
+      ✓ Copies to app data dir (atomic write via .tmp + rename)
   → AppSettings.SanitizeSoundPath() on load
-      ✓ Re-canonicalizes via Path.GetFullPath()
+      ✓ Allows builtin:, bundled:, custom: prefixes
+      ✓ Re-canonicalizes absolute paths via Path.GetFullPath()
       ✓ Rejects non-rooted paths
   → SoundManager.PlaySoundAsync() before playback
       ✓ Canonical path validation
@@ -284,7 +311,7 @@ Dispatcher.UIThread.Post(RefreshBatteryStatus);
 
 ## NotificationService — Escalating Backoff & Throttling
 
-- **Escalating backoff**: per-tag tracker with intervals [0, 5min, 15min, 45min] → silenced after 4 notifications
+- **Escalating backoff**: per-tag tracker with intervals [0, 2min, 5min, 10min, 15min, 30min, 45min] → silenced after 7 notifications
 - **Auto-recovery**: silenced tags auto-reset after 2 hours
 - **Throttle interval**: 2 s — rapid notifications held in `_pendingNotifications`, flushed by one-shot timer
 - **Power state change**: resets all trackers via `ResetAllTrackers()`
@@ -308,7 +335,7 @@ Messages vary by **battery level tier** and **escalation count**:
 | Nearly Full | 97–99% | Gentle — "almost there" |
 | Above Threshold | threshold–96% | Informational — "good to go" |
 
-Each tier has 4 escalation stages with multiple randomized variants per stage.
+Each tier has multiple escalation stages with randomized variants per stage.
 
 ---
 
@@ -330,7 +357,7 @@ Each tier has 4 escalation stages with multiple randomized variants per stage.
 | macOS | `afplay` subprocess (ArgumentList) |
 | Linux | `paplay` subprocess, falls back to `aplay` (ArgumentList) |
 
-Loop mode is supported (plays until duration timeout or `StopSound()` is called).
+Built-in synthesized tones loop until duration timeout or `StopSound()`. Custom and bundled sounds play once in full.
 
 ---
 
@@ -353,7 +380,7 @@ BatteryState.Critical  → /Assets/LowBattery.png   (≤ 14%)
 LowBatteryTag  = "LowBattery"
 FullBatteryTag = "FullBattery"
 DefaultNotificationTimeout = 3000 ms
-ApplicationVersion = "3.2.0"
+ApplicationVersion = resolved from csproj at build time
 SourceRepositoryUrl = "https://github.com/Sandip124/BatteryNotifier"
 ```
 
@@ -368,5 +395,7 @@ Main branch: `master`
 
 ## Known Limitations / Future Work
 
-- `BatteryInfoProvider` and `BatteryMonitorService` use WMI — **Windows only**. A cross-platform battery provider is needed for macOS/Linux.
+- `BatteryInfoProvider` uses WMI — **Windows only**. macOS/Linux battery info needs a cross-platform provider.
+- macOS Tahoe DND detection uses Control Center accessibility click (briefly opens dropdown) — requires Accessibility permission.
 - macOS external display detection suppresses notifications when charger must stay connected.
+- Linux CI builds are currently disabled in the GitHub Actions workflow.
