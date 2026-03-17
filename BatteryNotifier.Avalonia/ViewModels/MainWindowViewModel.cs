@@ -187,7 +187,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            _ = TypewritePhrase(PickFunnyPhrase());
+            _ = TypewritePhrase(PickBatteryPhrase());
         }
     }
 
@@ -274,7 +274,7 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
         }
         else
         {
-            _ = TypewritePhrase(PickFunnyPhrase());
+            _ = TypewritePhrase(PickBatteryPhrase());
         }
 
         var assetName = store.BatteryState switch
@@ -293,9 +293,14 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
     private static string FormatTimeRemaining(BatteryManagerStore store)
     {
         var ts = store.BatteryLifeRemainingInSeconds;
+        var hours = (int)ts.TotalHours;
+        var mins = ts.Minutes;
+
+        var timeStr = hours > 0 ? $"{hours}h {mins}m" : $"{mins}m";
+
         return store.IsCharging
-            ? $"{(int)ts.TotalHours}h {ts.Minutes}m until full"
-            : $"{(int)ts.TotalHours}h {ts.Minutes}m remaining";
+            ? $"{timeStr} to full charge"
+            : $"{timeStr} of battery remaining";
     }
 
     private static readonly ConcurrentDictionary<string, Bitmap?> _bitmapCache = new();
@@ -511,23 +516,26 @@ public class MainWindowViewModel : ViewModelBase, IDisposable
 
     // ── Funny phrases & greetings ────────────────────────────────
 
-    private static readonly string[] FunnyPhrases =
+    private static readonly string[] ChargingPhrases =
     [
-        "Forever... just kidding",
-        "Patience, young grasshopper",
-        "Grab a coffee, we'll wait",
-        "Time is an illusion anyway",
-        "Ask again later",
-        "Almost there... probably",
-        "The electrons are vibing",
-        "Calculating the meaning of life",
-        "Who knows? Not me!",
-        "Somewhere between now and never"
+        "Charging — estimating time to full...",
+        "Plugged in — calculating charge time...",
+        "Charging up — estimate available soon",
+        "Power connected — charging in progress",
     ];
 
-    private static string PickFunnyPhrase()
+    private static readonly string[] DischargingPhrases =
+    [
+        "On battery — estimating time remaining...",
+        "Running on battery power",
+        "Unplugged — calculating battery life...",
+        "On battery — estimate available soon",
+    ];
+
+    private string PickBatteryPhrase()
     {
-        return FunnyPhrases[Random.Shared.Next(FunnyPhrases.Length)];
+        var pool = IsCharging ? ChargingPhrases : DischargingPhrases;
+        return pool[Random.Shared.Next(pool.Length)];
     }
 
     private static readonly string[] GreetingsFull =
