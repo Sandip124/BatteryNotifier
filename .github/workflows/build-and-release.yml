@@ -97,12 +97,31 @@ jobs:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
-          $cert = [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          if (-not $env:WINDOWS_CERTIFICATE) {
+            Write-Host "Skipping signing — WINDOWS_CERTIFICATE secret not configured"
+            exit 0
+          }
+
+          # Find signtool from Windows SDK
+          $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter "signtool.exe" |
+            Where-Object { $_.FullName -like "*\x64\*" } |
+            Sort-Object { $_.Directory.Name } -Descending |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (-not $signtool) { throw "signtool.exe not found in Windows SDK" }
+
           $certPath = Join-Path $env:RUNNER_TEMP "certificate.pfx"
-          [System.IO.File]::WriteAllBytes($certPath, $cert)
-          $exePath = Get-ChildItem -Path "./publish/${{ matrix.artifact }}" -Filter "BatteryNotifier.exe" -Recurse | Select-Object -First 1
-          & signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr https://timestamp.digicert.com /td sha256 /fd sha256 $exePath.FullName
-          Remove-Item $certPath
+          try {
+            $cert = [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+            [System.IO.File]::WriteAllBytes($certPath, $cert)
+
+            $exePath = (Get-ChildItem -Path "./publish/${{ matrix.artifact }}" -Filter "BatteryNotifier.exe" -Recurse | Select-Object -First 1).FullName
+            if (-not $exePath) { throw "BatteryNotifier.exe not found in publish output" }
+
+            & $signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr https://timestamp.digicert.com /td sha256 /fd sha256 $exePath
+            if ($LASTEXITCODE -ne 0) { throw "signtool exited with code $LASTEXITCODE" }
+          } finally {
+            if (Test-Path $certPath) { Remove-Item $certPath -Force }
+          }
 
       # ── macOS: Sign and notarize ──
       - name: Sign macOS binary
@@ -113,28 +132,44 @@ jobs:
           MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
           MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
         run: |
-          # Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          P12_PATH=$RUNNER_TEMP/certificate.p12
+
+          cleanup() {
+            rm -f "$P12_PATH"
+            security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          if [ -z "$MACOS_CERTIFICATE" ]; then
+            echo "Skipping signing — MACOS_CERTIFICATE secret not configured"
+            exit 0
+          fi
+
+          # Create temporary keychain
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
           # Import certificate
-          echo "$MACOS_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          security import $RUNNER_TEMP/certificate.p12 -k $KEYCHAIN_PATH \
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$P12_PATH"
+          security import "$P12_PATH" -k "$KEYCHAIN_PATH" \
             -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple: \
-            -s -k "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-          security list-keychains -d user -s $KEYCHAIN_PATH
+            -s -k "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+
+          # Find and validate binary
+          BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
+          if [ -z "$BINARY" ]; then echo "ERROR: Binary not found in publish output"; exit 1; fi
 
           # Sign the binary
-          BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
           codesign --force --options runtime --timestamp \
             --entitlements BatteryNotifier.Avalonia/Entitlements.plist \
             --sign "$MACOS_SIGNING_IDENTITY" "$BINARY"
 
-          # Cleanup
-          rm -f $RUNNER_TEMP/certificate.p12
+          # Verify signature
+          codesign --verify --deep --strict "$BINARY"
 
       - name: Notarize macOS binary
         if: contains(matrix.rid, 'osx') && startsWith(github.ref, 'refs/tags/v')
@@ -143,7 +178,13 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
+          if [ -z "$APPLE_ID" ]; then
+            echo "Skipping notarization — APPLE_ID secret not configured"
+            exit 0
+          fi
+
           BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
+          if [ -z "$BINARY" ]; then echo "ERROR: Binary not found in publish output"; exit 1; fi
 
           # Create ZIP for notarization
           ditto -c -k --keepParent "$BINARY" $RUNNER_TEMP/notarize.zip
@@ -157,6 +198,9 @@ jobs:
 
           # Staple the notarization ticket
           xcrun stapler staple "$BINARY" || true
+
+          # Cleanup
+          rm -f $RUNNER_TEMP/notarize.zip
 
       # ── Velopack: Create installers ──
       - name: Velopack pack (Windows)
