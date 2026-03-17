@@ -18,7 +18,7 @@ Screenshot:
 - **Themes** — System, Light, and Dark mode
 - **Launch at startup** — auto-start with your OS
 - **Escalating notifications** — Duolingo-inspired backoff so you're not spammed
-- **Encrypted settings** — AES-256-GCM encrypted at rest
+- **Encrypted settings** — encrypted at rest (DPAPI on Windows, AES-256-GCM on macOS/Linux)
 
 ## Download
 

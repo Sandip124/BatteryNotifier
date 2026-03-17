@@ -4,14 +4,12 @@
     <option name="projectPerEditor">
       <map>
         <entry key="BatteryNotifier.Avalonia/App.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
-        <entry key="BatteryNotifier.Avalonia/Resources/IconResources.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
-        <entry key="BatteryNotifier.Avalonia/Styles/Buttons.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
-        <entry key="BatteryNotifier.Avalonia/Views/HomeView.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
-        <entry key="BatteryNotifier.Avalonia/Views/MainView.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+        <entry key="BatteryNotifier.Avalonia/Resources/Icons.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+        <entry key="BatteryNotifier.Avalonia/Views/AboutWindow.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+        <entry key="BatteryNotifier.Avalonia/Views/Components/BatteryNotificationSection.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
         <entry key="BatteryNotifier.Avalonia/Views/MainWindow.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
-        <entry key="BatteryNotifier.Avalonia/Views/SettingView.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
-        <entry key="BatteryNotifier.Avalonia/Views/Settings.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
         <entry key="BatteryNotifier.Avalonia/Views/SettingsView.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
+        <entry key="BatteryNotifier.Avalonia/Views/SoundPickerWindow.axaml" value="BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj" />
       </map>
     </option>
   </component>

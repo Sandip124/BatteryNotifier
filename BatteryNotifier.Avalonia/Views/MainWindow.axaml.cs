@@ -176,8 +176,6 @@ public partial class MainWindow : Window
         PositionChanged -= OnPositionChanged;
         _positionSaveDebouncer.Dispose();
         _aboutInteractionHandler?.Dispose();
-        if (DataContext is MainWindowViewModel vm)
-            vm.PropertyChanged -= (_, _) => { };
         base.OnClosed(e);
     }
 }

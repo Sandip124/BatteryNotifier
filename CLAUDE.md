@@ -22,7 +22,7 @@ BatteryNotifier/
 │   ├── Providers/
 │   │   └── BatteryInfoProvider.cs   # WMI Win32_Battery query
 │   ├── Services/
-│   │   ├── AppSettings.cs           # AES-256-GCM encrypted settings singleton
+│   │   ├── AppSettings.cs           # Encrypted settings singleton (DPAPI / AES-GCM)
 │   │   ├── BatteryMonitorService.cs # 1s polling + WMI/Darwin events
 │   │   ├── NotificationService.cs   # Priority queue, escalating backoff, throttling
 │   │   ├── NotificationTemplates.cs # Level-aware + escalation-aware message templates
@@ -98,7 +98,7 @@ dotnet publish BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj -c Relea
 | Audio (macOS) | `afplay` via `Process` (ArgumentList) |
 | Audio (Linux) | `paplay` / `aplay` via `Process` (ArgumentList) |
 | Logging | Serilog (Console + File + Debug sinks) |
-| Settings | `System.Text.Json` → AES-256-GCM encrypted at rest |
+| Settings | `System.Text.Json` → encrypted at rest (DPAPI on Windows, AES-256-GCM on macOS/Linux) |
 | Battery Info | WMI `Win32_Battery` + `Win32_PowerManagementEvent` |
 
 ---
@@ -156,7 +156,7 @@ Per-tag escalating backoff replaces flat deduplication:
 ### Settings Flow
 
 `AppSettings.Instance` is a thread-safe singleton loaded on first access.
-Settings are encrypted at rest with AES-256-GCM (`SettingsEncryption`).
+Settings are encrypted at rest via `SettingsEncryption` (DPAPI on Windows, AES-256-GCM on macOS/Linux).
 All ViewModel property setters call `_settings.Save()` immediately (or throttled 500 ms for sliders).
 
 ### Theme
@@ -207,7 +207,7 @@ Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast onl
 
 Stored at: `%AppData%/BatteryNotifier/appsettings.json` (Windows) / `~/.config/BatteryNotifier/` (Linux) / `~/Library/Application Support/BatteryNotifier/` (macOS)
 
-File is AES-256-GCM encrypted. Key stored in `.settings.key` (chmod 600 on Unix). Plaintext legacy files are auto-migrated on first load.
+Encrypted at rest. Windows uses DPAPI (OS-managed, tied to user account). macOS/Linux use AES-256-GCM with key in `.settings.key` (chmod 600). Plaintext legacy files are auto-migrated on first load.
 
 | Property | Default | Description |
 |---|---|---|
@@ -247,7 +247,8 @@ User picks file (StorageProvider / Import Sound)
 
 ### Settings Encryption
 
-- AES-256-GCM authenticated encryption (tamper-evident)
+- **Windows**: DPAPI (`ProtectedData`) — OS-managed encryption tied to user account, no key file needed
+- **macOS/Linux**: AES-256-GCM authenticated encryption (tamper-evident)
 - File format: `[12-byte nonce][16-byte tag][ciphertext]`
 - Key in `.settings.key` with restrictive OS permissions (chmod 600 / NTFS ACL)
 - `CryptographicException` on tamper → reset to defaults
