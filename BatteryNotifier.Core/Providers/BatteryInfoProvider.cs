@@ -188,11 +188,9 @@ public sealed class BatteryInfoProvider
                 if (percentMatch.Success && int.TryParse(percentMatch.Groups[1].Value, out int percent))
                 {
                     info.BatteryLifePercent = percent / 100f;
-                    info.BatteryChargeStatus = percent > 66
-                        ? BatteryChargeStatus.High
-                        : percent > 33
-                            ? BatteryChargeStatus.Low
-                            : BatteryChargeStatus.Critical;
+                    if (percent > 66) info.BatteryChargeStatus = BatteryChargeStatus.High;
+                    else if (percent > 33) info.BatteryChargeStatus = BatteryChargeStatus.Low;
+                    else info.BatteryChargeStatus = BatteryChargeStatus.Critical;
                 }
 
                 // Check charging status

@@ -137,7 +137,10 @@ public sealed class TrayIconService : IDisposable
 
         var batteryPercent = BatteryManagerStore.Instance.BatteryLifePercent;
         var store = BatteryManagerStore.Instance;
-        var status = store.IsCharging ? "Charging" : store.IsPluggedIn ? "Plugged In" : "Discharging";
+        string status;
+        if (store.IsCharging) status = "Charging";
+        else if (store.IsPluggedIn) status = "Plugged In";
+        else status = "Discharging";
 
         _trayIcon.ToolTipText = $"BatteryNotifier - {batteryPercent:F0}% ({status})";
     }
