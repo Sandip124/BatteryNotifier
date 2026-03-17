@@ -1,0 +1,94 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+        <ApplicationManifest>app.manifest</ApplicationManifest>
+        <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+        <LangVersion>latestmajor</LangVersion>
+        <ApplicationIcon>Assets\battery-notifier-logo.ico</ApplicationIcon>
+        <AssemblyName>BatteryNotifier</AssemblyName>
+        <Product>BatteryNotifier</Product>
+        <Version>4.0.0</Version>
+        <Company>Sandip Sapkota</Company>
+        <Description>Cross-platform battery monitoring and notification app</Description>
+
+        <!-- Security hardening -->
+        <EnableNETAnalyzers>true</EnableNETAnalyzers>
+        <AnalysisLevel>latest-all</AnalysisLevel>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+        <!-- Publishing defaults (overridable via CLI -p: flags) -->
+        <SelfContained>true</SelfContained>
+        <PublishSingleFile>true</PublishSingleFile>
+        <!-- false: native libs placed alongside exe instead of self-extracting to %TEMP%.
+             Self-extraction triggers Windows Defender (dotnet/runtime#46312, #2300). -->
+        <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+
+        <!-- Trimming: remove unused framework and library code -->
+        <PublishTrimmed>true</PublishTrimmed>
+        <TrimMode>full</TrimMode>
+
+        <!-- Skip loading ICU globalization data (~28 MB saving) -->
+        <InvariantGlobalization>true</InvariantGlobalization>
+
+        <!-- GC tuning for low-memory tray app -->
+        <ServerGarbageCollection>false</ServerGarbageCollection>
+        <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+        <RetainVMGarbageCollection>false</RetainVMGarbageCollection>
+        <GarbageCollectionAdaptationMode>0</GarbageCollectionAdaptationMode>
+
+        <!-- Strip symbols from native libs, no R2R (saves memory, slightly slower startup) -->
+        <StripSymbols>true</StripSymbols>
+        <PublishReadyToRun>false</PublishReadyToRun>
+
+        <!-- Integrity: embed PDB for stack traces -->
+        <DebugType>embedded</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- Embed all assets as Avalonia resources, except platform icon files that need to be on disk -->
+        <AvaloniaResource Include="Assets\**" Exclude="Assets\battery-notifier-logo.icns" />
+    </ItemGroup>
+
+    <!-- macOS: Info.plist + .icns icon for Dock display -->
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" />
+        <Content Include="Assets/battery-notifier-logo.icns" CopyToOutputDirectory="PreserveNewest" Link="battery-notifier-logo.icns" />
+    </ItemGroup>
+
+    <!-- Linux: .png icon for .desktop entry -->
+    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+        <Content Include="Assets/BatteryNotifierLogo.png" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+        <!-- Removed Avalonia.Fonts.Inter (~8 MB) — uses system fonts instead -->
+        <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
+        <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.12" />
+        <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
+        <PackageReference Include="Velopack" Version="0.0.1298" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <ProjectReference Include="..\BatteryNotifier.Core\BatteryNotifier.Core.csproj" />
+    </ItemGroup>
+
+
+    <ItemGroup>
+      <Folder Include="Assets\Sounds\" />
+    </ItemGroup>
+
+    <!-- Patch Info.plist version from the single-source <Version> property at build time -->
+    <Target Name="PatchInfoPlistVersion" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <Exec Command="sed -i '' 's|&lt;string&gt;[0-9]*\.[0-9]*\.[0-9]*&lt;/string&gt;|&lt;string&gt;$(Version)&lt;/string&gt;|g' Info.plist" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    </Target>
+</Project>

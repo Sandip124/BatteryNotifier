@@ -1,0 +1,217 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:BatteryNotifier.Avalonia.ViewModels"
+        xmlns:controls="using:BatteryNotifier.Avalonia.Controls"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="510"
+        x:Class="BatteryNotifier.Avalonia.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="400" Height="510"
+        CanResize="False"
+        SystemDecorations="Full"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        WindowStartupLocation="Manual"
+        ShowInTaskbar="False"
+        Icon="/Assets/battery-notifier-logo.ico"
+        Title="BatteryNotifier">
+
+    <Border ClipToBounds="True"
+            Background="{DynamicResource AppWindowBackground}">
+      <Border Padding="4">
+        <Grid>
+
+        <!-- Home screen (visible when not in settings) -->
+        <Grid RowDefinitions="Auto,*"
+              IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
+
+            <!-- Header (drag handle) — ZIndex keeps it above the ambient glow -->
+            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="8"
+                    ZIndex="1"
+                    Background="{DynamicResource AppHeaderBackground}"
+                    PointerPressed="TitleBar_PointerPressed">
+                <Grid ColumnDefinitions="32,*,Auto,4,Auto" VerticalAlignment="Center">
+                    <Image Grid.Column="0" Margin="0,0,10,0" Width="28" Height="28"
+                           Source="/Assets/BatteryNotifierLogo.png"
+                           RenderOptions.BitmapInterpolationMode="MediumQuality" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+                        <TextBlock FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
+                        <TextBlock FontSize="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource AppSubtleText}"
+                                   Text="{Binding Version, StringFormat='v{0}'}" />
+                    </StackPanel>
+                    <Button Grid.Column="2"
+                            Theme="{StaticResource PrimaryButton}">
+                        <PathIcon Data="{StaticResource Icon.DotsThreeVertical}" Width="16" Height="16" />
+                        <Button.Flyout>
+                            <MenuFlyout Placement="BottomEdgeAlignedRight">
+                                <MenuItem Header="Hide Window" Command="{Binding HideWindowCommand}">
+                                 </MenuItem>
+                                <MenuItem Header="Check for Updates..." Command="{Binding CheckForUpdatesCommand}">
+                                 </MenuItem>
+                                <MenuItem Header="About" Command="{Binding OpenAboutCommand}">
+                                </MenuItem>
+                                <Separator />
+                                <MenuItem Header="Exit" Command="{Binding ExitCommand}">
+                                   </MenuItem>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="4"
+                            Theme="{StaticResource PrimaryButton}">
+                        <PathIcon Data="{StaticResource Icon.GearSix}" Width="16" Height="16" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Battery Status -->
+            <Grid Grid.Row="1" ColumnDefinitions="*" ClipToBounds="False">
+                <Border Margin="8,4,8,8" ClipToBounds="False">
+                    <Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="*" ClipToBounds="False">
+
+                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" ClipToBounds="False">
+                            <controls:BatteryIndicatorControl
+                                Width="200" Height="110"
+                                Percentage="{Binding BatteryPercentage}"
+                                IsCharging="{Binding IsCharging}" />
+                            <TextBlock TextAlignment="Center" FontSize="40" FontWeight="Bold"
+                                       Margin="0,12,0,0"
+                                       Text="{Binding BatteryPercentage, StringFormat='{}{0:F0}%'}" />
+
+                            <!-- Charging indicator -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                        Margin="0,2,0,0"
+                                        IsVisible="{Binding IsCharging}">
+                                <PathIcon Data="{StaticResource Icon.LightningFill}"
+                                          VerticalAlignment="Center"
+                                          HorizontalAlignment="Center"
+                                          Foreground="#3BAF4A"
+                                          Width="13" Height="13" />
+                                <TextBlock Margin="3,0,0,0" VerticalAlignment="Center"
+                                           FontSize="14"
+                                           Foreground="#3BAF4A" Text="{Binding BatteryStatus}" />
+                            </StackPanel>
+
+                            <!-- Discharging status -->
+                            <TextBlock TextAlignment="Center" FontSize="14"
+                                       Margin="0,2,0,0"
+                                       Foreground="{DynamicResource AppSubtleText}"
+                                       IsVisible="{Binding IsCharging, Converter={x:Static BoolConverters.Not}}"
+                                       Text="{Binding BatteryStatus}" />
+
+                            <TextBlock TextAlignment="Center"
+                                       Margin="0,6,0,0"
+                                       FontSize="14"
+                                       Foreground="{DynamicResource AppSubtleText}"
+                                       Text="{Binding TimeRemaining}" />
+                        </StackPanel>
+
+                        <!-- DND notice -->
+                        <Border Grid.Row="1"
+                                IsVisible="{Binding IsDndActive}"
+                                CornerRadius="8" Padding="10,7"
+                                Margin="0,0,0,6"
+                                Background="#2E1976D2">
+                            <TextBlock Text="{Binding DndMessage}"
+                                       FontSize="11.5"
+                                       Foreground="{DynamicResource AppAccentForeground}"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center" />
+                        </Border>
+
+                        <!-- Quick Settings -->
+                        <Border Grid.Row="2" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                                BorderBrush="{DynamicResource AppCardBorder}"
+                                Background="{DynamicResource AppCardBackground}">
+                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*">
+                                <TextBlock Grid.Row="0" Padding="12,10,12,4" FontSize="12" FontWeight="Normal"
+                                           Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
+                                <Grid Margin="12,6,12,10" Grid.Row="1" RowDefinitions="Auto,6,Auto" ColumnDefinitions="*">
+
+                                    <Grid Grid.Row="0" ColumnDefinitions="32,*,42" VerticalAlignment="Center">
+                                        <PathIcon Grid.Column="0" Margin="0,0,8,0"
+                                                  Data="{StaticResource Icon.BatteryFullFill}"
+                                                  Foreground="#2CA23C"
+                                                  Width="26" Height="26" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Full Battery Notification</TextBlock>
+                                        <ToggleSwitch Grid.Column="2"
+                                                      IsChecked="{Binding FullBatteryNotification}"
+                                                      OnContent="" OffContent=""
+                                                      Margin="0" Padding="0" />
+                                    </Grid>
+
+                                    <Grid Grid.Row="2" ColumnDefinitions="32,*,42" VerticalAlignment="Center">
+                                        <PathIcon Grid.Column="0" Margin="0,0,8,0"
+                                                  Data="{StaticResource Icon.BatteryLowFill}"
+                                                  Foreground="#E1A820"
+                                                  Width="26" Height="26" />
+                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Low Battery Notification</TextBlock>
+                                        <ToggleSwitch Grid.Column="2"
+                                                      IsChecked="{Binding LowBatteryNotification}"
+                                                      OnContent="" OffContent=""
+                                                      Margin="0" Padding="0" />
+                                    </Grid>
+
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+
+
+        </Grid>
+
+        <!-- Settings screen (overlays home when CurrentView is set) -->
+        <ContentControl Content="{Binding CurrentView}"
+                        IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+        <!-- Inline notification toast -->
+        <Border IsVisible="{Binding IsInlineNotificationVisible}"
+                VerticalAlignment="Top" HorizontalAlignment="Stretch"
+                Margin="8,56,8,0"
+                CornerRadius="8" Padding="10,8"
+                ZIndex="10"
+                BoxShadow="0 2 8 0 #40000000"
+                Name="InlineNotificationBar"
+                Classes.Success="{Binding IsInlineSuccess}"
+                Classes.Warning="{Binding IsInlineWarning}"
+                Classes.Error="{Binding IsInlineError}">
+            <Border.Styles>
+                <Style Selector="Border#InlineNotificationBar">
+                    <Setter Property="Background" Value="#1976D2" />
+                </Style>
+                <Style Selector="Border#InlineNotificationBar.Success">
+                    <Setter Property="Background" Value="#388E3C" />
+                </Style>
+                <Style Selector="Border#InlineNotificationBar.Warning">
+                    <Setter Property="Background" Value="#F57A00" />
+                </Style>
+                <Style Selector="Border#InlineNotificationBar.Error">
+                    <Setter Property="Background" Value="#D32F2F" />
+                </Style>
+            </Border.Styles>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding InlineNotificationMessage}"
+                           Foreground="White" FontSize="12.5"
+                           VerticalAlignment="Center"
+                           TextWrapping="Wrap" />
+                <Button Grid.Column="1" Command="{Binding DismissInlineNotificationCommand}"
+                        Background="Transparent" BorderThickness="0"
+                        Padding="4" Margin="4,0,0,0"
+                        VerticalAlignment="Center" Cursor="Hand">
+                    <PathIcon Data="{StaticResource Icon.X}" Width="10" Height="10"
+                              Foreground="#CCFFFFFF" />
+                </Button>
+            </Grid>
+        </Border>
+
+        </Grid>
+      </Border>
+    </Border>
+</Window>

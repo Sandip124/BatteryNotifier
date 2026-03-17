@@ -1,0 +1,130 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:components="clr-namespace:BatteryNotifier.Avalonia.Views.Components"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
+             x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Button.theme-active">
+            <Setter Property="Background" Value="{DynamicResource AppAccentBackground}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+
+    </UserControl.Styles>
+
+    <Grid RowDefinitions="Auto,*">
+        <!-- Header (drag handle) -->
+        <Border Grid.Row="0" Padding="12,10" Name="SettingsTitleBar" CornerRadius="8"
+                Background="{DynamicResource AppHeaderBackground}"
+                PointerPressed="SettingsTitleBar_PointerPressed">
+            <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+                <Button Command="{Binding BackCommand}" Grid.Column="0"
+                        Theme="{StaticResource PrimaryButton}"
+                        Foreground="{DynamicResource AppAccentForeground}">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                HorizontalAlignment="Center">
+                        <PathIcon Data="{StaticResource Icon.CaretLeft}"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Center"
+                                  Width="10" Height="10" />
+                        <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
+                    </StackPanel>
+                </Button>
+                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold"
+                           Margin="8,0,0,0" Foreground="{DynamicResource AppForeground}">Settings</TextBlock>
+            </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Padding="0,10,0,0">
+            <StackPanel Spacing="10" Margin="10,0,10,40">
+
+                <!-- Appearance & Behaviour -->
+                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        BorderBrush="{DynamicResource AppCardBorder}"
+                        Background="{DynamicResource AppCardBackground}">
+                    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
+                        <Border Grid.Row="0" Padding="12,10,12,4">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                             <TextBlock Margin="0,0,0,0" FontSize="12" FontWeight="Normal"
+                                           Foreground="{DynamicResource AppSubtleText}">APPEARANCE &amp; BEHAVIOUR</TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Padding="12,8">
+                            <StackPanel Spacing="8">
+
+                                <!-- Theme -->
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Theme</TextBlock>
+                                    <Border Grid.Column="1" CornerRadius="4" BorderBrush="#9C9C9C"
+                                            BorderThickness="1" ClipToBounds="True">
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Classes.theme-active="{Binding IsLightTheme}"
+                                                    Command="{Binding SetLightThemeCommand}"
+                                                    Theme="{StaticResource PrimaryButton}"
+                                                    CornerRadius="4,0,0,4">Light</Button>
+                                            <Button Classes.theme-active="{Binding IsSystemTheme}"
+                                                    Command="{Binding SetSystemThemeCommand}"
+                                                    Theme="{StaticResource PrimaryButton}"
+                                                    CornerRadius="0">System</Button>
+                                            <Button Classes.theme-active="{Binding IsDarkTheme}"
+                                                    Command="{Binding SetDarkThemeCommand}"
+                                                    Theme="{StaticResource PrimaryButton}"
+                                                    CornerRadius="0,4,4,0">Dark</Button>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Launch at Startup -->
+                                <Grid ColumnDefinitions="*,42">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Launch at system startup</TextBlock>
+                                    <ToggleSwitch Grid.Column="1"
+                                                  IsChecked="{Binding LaunchAtStartup}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
+
+                                <!-- Auto check for updates -->
+                                <Grid ColumnDefinitions="*,42">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Automatically check for updates</TextBlock>
+                                    <ToggleSwitch Grid.Column="1"
+                                                  IsChecked="{Binding AutoCheckForUpdates}"
+                                                  OnContent="" OffContent=""
+                                                  Margin="0" Padding="0" />
+                                </Grid>
+
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Notifications & Sounds -->
+                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        BorderBrush="{DynamicResource AppCardBorder}"
+                        Background="{DynamicResource AppCardBackground}">
+                    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
+                        <Border Grid.Row="0" Padding="12,10,12,4">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Margin="0,0,0,0" FontSize="12" FontWeight="Normal"
+                                           Foreground="{DynamicResource AppSubtleText}">NOTIFICATIONS &amp; SOUNDS</TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Row="1" Padding="12">
+                            <StackPanel Spacing="12">
+                                <components:BatteryNotificationSection DataContext="{Binding FullBatterySection}" />
+                                <components:BatteryNotificationSection DataContext="{Binding LowBatterySection}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+
+</UserControl>

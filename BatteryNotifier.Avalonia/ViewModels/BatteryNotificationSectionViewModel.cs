@@ -1,0 +1,178 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using Avalonia;
+using Avalonia.Media;
+using BatteryNotifier.Avalonia.Services;
+using BatteryNotifier.Core.Managers;
+using ReactiveUI;
+
+namespace BatteryNotifier.Avalonia.ViewModels;
+
+public sealed class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
+{
+    private readonly CompositeDisposable _disposables = new();
+
+    private bool _isEnabled;
+    private int _thresholdValue;
+    private string? _soundSettingsValue;
+    private bool _disposed;
+
+    public string Title { get; }
+    public Geometry? IconData { get; }
+    public IBrush IconForeground { get; }
+    public int SliderMinimum { get; }
+    public int SliderMaximum { get; }
+
+    public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; } = new();
+    public ReactiveCommand<Unit, Unit> OpenSoundPickerCommand { get; }
+
+    public BatteryNotificationSectionViewModel(
+        string title, string iconKey, Color iconColor,
+        int sliderMin, int sliderMax,
+        bool isEnabled, int thresholdValue,
+        string? soundSettingsValue,
+        Action<string?, int> onSettingsChanged)
+    {
+        Title = title;
+        IconData = LoadIconGeometry(iconKey);
+        IconForeground = new SolidColorBrush(iconColor);
+        SliderMinimum = sliderMin;
+        SliderMaximum = sliderMax;
+        _isEnabled = isEnabled;
+        _thresholdValue = thresholdValue;
+        _soundSettingsValue = soundSettingsValue;
+        var onSettingsChanged1 = onSettingsChanged;
+
+        UpdateSoundDisplayName();
+
+        OpenSoundPickerCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            var result = await OpenSoundPickerInteraction.Handle((_soundSettingsValue, Title));
+            if (result != null)
+            {
+                _soundSettingsValue = result.SettingsValue;
+                UpdateSoundDisplayName();
+                onSettingsChanged1(result.SettingsValue, ThresholdValue);
+            }
+        });
+
+        this.WhenAnyValue(x => x.IsEnabled)
+            .Skip(1)
+            .Subscribe(_ => onSettingsChanged1(_soundSettingsValue, ThresholdValue))
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.ThresholdValue)
+            .Skip(1)
+            .Throttle(TimeSpan.FromMilliseconds(500))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(val => onSettingsChanged1(_soundSettingsValue, val))
+            .DisposeWith(_disposables);
+    }
+
+    public bool IsEnabled
+    {
+        get => _isEnabled;
+        set => this.RaiseAndSetIfChanged(ref _isEnabled, value);
+    }
+
+    public int ThresholdValue
+    {
+        get => _thresholdValue;
+        set => this.RaiseAndSetIfChanged(ref _thresholdValue, value);
+    }
+
+    public string SoundDisplayName
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "Default (none)";
+
+    private void UpdateSoundDisplayName()
+    {
+        if (string.IsNullOrEmpty(_soundSettingsValue))
+        {
+            SoundDisplayName = "Default (none)";
+        }
+        else if (BuiltInSounds.IsBuiltIn(_soundSettingsValue))
+        {
+            SoundDisplayName = BuiltInSounds.GetName(_soundSettingsValue) ?? "Unknown";
+        }
+        else if (CustomSoundsLibrary.IsCustom(_soundSettingsValue))
+        {
+            var fileName = CustomSoundsLibrary.GetFileName(_soundSettingsValue);
+            SoundDisplayName = fileName != null
+                ? Path.GetFileNameWithoutExtension(fileName)
+                : "Custom sound";
+        }
+        else if (BundledSounds.IsBundled(_soundSettingsValue))
+        {
+            var fileName = BundledSounds.GetFileName(_soundSettingsValue);
+            SoundDisplayName = fileName != null
+                ? Path.GetFileNameWithoutExtension(fileName)
+                : "Bundled sound";
+        }
+        else
+        {
+            SoundDisplayName = Path.GetFileName(_soundSettingsValue) ?? "Custom file";
+        }
+    }
+
+    private static readonly HashSet<string> AllowedExtensions =
+        new(StringComparer.OrdinalIgnoreCase) { ".wav", ".mp3", ".m4a", ".wma", ".ogg", ".flac", ".aac" };
+
+    private const long MaxSoundFileSizeBytes = 50 * 1024 * 1024;
+
+    private static bool ValidateSoundFilePath(string path)
+    {
+        if (!Path.IsPathRooted(path))
+            return false;
+
+        string canonical;
+        try
+        {
+            canonical = Path.GetFullPath(path);
+        }
+        catch
+        {
+            return false;
+        }
+
+        var ext = Path.GetExtension(canonical);
+        if (string.IsNullOrEmpty(ext) || !AllowedExtensions.Contains(ext))
+            return false;
+
+        try
+        {
+            var info = new FileInfo(canonical);
+            if (!info.Exists || info.Length > MaxSoundFileSizeBytes)
+                return false;
+
+            if (info.LinkTarget != null)
+                return false;
+        }
+        catch
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static Geometry? LoadIconGeometry(string key)
+    {
+        if (Application.Current!.Resources.TryGetResource(key, null, out var res) && res is Geometry geo)
+            return geo;
+        return null;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposables.Dispose();
+        _disposed = true;
+    }
+}

@@ -1,0 +1,260 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [master, expr/avalonia]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [master]
+
+# Cancel in-progress runs for the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  PROJECT: BatteryNotifier.Avalonia/BatteryNotifier.Avalonia.csproj
+  APP_NAME: BatteryNotifier
+  APP_ID: com.batterynotifier.app
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            artifact: BatteryNotifier-win-x64
+          - os: macos-latest
+            rid: osx-arm64
+            artifact: BatteryNotifier-osx-arm64
+          - os: windows-latest
+            rid: win-arm64
+            artifact: BatteryNotifier-win-arm64
+          # Linux builds disabled for now
+          # - os: ubuntu-latest
+          #   rid: linux-x64
+          #   artifact: BatteryNotifier-linux-x64
+          # - os: ubuntu-latest
+          #   rid: linux-arm64
+          #   artifact: BatteryNotifier-linux-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Publish
+        run: >
+          dotnet publish ${{ env.PROJECT }}
+          --configuration Release
+          --runtime ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=false
+          -p:PublishTrimmed=true
+          -p:TrimMode=partial
+          -p:IncludeNativeLibrariesForSelfExtract=false
+          --output ./publish/${{ matrix.artifact }}
+
+      # ── Install Velopack CLI ──
+      - name: Install Velopack CLI
+        run: dotnet tool install -g vpk --version 0.0.1298
+
+      # ── Extract version from tag or csproj ──
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION=$(dotnet msbuild ${{ env.PROJECT }} -getProperty:Version -nologo)
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # ── Windows: Sign executable ──
+      - name: Sign Windows executable
+        if: startsWith(matrix.rid, 'win-') && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $cert = [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE)
+          $certPath = Join-Path $env:RUNNER_TEMP "certificate.pfx"
+          [System.IO.File]::WriteAllBytes($certPath, $cert)
+          $exePath = Get-ChildItem -Path "./publish/${{ matrix.artifact }}" -Filter "BatteryNotifier.exe" -Recurse | Select-Object -First 1
+          & signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr https://timestamp.digicert.com /td sha256 /fd sha256 $exePath.FullName
+          Remove-Item $certPath
+
+      # ── macOS: Sign and notarize ──
+      - name: Sign macOS binary
+        if: contains(matrix.rid, 'osx') && startsWith(github.ref, 'refs/tags/v')
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+          # Import certificate
+          echo "$MACOS_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -k $KEYCHAIN_PATH \
+            -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k "$MACOS_KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychains -d user -s $KEYCHAIN_PATH
+
+          # Sign the binary
+          BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
+          codesign --force --options runtime --timestamp \
+            --entitlements BatteryNotifier.Avalonia/Entitlements.plist \
+            --sign "$MACOS_SIGNING_IDENTITY" "$BINARY"
+
+          # Cleanup
+          rm -f $RUNNER_TEMP/certificate.p12
+
+      - name: Notarize macOS binary
+        if: contains(matrix.rid, 'osx') && startsWith(github.ref, 'refs/tags/v')
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
+
+          # Create ZIP for notarization
+          ditto -c -k --keepParent "$BINARY" $RUNNER_TEMP/notarize.zip
+
+          # Submit for notarization
+          xcrun notarytool submit $RUNNER_TEMP/notarize.zip \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_PASSWORD" \
+            --wait
+
+          # Staple the notarization ticket
+          xcrun stapler staple "$BINARY" || true
+
+      # ── Velopack: Create installers ──
+      - name: Velopack pack (Windows)
+        if: startsWith(matrix.rid, 'win-')
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_NAME }}" \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir "./publish/${{ matrix.artifact }}" \
+            --mainExe "BatteryNotifier.exe" \
+            --icon "BatteryNotifier.Avalonia/Assets/battery-notifier-logo.ico" \
+            --outputDir "./installers/${{ matrix.artifact }}"
+
+      - name: Velopack pack (macOS)
+        if: contains(matrix.rid, 'osx')
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_NAME }}" \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir "./publish/${{ matrix.artifact }}" \
+            --mainExe "BatteryNotifier" \
+            --icon "BatteryNotifier.Avalonia/Assets/battery-notifier-logo.icns" \
+            --outputDir "./installers/${{ matrix.artifact }}"
+
+      - name: Velopack pack (Linux)
+        if: contains(matrix.rid, 'linux-')
+        shell: bash
+        run: |
+          vpk pack \
+            --packId "${{ env.APP_NAME }}" \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir "./publish/${{ matrix.artifact }}" \
+            --mainExe "BatteryNotifier" \
+            --outputDir "./installers/${{ matrix.artifact }}"
+
+      # ── Upload portable artifact (zip/tarball) ──
+      - name: Create Windows ZIP
+        if: startsWith(matrix.rid, 'win-')
+        shell: pwsh
+        run: Compress-Archive -Path "./publish/${{ matrix.artifact }}/*" -DestinationPath "./publish/${{ matrix.artifact }}.zip"
+
+      - name: Create macOS/Linux tarball
+        if: "!startsWith(matrix.rid, 'win-')"
+        run: tar -czf ./publish/${{ matrix.artifact }}.tar.gz -C ./publish/${{ matrix.artifact }} .
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ./publish/${{ matrix.artifact }}.zip
+            ./publish/${{ matrix.artifact }}.tar.gz
+          if-no-files-found: ignore
+
+      # ── Upload Velopack installer artifact ──
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.artifact }}-installer
+          path: ./installers/${{ matrix.artifact }}/*
+          if-no-files-found: warn
+
+  # ── Create GitHub Release ──
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          path: ./artifacts
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.pkg" -o -name "*.AppImage" -o -name "*.nupkg" \) -exec sha256sum {} \; > checksums-sha256.txt
+          cat checksums-sha256.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        with:
+          generate_release_notes: true
+          draft: true
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+            artifacts/**/*.exe
+            artifacts/**/*.pkg
+            artifacts/**/*.AppImage
+            artifacts/**/*.nupkg
+            artifacts/checksums-sha256.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,7 @@
+{
+  "configProperties": {
+    "System.GC.ConserveMemory": 9,
+    "System.GC.HeapHardLimit": 83886080,
+    "System.Runtime.TieredCompilation.QuickJitForLoops": true
+  }
+}

@@ -1,0 +1,86 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="BatteryNotifier.Avalonia.Views.AboutWindow"
+        Title="About BatteryNotifier"
+        Width="280" Height="260"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource AppWindowBackground}"
+        SystemDecorations="Full"
+        ShowInTaskbar="False"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="0">
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Close button (no background, no title) -->
+        <Button Grid.Row="0"
+                Theme="{StaticResource PrimaryButton}"
+                x:Name="CloseButton"
+                HorizontalAlignment="Right"
+                Margin="0,8,8,0"
+                Padding="4" ToolTip.Tip="Close"
+                ZIndex="1">
+            <PathIcon Data="{StaticResource Icon.X}"
+                      Width="12" Height="12"
+                      Foreground="{DynamicResource AppSubtleText}" />
+        </Button>
+
+        <!-- Content -->
+        <StackPanel Grid.Row="1" Spacing="10"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Margin="24,0,24,20">
+
+            <!-- Logo -->
+            <Image Source="/Assets/BatteryNotifierLogo.png"
+                   Width="52" Height="52"
+                   HorizontalAlignment="Center"
+                   RenderOptions.BitmapInterpolationMode="MediumQuality" />
+
+            <!-- App name + version -->
+            <StackPanel Spacing="6" HorizontalAlignment="Center">
+                <TextBlock Text="BatteryNotifier"
+                           FontSize="18" FontWeight="Bold"
+                           TextAlignment="Center"
+                           Foreground="{DynamicResource AppForeground}" />
+                <TextBlock x:Name="VersionText"
+                           FontSize="12"
+                           TextAlignment="Center"
+                           Foreground="{DynamicResource AppSubtleText}" />
+            </StackPanel>
+
+            <!-- Description -->
+            <TextBlock Text="Cross-platform battery monitoring and notification app."
+                       FontSize="12"
+                       TextAlignment="Center"
+                       TextWrapping="Wrap"
+                       Foreground="{DynamicResource AppSubtleText}" />
+
+            <!-- Author -->
+            <TextBlock FontSize="11"
+                       TextAlignment="Center"
+                       Foreground="{DynamicResource AppSubtleText}">
+                <Run Text="by " /><Run Text="Sandip Choudhary" FontWeight="SemiBold" />
+            </TextBlock>
+
+            <!-- View on GitHub -->
+            <Button Theme="{StaticResource SecondaryButton}"
+                    x:Name="ViewSourceButton"
+                    FontSize="12" Padding="10,6"
+                    HorizontalAlignment="Center"
+                    Margin="0,2,0,0"
+                    ToolTip.Tip="View source code on GitHub">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                    <PathIcon Data="{StaticResource Icon.GithubLogo}"
+                              Width="13" Height="13" VerticalAlignment="Center" />
+                    <TextBlock Text="View on GitHub" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>
