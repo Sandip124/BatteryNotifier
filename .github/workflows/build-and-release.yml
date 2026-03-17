@@ -101,7 +101,7 @@ jobs:
           $certPath = Join-Path $env:RUNNER_TEMP "certificate.pfx"
           [System.IO.File]::WriteAllBytes($certPath, $cert)
           $exePath = Get-ChildItem -Path "./publish/${{ matrix.artifact }}" -Filter "BatteryNotifier.exe" -Recurse | Select-Object -First 1
-          & signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exePath.FullName
+          & signtool sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr https://timestamp.digicert.com /td sha256 /fd sha256 $exePath.FullName
           Remove-Item $certPath
 
       # ── macOS: Sign and notarize ──

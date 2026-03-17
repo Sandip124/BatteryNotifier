@@ -102,7 +102,7 @@ certutil -encode certificate.pfx encoded.txt  # Windows
 **Local signing:**
 ```bash
 signtool sign /f certificate.pfx /p "password" \
-  /tr http://timestamp.digicert.com /td sha256 /fd sha256 \
+  /tr https://timestamp.digicert.com /td sha256 /fd sha256 \
   BatteryNotifier.exe
 ```
 
