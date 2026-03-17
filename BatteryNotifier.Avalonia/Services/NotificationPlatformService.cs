@@ -92,7 +92,7 @@ public static class NotificationPlatformService
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "terminal-notifier",
+                    FileName = Core.Constants.ResolveCommand("terminal-notifier"),
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -189,7 +189,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "notify-send",
+                    FileName = Core.Constants.ResolveCommand("notify-send"),
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -249,7 +249,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = command,
+                    FileName = Core.Constants.ResolveCommand(command),
                     UseShellExecute = false,
                     RedirectStandardInput = true,
                     RedirectStandardOutput = true,

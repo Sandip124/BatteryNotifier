@@ -73,7 +73,7 @@ public partial class AboutWindow : Window
     {
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            var psi = new ProcessStartInfo("open") { UseShellExecute = false };
+            var psi = new ProcessStartInfo(Core.Constants.ResolveCommand("open")) { UseShellExecute = false };
             psi.ArgumentList.Add(url);
             using var p = Process.Start(psi);
         }
@@ -83,7 +83,7 @@ public partial class AboutWindow : Window
         }
         else
         {
-            var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+            var psi = new ProcessStartInfo(Core.Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
             psi.ArgumentList.Add(url);
             using var p = Process.Start(psi);
         }

@@ -334,7 +334,7 @@ public sealed class BatteryMonitorService : IDisposable
             using var process = new System.Diagnostics.Process();
             var psi = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "system_profiler",
+                FileName = Constants.ResolveCommand("system_profiler"),
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true

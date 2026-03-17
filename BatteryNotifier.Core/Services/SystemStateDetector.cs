@@ -517,7 +517,7 @@ return ""false""";
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
         {
-            FileName = command,
+            FileName = Constants.ResolveCommand(command),
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -539,7 +539,7 @@ return ""false""";
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
         {
-            FileName = command,
+            FileName = Constants.ResolveCommand(command),
             UseShellExecute = false,
             RedirectStandardInput = true,
             RedirectStandardOutput = true,

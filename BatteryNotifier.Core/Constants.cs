@@ -47,4 +47,35 @@ public static class Constants
 
     /// <summary>App temp directory (cached built-in sounds, bundled sound extraction).</summary>
     public static string AppTempDirectory => Path.Combine(Path.GetTempPath(), AppName);
+
+    /// <summary>
+    /// Resolves a command name to an absolute path using known system directories only.
+    /// Avoids PATH-based resolution which could execute binaries from writable directories.
+    /// Returns the absolute path if found, or the original name as fallback (e.g., Windows commands
+    /// or user-installed tools like terminal-notifier that have no fixed location).
+    /// </summary>
+    public static string ResolveCommand(string command)
+    {
+        // Only resolve on Unix-like systems where we know the standard directories
+        if (OperatingSystem.IsWindows())
+            return command;
+
+        ReadOnlySpan<string> searchDirs =
+        [
+            "/usr/bin",
+            "/usr/sbin",
+            "/usr/local/bin",
+            "/bin",
+            "/sbin",
+        ];
+
+        foreach (var dir in searchDirs)
+        {
+            var fullPath = Path.Combine(dir, command);
+            if (File.Exists(fullPath))
+                return fullPath;
+        }
+
+        return command; // fallback for user-installed tools (e.g., terminal-notifier via Homebrew)
+    }
 }

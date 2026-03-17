@@ -371,7 +371,7 @@ public sealed class BatteryInfoProvider
             using var process = new Process();
             var psi = new ProcessStartInfo
             {
-                FileName = fileName,
+                FileName = Constants.ResolveCommand(fileName),
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true

@@ -188,7 +188,7 @@ public class App : Application
                     if (OperatingSystem.IsMacOS())
                     {
                         using var p = System.Diagnostics.Process.Start(
-                            new System.Diagnostics.ProcessStartInfo("open") { ArgumentList = { "-R", path } });
+                            new System.Diagnostics.ProcessStartInfo(Core.Constants.ResolveCommand("open")) { ArgumentList = { "-R", path } });
                     }
                     else if (OperatingSystem.IsWindows())
                     {
@@ -198,7 +198,7 @@ public class App : Application
                     else
                     {
                         using var p = System.Diagnostics.Process.Start(
-                            new System.Diagnostics.ProcessStartInfo("xdg-open") { ArgumentList = { dir } });
+                            new System.Diagnostics.ProcessStartInfo(Core.Constants.ResolveCommand("xdg-open")) { ArgumentList = { dir } });
                     }
             }
             CloseParentWindow(s as Button);

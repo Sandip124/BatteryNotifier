@@ -141,7 +141,7 @@ namespace BatteryNotifier.Core.Managers
 
                 var psi = new ProcessStartInfo
                 {
-                    FileName = command,
+                    FileName = Constants.ResolveCommand(command),
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,

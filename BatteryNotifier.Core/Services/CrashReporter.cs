@@ -464,7 +464,7 @@ public static class CrashReporter
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                var psi = new ProcessStartInfo("open")
+                var psi = new ProcessStartInfo(Constants.ResolveCommand("open"))
                 {
                     UseShellExecute = false
                 };
@@ -478,7 +478,7 @@ public static class CrashReporter
                 var dir = Path.GetDirectoryName(filePath);
                 if (dir != null)
                 {
-                    var psi = new ProcessStartInfo("xdg-open")
+                    var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open"))
                     {
                         UseShellExecute = false
                     };

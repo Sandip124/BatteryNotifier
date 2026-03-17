@@ -196,7 +196,7 @@ public static class StartupManager
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = command,
+                    FileName = Constants.ResolveCommand(command),
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -227,7 +227,7 @@ public static class StartupManager
             {
                 StartInfo = new System.Diagnostics.ProcessStartInfo
                 {
-                    FileName = "id",
+                    FileName = Constants.ResolveCommand("id"),
                     ArgumentList = { "-u" },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,

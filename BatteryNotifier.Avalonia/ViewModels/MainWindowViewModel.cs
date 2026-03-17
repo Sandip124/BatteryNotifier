@@ -660,7 +660,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                var psi = new ProcessStartInfo("open") { UseShellExecute = false };
+                var psi = new ProcessStartInfo(Constants.ResolveCommand("open")) { UseShellExecute = false };
                 psi.ArgumentList.Add(url);
                 using var p = Process.Start(psi);
             }
@@ -670,7 +670,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             }
             else
             {
-                var psi = new ProcessStartInfo("xdg-open") { UseShellExecute = false };
+                var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
                 psi.ArgumentList.Add(url);
                 using var p = Process.Start(psi);
             }
