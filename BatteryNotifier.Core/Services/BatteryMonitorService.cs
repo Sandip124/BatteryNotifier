@@ -18,13 +18,7 @@ public sealed class BatteryMonitorService : IDisposable
     private volatile int _lowBatteryThreshold = 25;
     private volatile int _fullBatteryThreshold = 96;
 
-    // macOS has Darwin notify for instant power-state detection — poll infrequently.
-    // Windows has WMI events but they may fail (trimming, WMI service) — use moderate polling as fallback.
-    // Linux has no easy event API — poll every 15s.
-    private static readonly int DefaultPollMs =
-        OperatingSystem.IsLinux() ? 15_000
-        : OperatingSystem.IsMacOS() ? 120_000
-        : 30_000; // Windows: 30s default, reduced to 10s if WMI fails
+    private const int DefaultPollMs = 5_000;
 
     private int _actualPollMs = DefaultPollMs;
 
@@ -82,7 +76,7 @@ public sealed class BatteryMonitorService : IDisposable
         }
 #endif
         // WMI not available (not compiled, trimmed, or failed) — poll more aggressively
-        _actualPollMs = 10_000;
+        _actualPollMs = 5_000;
     }
 
 #if WINDOWS
@@ -120,7 +114,7 @@ public sealed class BatteryMonitorService : IDisposable
             {
                 _logger.Warning("Failed to register Darwin power notify (status={Status}). " +
                                 "Falling back to faster polling.", status);
-                _actualPollMs = 15_000;
+                _actualPollMs = 5_000;
                 return;
             }
 
