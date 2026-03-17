@@ -442,57 +442,6 @@ public static class CrashReporter
         return sb.ToString();
     }
 
-    // ── Delivery ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// Opens the file explorer with the given file selected.
-    /// Works on Windows (explorer /select), macOS (open -R), and Linux (xdg-open folder).
-    /// </summary>
-    public static void RevealInExplorer(string filePath)
-    {
-        try
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                var psi = new ProcessStartInfo("explorer")
-                {
-                    UseShellExecute = false
-                };
-                psi.ArgumentList.Add("/select,");
-                psi.ArgumentList.Add(filePath);
-                Process.Start(psi);
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                var psi = new ProcessStartInfo(Constants.ResolveCommand("open"))
-                {
-                    UseShellExecute = false
-                };
-                psi.ArgumentList.Add("-R");
-                psi.ArgumentList.Add(filePath);
-                Process.Start(psi);
-            }
-            else
-            {
-                // Linux: open the containing folder
-                var dir = Path.GetDirectoryName(filePath);
-                if (dir != null)
-                {
-                    var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open"))
-                    {
-                        UseShellExecute = false
-                    };
-                    psi.ArgumentList.Add(dir);
-                    Process.Start(psi);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Warning(ex, "Failed to reveal file in explorer: {Path}", filePath);
-        }
-    }
-
     /// <summary>
     /// Saves the report to a file and returns the path.
     /// Not rate-limited (local file only, no external delivery).

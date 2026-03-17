@@ -94,14 +94,14 @@ public class App : Application
             MacOSDockIconHelper.HideDockIcon();
 
             // Hide to tray on window close (not actually close)
-            desktop.MainWindow.Closing += (s, e) =>
+            desktop.MainWindow.Closing += (_, args) =>
             {
-                e.Cancel = true;
+                args.Cancel = true;
                 desktop.MainWindow.Hide();
                 MacOSDockIconHelper.HideDockIcon();
             };
 
-            desktop.Exit += (s, e) =>
+            desktop.Exit += (_, _) =>
             {
                 _trayIconService?.Dispose();
                 settings.Save();
@@ -121,7 +121,7 @@ public class App : Application
             // Show dialog asking user if they want to send the crash report
             var dialog = new Window
             {
-                Title = "BatteryNotifier — Crash Detected",
+                Title = $"{Core.Constants.AppName} — Crash Detected",
                 Width = 460,
                 Height = 200,
                 CanResize = false,
@@ -143,7 +143,7 @@ public class App : Application
 
         panel.Children.Add(new TextBlock
         {
-            Text = "BatteryNotifier crashed during the last session.",
+            Text = $"{Core.Constants.AppName} crashed during the last session.",
             FontSize = 14,
             FontWeight = global::Avalonia.Media.FontWeight.SemiBold,
             TextWrapping = global::Avalonia.Media.TextWrapping.Wrap
@@ -183,7 +183,6 @@ public class App : Application
             var path = CrashReporter.SaveReportToFile(report);
             if (!string.IsNullOrEmpty(path))
             {
-                
                     var dir = System.IO.Path.GetDirectoryName(path)!;
                     if (OperatingSystem.IsMacOS())
                     {
@@ -193,7 +192,7 @@ public class App : Application
                     else if (OperatingSystem.IsWindows())
                     {
                         using var p = System.Diagnostics.Process.Start(
-                            new System.Diagnostics.ProcessStartInfo("explorer") { ArgumentList = { "/select,", path } });
+                            new System.Diagnostics.ProcessStartInfo(Core.Constants.ResolveCommand("explorer")) { ArgumentList = { "/select,", path } });
                     }
                     else
                     {
