@@ -12,7 +12,7 @@ public static class BuiltInSounds
     private const short Channels = 1;
 
     private static readonly string CacheDir =
-        Path.Combine(Path.GetTempPath(), "BatteryNotifier", "sounds");
+        Path.Combine(Constants.AppTempDirectory, "sounds");
 
     private static readonly Dictionary<string, Func<short[]>> Generators = new()
     {

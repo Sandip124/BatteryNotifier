@@ -6,8 +6,7 @@ namespace BatteryNotifier.Core.Logger;
 public static class BatteryNotifierLoggerConfig
 {
     private static readonly string LogDirectory = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "BatteryNotifier", "Logs");
+        Constants.AppDataDirectory, "Logs");
 
     public static void InitializeLogger()
     {
@@ -20,7 +19,7 @@ public static class BatteryNotifierLoggerConfig
             .Enrich.FromLogContext()
             .Enrich.WithThreadId()
             .Enrich.WithProcessId()
-            .Enrich.WithProperty("Application", "BatteryNotifier")
+            .Enrich.WithProperty("Application", Constants.AppName)
             .Enrich.WithProperty("Version", Constants.ApplicationVersion)
             .Enrich.WithProperty("MachineName", Environment.MachineName)
             .WriteTo.File(

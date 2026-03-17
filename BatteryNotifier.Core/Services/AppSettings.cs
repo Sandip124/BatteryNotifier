@@ -44,8 +44,7 @@ public sealed class AppSettings
 
     private static string GetSettingsDirectory()
     {
-        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-        var settingsDir = Path.Combine(appData, "BatteryNotifier");
+        var settingsDir = Constants.AppDataDirectory;
 
         if (!Directory.Exists(settingsDir))
         {

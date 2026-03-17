@@ -10,7 +10,7 @@ namespace BatteryNotifier.Core.Services;
 public static class StartupManager
 {
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("StartupManager");
-    private const string AppName = "BatteryNotifier";
+    private static string AppName => Constants.AppName;
 
     public static void SetStartup(bool enabled)
     {

@@ -15,7 +15,7 @@ public static class BundledSounds
     public const string Prefix = "bundled:";
 
     private static readonly string CacheDir =
-        Path.Combine(Path.GetTempPath(), "BatteryNotifier", "bundled-sounds");
+        Path.Combine(BatteryNotifier.Core.Constants.AppTempDirectory, "bundled-sounds");
 
     /// <summary>
     /// Editor's choice sounds bundled with the app.

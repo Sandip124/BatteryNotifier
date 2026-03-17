@@ -193,7 +193,7 @@ public class TrayIconService : IDisposable
         {
             Constants.LowBatteryTag => "Low Battery",
             Constants.FullBatteryTag => "Full Battery",
-            _ => "BatteryNotifier"
+            _ => Constants.AppName
         };
 
         var message = notification.Message.Replace("🔋", "").Trim();
@@ -229,7 +229,7 @@ public class TrayIconService : IDisposable
             {
                 Constants.LowBatteryTag => "Low Battery",
                 Constants.FullBatteryTag => "Full Battery",
-                _ => "BatteryNotifier"
+                _ => Constants.AppName
             };
 
             // Remove emoji from message for cleaner notification

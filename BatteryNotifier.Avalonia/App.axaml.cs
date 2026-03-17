@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -117,7 +118,7 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static async void CheckForPreviousCrash(Window mainWindow)
+    private static async Task CheckForPreviousCrash(Window mainWindow)
     {
         var crashDetails = CrashReporter.DetectPreviousCrash();
         if (crashDetails == null) return;
@@ -208,7 +209,10 @@ public partial class App : Application
                             new System.Diagnostics.ProcessStartInfo("xdg-open") { ArgumentList = { dir } });
                     }
                 }
-                catch { }
+                catch
+                {
+                    // ignored
+                }
             }
             CloseParentWindow(s as Button);
         };

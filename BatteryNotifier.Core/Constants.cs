@@ -1,3 +1,4 @@
+using System.IO;
 using System.Reflection;
 
 namespace BatteryNotifier.Core;
@@ -34,7 +35,16 @@ public static class Constants
         return plusIndex >= 0 ? version[..plusIndex] : version;
     }
 
+    public const string AppName = "BatteryNotifier";
+
     public const int DefaultNotificationTimeout = 3000;
     public const string LowBatteryTag = "LowBattery";
     public const string FullBatteryTag = "FullBattery";
+
+    /// <summary>App data directory (settings, custom sounds, logs).</summary>
+    public static string AppDataDirectory => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppName);
+
+    /// <summary>App temp directory (cached built-in sounds, bundled sound extraction).</summary>
+    public static string AppTempDirectory => Path.Combine(Path.GetTempPath(), AppName);
 }

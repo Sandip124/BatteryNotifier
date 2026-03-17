@@ -15,8 +15,7 @@ public static class CustomSoundsLibrary
     private const long MaxFileSizeBytes = 50 * 1024 * 1024;
 
     private static readonly string SoundsDir = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "BatteryNotifier", "sounds");
+        Constants.AppDataDirectory, "sounds");
 
     public static bool IsCustom(string? value) =>
         value != null && value.StartsWith(Prefix, StringComparison.Ordinal);

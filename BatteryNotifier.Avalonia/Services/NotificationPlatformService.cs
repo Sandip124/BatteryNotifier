@@ -22,7 +22,7 @@ public static class NotificationPlatformService
     {
         try
         {
-            var tempDir = Path.Combine(Path.GetTempPath(), "BatteryNotifier");
+            var tempDir = Core.Constants.AppTempDirectory;
             Directory.CreateDirectory(tempDir);
             var iconFile = Path.Combine(tempDir, "notification-icon.png");
 

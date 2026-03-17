@@ -32,8 +32,7 @@ public static class CrashReporter
     /// <summary>Minimum interval between reports (prevents spam).</summary>
     private static readonly TimeSpan ReportCooldown = TimeSpan.FromHours(1);
 
-    private static string DataDirectory =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BatteryNotifier");
+    private static string DataDirectory => Constants.AppDataDirectory;
 
     private static string CrashMarkerPath => Path.Combine(DataDirectory, CrashMarkerFileName);
     private static string CrashMarkerSigPath => Path.Combine(DataDirectory, CrashMarkerSigFileName);
@@ -200,9 +199,7 @@ public static class CrashReporter
     /// </summary>
     private static string ComputeHmac(string content)
     {
-        var settingsDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BatteryNotifier");
-        var keyPath = Path.Combine(settingsDir, ".settings.key");
+        var keyPath = Path.Combine(Constants.AppDataDirectory, ".settings.key");
 
         byte[] key;
         if (File.Exists(keyPath))
@@ -213,7 +210,7 @@ public static class CrashReporter
         {
             // Fallback — use a deterministic key from machine-specific data
             key = SHA256.HashData(Encoding.UTF8.GetBytes(
-                Environment.MachineName + Environment.UserName + "BatteryNotifier"));
+                Environment.MachineName + Environment.UserName + Constants.AppName));
         }
 
         var contentBytes = Encoding.UTF8.GetBytes(content);
