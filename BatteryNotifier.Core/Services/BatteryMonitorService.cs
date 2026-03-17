@@ -195,10 +195,10 @@ public sealed class BatteryMonitorService : IDisposable
         bool isLowBattery = currentLevel <= _lowBatteryThreshold &&
                             currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
 
-        bool isFullBattery = currentLevel >= _fullBatteryThreshold &&
-                             (currentStatus.BatteryChargeStatus == BatteryChargeStatus.Charging ||
-                              currentStatus.BatteryChargeStatus == BatteryChargeStatus.High ||
-                              currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online);
+        // Full battery notification only when charger is connected (plugged in).
+        // Unplugging while above threshold should NOT trigger a notification.
+        bool isPluggedIn = currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online;
+        bool isFullBattery = currentLevel >= _fullBatteryThreshold && isPluggedIn;
 
         // Always update the store so it reflects the latest battery state
         UpdateBatteryManagerStore(currentStatus, currentLevel);
@@ -412,9 +412,7 @@ public sealed class BatteryMonitorService : IDisposable
                             currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
 
         bool isFullBattery = currentLevel >= fullThreshold &&
-                             (currentStatus.BatteryChargeStatus == BatteryChargeStatus.Charging ||
-                              currentStatus.BatteryChargeStatus == BatteryChargeStatus.High ||
-                              currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online);
+                             currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online;
 
         bool realStateChange = powerLineChanged || levelChanged;
 
