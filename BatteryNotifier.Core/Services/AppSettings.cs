@@ -106,13 +106,11 @@ public sealed class AppSettings
         }
         catch (CryptographicException)
         {
-            // Tampered or key mismatch — reset to defaults
-            Save();
+            Reset();
         }
         catch (Exception)
         {
-            // Corrupted settings — reset to defaults
-            Save();
+            Reset();
         }
     }
 
@@ -190,9 +188,12 @@ public sealed class AppSettings
         FullBatteryNotificationMusic = "builtin:Harp";
         LowBatteryNotificationMusic = "builtin:Klaxon";
         StartMinimized = true;
+        WindowPositionX = null;
+        WindowPositionY = null;
         ThemeMode = ThemeMode.System;
         LaunchAtStartup = true;
         AutoCheckForUpdates = true;
+        // AppId intentionally preserved — unique per install
 
         Save();
     }
