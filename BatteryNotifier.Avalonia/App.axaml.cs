@@ -79,7 +79,7 @@ public class App : Application
             // and on macOS the launchctl load would spawn a duplicate instance.
 
             // Check for crash from previous session
-            _ = CheckForPreviousCrash(mainWindow);
+            CheckForPreviousCrash();
 
             // Extract notification icon to disk (must happen on UI thread while AssetLoader is available)
             NotificationPlatformService.Initialize();
@@ -111,14 +111,15 @@ public class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static async Task CheckForPreviousCrash(Window mainWindow)
+    private static void CheckForPreviousCrash()
     {
         var crashDetails = CrashReporter.DetectPreviousCrash();
         if (crashDetails == null) return;
 
         try
         {
-            // Show dialog asking user if they want to send the crash report
+            // Show as independent window — main window is hidden at startup
+            // so it can't be used as a modal owner.
             var dialog = new Window
             {
                 Title = $"{Core.Constants.AppName} — Crash Detected",
@@ -126,10 +127,11 @@ public class App : Application
                 Height = 200,
                 CanResize = false,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen,
+                ShowInTaskbar = true,
                 Content = BuildCrashDialogContent(crashDetails)
             };
 
-            await dialog.ShowDialog(mainWindow).ConfigureAwait(false);
+            dialog.Show();
         }
         catch (Exception ex)
         {
