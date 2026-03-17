@@ -10,7 +10,7 @@ using BatteryNotifier.Core.Managers;
 using ReactiveUI;
 namespace BatteryNotifier.Avalonia.ViewModels;
 
-public class SoundPickerViewModel : ViewModelBase, IDisposable
+public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 {
     private readonly SoundManager _soundManager = new();
     private readonly CompositeDisposable _disposables = new();
@@ -216,13 +216,13 @@ public class SoundPickerViewModel : ViewModelBase, IDisposable
     }
 }
 
-public class SoundPickerGroup(string title, List<SoundPickerItem> items)
+public sealed class SoundPickerGroup(string title, List<SoundPickerItem> items)
 {
     public string Title { get; } = title;
     public List<SoundPickerItem> Items { get; } = items;
 }
 
-public class SoundPickerItem : ReactiveObject
+public sealed class SoundPickerItem : ReactiveObject
 {
     public string Name { get; }
     public string? SettingsValue { get; }

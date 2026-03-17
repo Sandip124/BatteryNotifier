@@ -247,49 +247,44 @@ public sealed class BatteryMonitorService : IDisposable
         // Publish threshold notifications only on real state transitions (level or power changed).
         // forceCheck is for UI refresh only — it should not trigger notifications when nothing changed.
         // This prevents spurious "unplug charger" notifications on app startup.
-        if (publishNotifications && (powerLineChanged || levelChanged) && (isLowBattery || isFullBattery))
+        if (publishNotifications && (powerLineChanged || levelChanged))
         {
-            if (ShouldSuppressNotifications(currentStatus))
-            {
-                _logger.Information("Notification suppressed: external display detected (charger must stay connected)");
-            }
-            else
-            {
-                var settings = AppSettings.Instance;
-
-                if (isLowBattery && settings.LowBatteryNotification)
-                {
-                    var message = GetLowBatteryMessage(currentLevel);
-                    _logger.Information("Publishing low battery notification at {Level}%: {Message}",
-                        currentLevel, message);
-                    NotificationService.Instance.PublishNotification(
-                        message,
-                        NotificationType.Global,
-                        Constants.DefaultNotificationTimeout,
-                        Constants.LowBatteryTag);
-                }
-                else if (isLowBattery)
-                {
-                    _logger.Information("Low battery at {Level}% but notification is disabled in settings", currentLevel);
-                }
-
-                if (isFullBattery && settings.FullBatteryNotification)
-                {
-                    var message = GetFullBatteryMessage(currentLevel);
-                    _logger.Information("Publishing full battery notification at {Level}%: {Message}",
-                        currentLevel, message);
-                    NotificationService.Instance.PublishNotification(
-                        message,
-                        NotificationType.Global,
-                        Constants.DefaultNotificationTimeout,
-                        Constants.FullBatteryTag);
-                }
-                else if (isFullBattery)
-                {
-                    _logger.Information("Full battery at {Level}% but notification is disabled in settings", currentLevel);
-                }
-            }
+            PublishThresholdNotifications(currentStatus, currentLevel, isLowBattery, isFullBattery);
         }
+    }
+
+    private void PublishThresholdNotifications(BatteryInfo currentStatus, int currentLevel,
+        bool isLowBattery, bool isFullBattery)
+    {
+        if (!isLowBattery && !isFullBattery) return;
+
+        if (ShouldSuppressNotifications(currentStatus))
+        {
+            _logger.Information("Notification suppressed: external display detected (charger must stay connected)");
+            return;
+        }
+
+        var settings = AppSettings.Instance;
+
+        if (isLowBattery)
+            PublishIfEnabled(settings.LowBatteryNotification, currentLevel, Constants.LowBatteryTag, GetLowBatteryMessage);
+
+        if (isFullBattery)
+            PublishIfEnabled(settings.FullBatteryNotification, currentLevel, Constants.FullBatteryTag, GetFullBatteryMessage);
+    }
+
+    private void PublishIfEnabled(bool enabled, int level, string tag, Func<int, string> messageFactory)
+    {
+        if (!enabled)
+        {
+            _logger.Information("{Tag} at {Level}% but notification is disabled in settings", tag, level);
+            return;
+        }
+
+        var message = messageFactory(level);
+        _logger.Information("Publishing {Tag} notification at {Level}%: {Message}", tag, level, message);
+        NotificationService.Instance.PublishNotification(
+            message, NotificationType.Global, Constants.DefaultNotificationTimeout, tag);
     }
 
     private static void UpdateBatteryManagerStore(BatteryInfo currentStatus, int currentLevel)
@@ -479,7 +474,7 @@ public sealed class BatteryMonitorService : IDisposable
     }
 }
 
-public class BatteryStatusEventArgs : EventArgs
+public sealed class BatteryStatusEventArgs : EventArgs
 {
     public int BatteryLevel { get; set; }
     public bool IsCharging { get; set; }

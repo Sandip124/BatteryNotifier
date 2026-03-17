@@ -300,7 +300,7 @@ public sealed class NotificationService : IDisposable
 /// <summary>
 /// Tracks per-tag notification state for escalating backoff.
 /// </summary>
-internal class NotificationTracker
+internal sealed class NotificationTracker
 {
     public int Count { get; set; }
     public DateTime LastNotificationTime { get; set; } = DateTime.MinValue;
@@ -308,7 +308,7 @@ internal class NotificationTracker
 }
 
 #pragma warning disable CA1710 // Kept as NotificationMessage for domain clarity
-public class NotificationMessage : EventArgs
+public sealed class NotificationMessage : EventArgs
 #pragma warning restore CA1710
 {
     public string Message { get; set; } = string.Empty;

@@ -201,7 +201,7 @@ public enum CheckStatus
     AlreadyChecking
 }
 
-public class UpdateCheckResult
+public sealed class UpdateCheckResult
 {
     public GitHubRelease? Release { get; }
     public CheckStatus Status { get; }
@@ -212,13 +212,13 @@ public class UpdateCheckResult
     }
 }
 
-public class UpdateAvailableEventArgs : EventArgs
+public sealed class UpdateAvailableEventArgs : EventArgs
 {
     public GitHubRelease Release { get; }
     public UpdateAvailableEventArgs(GitHubRelease release) => Release = release;
 }
 
-public class GitHubRelease
+public sealed class GitHubRelease
 {
     [JsonPropertyName("tag_name")]
     public string TagName { get; set; } = "";
@@ -243,7 +243,7 @@ public class GitHubRelease
 #pragma warning restore CA1819
 }
 
-public class GitHubAsset
+public sealed class GitHubAsset
 {
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";

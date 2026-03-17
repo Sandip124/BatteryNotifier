@@ -12,7 +12,7 @@ using ReactiveUI;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
-public class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
+public sealed class BatteryNotificationSectionViewModel : ViewModelBase, IDisposable
 {
     private readonly CompositeDisposable _disposables = new();
 

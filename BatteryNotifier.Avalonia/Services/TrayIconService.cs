@@ -17,7 +17,7 @@ using Serilog;
 
 namespace BatteryNotifier.Avalonia.Services;
 
-public class TrayIconService : IDisposable
+public sealed class TrayIconService : IDisposable
 {
     private readonly ILogger _logger;
     private TrayIcon? _trayIcon;

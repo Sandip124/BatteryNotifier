@@ -5,7 +5,7 @@ using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia;
 
-public class ViewLocator : IDataTemplate
+public sealed class ViewLocator : IDataTemplate
 {
     public Control? Build(object? data)
     {

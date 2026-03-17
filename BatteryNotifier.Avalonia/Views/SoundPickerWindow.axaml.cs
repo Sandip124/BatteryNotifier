@@ -144,28 +144,26 @@ public partial class SoundPickerWindow : Window
 
     private void UpdateCheckIcons(SoundPickerViewModel vm)
     {
+        var hoverBrush = this.TryFindResource("AppHoverBackground", ActualThemeVariant, out var res) && res is IBrush b
+            ? b : Brushes.Transparent;
+
         foreach (var descendant in this.GetVisualDescendants())
         {
-            if (descendant is Button btn && btn.DataContext is SoundPickerItem item)
-            {
-                foreach (var child in btn.GetVisualDescendants())
-                {
-                    if (child is PathIcon icon && icon.Name == "CheckIcon")
-                    {
-                        icon.IsVisible = vm.SelectedItem == item;
-                    }
-                }
+            if (descendant is not Button btn || btn.DataContext is not SoundPickerItem item)
+                continue;
 
-                if (vm.SelectedItem == item)
-                {
-                    if (this.TryFindResource("AppHoverBackground", ActualThemeVariant, out var res) && res is IBrush brush)
-                        btn.Background = brush;
-                }
-                else
-                {
-                    btn.Background = Brushes.Transparent;
-                }
-            }
+            var isSelected = vm.SelectedItem == item;
+            btn.Background = isSelected ? hoverBrush : Brushes.Transparent;
+            SetCheckIconVisibility(btn, isSelected);
+        }
+    }
+
+    private static void SetCheckIconVisibility(Button btn, bool visible)
+    {
+        foreach (var child in btn.GetVisualDescendants())
+        {
+            if (child is PathIcon { Name: "CheckIcon" } icon)
+                icon.IsVisible = visible;
         }
     }
 

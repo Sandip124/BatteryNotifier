@@ -11,7 +11,7 @@ namespace BatteryNotifier.Avalonia.Controls;
 /// Glass body with diffuse reflections, cylindrical fill bar,
 /// metallic terminal cap, and status badge overlay.
 /// </summary>
-public class BatteryIndicatorControl : Control
+internal class BatteryIndicatorControl : Control
 {
     // ── Styled properties ────────────────────────────────────────
 
@@ -596,7 +596,7 @@ public class BatteryIndicatorControl : Control
 
     // ── Theme palettes ───────────────────────────────────────────
 
-    private record ThemePalette
+    private sealed record ThemePalette
     {
         // Glass body
         public required Color GlassTop, GlassUpper, GlassMid, GlassLower, GlassBottom;

@@ -93,7 +93,16 @@ public static class SystemStateDetector
 
     private static bool IsMacDoNotDisturbActive()
     {
-        // macOS Monterey and earlier: direct defaults key
+        // Try each detection approach in order: Monterey → Ventura+ → Tahoe+ fallback
+        return IsMacDndViaDefaults()
+            ?? IsMacDndViaAssertionsFile()
+            ?? IsMacDndViaAccessibility()
+            ?? false;
+    }
+
+    /// <summary>macOS Monterey and earlier: direct defaults key.</summary>
+    private static bool? IsMacDndViaDefaults()
+    {
         try
         {
             var output = RunProcess("defaults",
@@ -101,57 +110,57 @@ public static class SystemStateDetector
             if (output.Trim() == "1")
                 return true;
         }
-        catch
-        {
-            // Key doesn't exist on this macOS version — not in DND
-        }
+        catch { /* Key doesn't exist on this macOS version */ }
 
-        // macOS Ventura+: Focus state via notification center assertions.
-        // Use the JSON output from plutil and look for active assertions.
-        // On failure or permission denial, fall through to accessibility approach.
+        return null; // inconclusive — try next approach
+    }
+
+    /// <summary>macOS Ventura+: Focus state via notification center assertions JSON.</summary>
+    private static bool? IsMacDndViaAssertionsFile()
+    {
         try
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             var assertionsPath = Path.Combine(home, "Library", "DoNotDisturb", "DB", "Assertions.json");
 
-            if (File.Exists(assertionsPath))
+            if (!File.Exists(assertionsPath))
+                return null;
+
+            var output = RunProcess("plutil", "-convert", "json", "-o", "-", assertionsPath);
+            if (string.IsNullOrWhiteSpace(output))
+                return null;
+
+            using var doc = JsonDocument.Parse(output);
+            var root = doc.RootElement;
+
+            if (HasActiveAssertions(root, "storeAssertionRecords"))
+                return true;
+
+            // Some macOS versions nest under "data" array
+            if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
             {
-                var output = RunProcess("plutil",
-                    "-convert", "json", "-o", "-", assertionsPath);
-
-                if (!string.IsNullOrWhiteSpace(output))
+                foreach (var entry in data.EnumerateArray())
                 {
-                    using var doc = JsonDocument.Parse(output);
-                    var root = doc.RootElement;
-
-                    // Check for non-empty storeAssertionRecords at the root or nested in "data"
-                    if (HasActiveAssertions(root, "storeAssertionRecords"))
+                    if (HasActiveAssertions(entry, "storeAssertionRecords"))
                         return true;
-
-                    // Some macOS versions nest under "data" array
-                    if (root.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
-                    {
-                        foreach (var entry in data.EnumerateArray())
-                        {
-                            if (HasActiveAssertions(entry, "storeAssertionRecords"))
-                                return true;
-                        }
-                    }
-
-                    // File was readable and parsed — no active assertions means DND is off
-                    return false;
                 }
             }
+
+            return false; // File readable, no active assertions — DND is off
         }
         catch
         {
-            // Permission denied (TCC) or plutil failure — fall through to accessibility approach
+            return null; // TCC blocked or parse error — try next approach
         }
+    }
 
-        // macOS Tahoe+ fallback: the Assertions.json file is TCC-protected.
-        // Use accessibility to briefly open the Control Center Focus dropdown,
-        // check for "On" text, and close it. Requires Accessibility permission.
-        // The script is a hardcoded literal — no external input is interpolated.
+    /// <summary>
+    /// macOS Tahoe+ fallback: Assertions.json is TCC-protected.
+    /// Briefly opens Control Center Focus dropdown to check for "On" text.
+    /// Requires Accessibility permission. Script is a hardcoded literal.
+    /// </summary>
+    private static bool? IsMacDndViaAccessibility()
+    {
         try
         {
             var script = @"
@@ -183,12 +192,9 @@ end tell";
             if (output.Trim().Equals("true", StringComparison.OrdinalIgnoreCase))
                 return true;
         }
-        catch
-        {
-            // Accessibility permission not granted or script failure — fail open
-        }
+        catch { /* Accessibility not granted — fail open */ }
 
-        return false;
+        return null;
     }
 
     /// <summary>
@@ -595,7 +601,7 @@ return ""false""";
 /// <summary>
 /// Describes the current suppression state for notification delivery decisions.
 /// </summary>
-public class NotificationSuppressionState
+public sealed class NotificationSuppressionState
 {
     public bool IsDoNotDisturb { get; init; }
     public bool IsFullscreen { get; init; }

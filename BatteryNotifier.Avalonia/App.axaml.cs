@@ -14,7 +14,7 @@ using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Avalonia;
 
-public partial class App : Application
+public class App : Application
 {
     private TrayIconService? _trayIconService;
 
@@ -26,8 +26,8 @@ public partial class App : Application
     public override void OnFrameworkInitializationCompleted()
     {
         // Register bundled sounds resolver so Core can resolve "bundled:" prefixed paths
-        BatteryNotifier.Core.Managers.BuiltInSounds.ExternalResolver = settingsValue =>
-            Services.BundledSounds.IsBundled(settingsValue) ? Services.BundledSounds.Resolve(settingsValue) : null;
+        Core.Managers.BuiltInSounds.ExternalResolver = settingsValue =>
+            BundledSounds.IsBundled(settingsValue) ? BundledSounds.Resolve(settingsValue) : null;
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -65,18 +65,11 @@ public partial class App : Application
             // The Dock icon requires NSApplication.shared.applicationIconImage.
             if (OperatingSystem.IsMacOS())
             {
-                try
-                {
                     using var dockIconStream = AssetLoader.Open(
                         new Uri("avares://BatteryNotifier/Assets/battery-notifier-logo-128.png"));
                     using var ms = new System.IO.MemoryStream();
                     dockIconStream.CopyTo(ms);
                     MacOSDockIconHelper.SetDockIcon(ms.ToArray());
-                }
-                catch
-                {
-                    // Non-critical — generic Dock icon stays
-                }
             }
 
             desktop.MainWindow = mainWindow;
@@ -86,7 +79,7 @@ public partial class App : Application
             // and on macOS the launchctl load would spawn a duplicate instance.
 
             // Check for crash from previous session
-            CheckForPreviousCrash(mainWindow);
+            _ = CheckForPreviousCrash(mainWindow);
 
             // Extract notification icon to disk (must happen on UI thread while AssetLoader is available)
             NotificationPlatformService.Initialize();
@@ -190,8 +183,7 @@ public partial class App : Application
             var path = CrashReporter.SaveReportToFile(report);
             if (!string.IsNullOrEmpty(path))
             {
-                try
-                {
+                
                     var dir = System.IO.Path.GetDirectoryName(path)!;
                     if (OperatingSystem.IsMacOS())
                     {
@@ -208,11 +200,6 @@ public partial class App : Application
                         using var p = System.Diagnostics.Process.Start(
                             new System.Diagnostics.ProcessStartInfo("xdg-open") { ArgumentList = { dir } });
                     }
-                }
-                catch
-                {
-                    // ignored
-                }
             }
             CloseParentWindow(s as Button);
         };

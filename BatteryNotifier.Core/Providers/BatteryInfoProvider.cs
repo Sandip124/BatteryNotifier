@@ -402,7 +402,7 @@ public sealed class BatteryInfoProvider
     }
 }
 
-public class BatteryInfo
+public sealed class BatteryInfo
 {
     public BatteryChargeStatus BatteryChargeStatus { get; set; }
     public BatteryPowerLineStatus PowerLineStatus { get; set; }
