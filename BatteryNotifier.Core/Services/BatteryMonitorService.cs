@@ -216,7 +216,15 @@ public sealed class BatteryMonitorService : IDisposable
         {
             if (powerLineChanged && wasAlreadyTracking)
             {
+                _logger.Information("Power line state changed: {Status} (battery {Level}%)",
+                    currentStatus.PowerLineStatus, currentLevel);
                 PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+            }
+
+            if (levelChanged)
+            {
+                _logger.Information("Battery level changed: {Level}% ({ChargeStatus}, {PowerLine})",
+                    currentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
             }
 
             BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
@@ -229,6 +237,7 @@ public sealed class BatteryMonitorService : IDisposable
             // Reset notification trackers on power state change so notifications fire eagerly
             if (powerLineChanged && wasAlreadyTracking)
             {
+                _logger.Information("Resetting notification trackers due to power line change");
                 NotificationService.Instance.ResetAllTrackers();
             }
         }
@@ -238,28 +247,44 @@ public sealed class BatteryMonitorService : IDisposable
         // This prevents spurious "unplug charger" notifications on app startup.
         if (publishNotifications && (powerLineChanged || levelChanged) && (isLowBattery || isFullBattery))
         {
-            if (!ShouldSuppressNotifications(currentStatus))
+            if (ShouldSuppressNotifications(currentStatus))
+            {
+                _logger.Information("Notification suppressed: external display detected (charger must stay connected)");
+            }
+            else
             {
                 var settings = AppSettings.Instance;
 
                 if (isLowBattery && settings.LowBatteryNotification)
                 {
                     var message = GetLowBatteryMessage(currentLevel);
+                    _logger.Information("Publishing low battery notification at {Level}%: {Message}",
+                        currentLevel, message);
                     NotificationService.Instance.PublishNotification(
                         message,
                         NotificationType.Global,
                         Constants.DefaultNotificationTimeout,
                         Constants.LowBatteryTag);
                 }
+                else if (isLowBattery)
+                {
+                    _logger.Information("Low battery at {Level}% but notification is disabled in settings", currentLevel);
+                }
 
                 if (isFullBattery && settings.FullBatteryNotification)
                 {
                     var message = GetFullBatteryMessage(currentLevel);
+                    _logger.Information("Publishing full battery notification at {Level}%: {Message}",
+                        currentLevel, message);
                     NotificationService.Instance.PublishNotification(
                         message,
                         NotificationType.Global,
                         Constants.DefaultNotificationTimeout,
                         Constants.FullBatteryTag);
+                }
+                else if (isFullBattery)
+                {
+                    _logger.Information("Full battery at {Level}% but notification is disabled in settings", currentLevel);
                 }
             }
         }

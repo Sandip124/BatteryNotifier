@@ -157,19 +157,31 @@ public class TrayIconService : IDisposable
         var suppression = SystemStateDetector.GetSuppressionState();
         var isCritical = notification.Priority >= NotificationPriority.Critical;
 
+        _logger.Information("Notification received: tag={Tag} DND={DND} fullscreen={Fullscreen} critical={Critical}",
+            notification.Tag, suppression.IsDoNotDisturb, suppression.IsFullscreen, isCritical);
+
         // Always update tray tooltip, even when suppressed
         UpdateToolTipWithNotification(notification);
 
         if (suppression.ShouldSuppressToast && !isCritical)
+        {
+            _logger.Information("Notification toast suppressed (DND={DND}, fullscreen={Fullscreen})",
+                suppression.IsDoNotDisturb, suppression.IsFullscreen);
             return;
+        }
 
         // Show native notification
+        _logger.Information("Delivering native notification: {Tag} — {Message}", notification.Tag, notification.Message);
         ShowNativeNotification(notification);
 
         // Play sound unless DND is active (critical overrides)
         if (!suppression.ShouldSuppressSound || isCritical)
         {
             _ = _notificationManager?.EmitGlobalNotification(notification);
+        }
+        else
+        {
+            _logger.Information("Notification sound suppressed by DND");
         }
     }
 

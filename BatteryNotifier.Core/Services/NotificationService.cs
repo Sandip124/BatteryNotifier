@@ -95,7 +95,11 @@ public sealed class NotificationService : IDisposable
             }
 
             if (tracker.IsSilenced)
+            {
+                Logger.Debug("Notification silenced for tag {Tag} (reached max {Max} notifications, will recover after {Recovery})",
+                    tag, MaxNotificationsBeforeSilence, RecoveryInterval);
                 return;
+            }
 
             // Check backoff interval
             var backoffIndex = Math.Min(tracker.Count, BackoffIntervals.Length - 1);
@@ -103,7 +107,11 @@ public sealed class NotificationService : IDisposable
             var elapsed = DateTime.Now - tracker.LastNotificationTime;
 
             if (tracker.Count > 0 && elapsed < requiredDelay)
+            {
+                Logger.Debug("Notification for tag {Tag} held back by backoff (elapsed {Elapsed}, required {Required})",
+                    tag, elapsed, requiredDelay);
                 return;
+            }
 
             // Increment and check cap
             tracker.Count++;
@@ -201,6 +209,7 @@ public sealed class NotificationService : IDisposable
 
         lock (_lastNotificationTimeLock) { _lastNotificationTime = DateTime.Now; }
 
+        Logger.Information("Emitting notification: tag={Tag} message={Message}", notification.Tag, notification.Message);
         NotificationReceived?.Invoke(this, notification);
     }
 
