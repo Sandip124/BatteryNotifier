@@ -112,7 +112,7 @@ public partial class NotificationCard : Window
             if (nsWindow == IntPtr.Zero) return;
 
             objc_msgSend_IntPtr(nsWindow, sel_registerName("setLevel:"),
-                (IntPtr)ScreenFlashOverlay.NSWindowLevelAboveScreenSaver);
+                (IntPtr)ScreenFlashOverlay.NsWindowLevelAboveScreenSaver);
         }
         catch { /* best effort */ }
     }
