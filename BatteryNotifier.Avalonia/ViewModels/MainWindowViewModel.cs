@@ -75,8 +75,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             Dispatcher.UIThread.Post(() =>
             {
                 this.RaisePropertyChanged(nameof(HealthSummary));
-                this.RaisePropertyChanged(nameof(ViewModels.MainWindowViewModel.HealthAccentColor));
-                this.RaisePropertyChanged(nameof(ViewModels.MainWindowViewModel.HealthIcon));
+                this.RaisePropertyChanged(nameof(HealthAccentColor));
+                this.RaisePropertyChanged(nameof(HealthIcon));
             });
         };
 
@@ -417,6 +417,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private static global::Avalonia.Media.Geometry? _iconCheck;
     private static global::Avalonia.Media.Geometry? _iconHeart;
     private static global::Avalonia.Media.Geometry? _iconWarn;
+    private static global::Avalonia.Media.Geometry? _iconSpinner;
 
     private static global::Avalonia.Media.Geometry? ResolveIcon(string key)
     {
@@ -441,7 +442,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 MetricStatus.Good => _iconCheck ??= ResolveIcon("Icon.CheckFat"),
                 MetricStatus.Fair => _iconHeart ??= ResolveIcon("Icon.HeartFill"),
                 MetricStatus.Poor => _iconWarn ??= ResolveIcon("Icon.ExclamationMarkFill"),
-                _ => _iconHeart ??= ResolveIcon("Icon.HeartFill")
+                _ => _iconSpinner ??= ResolveIcon("Icon.Spinner")
             };
         }
     }
