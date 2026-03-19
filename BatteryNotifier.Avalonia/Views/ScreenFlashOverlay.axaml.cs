@@ -41,18 +41,23 @@ public partial class ScreenFlashOverlay : Window
 
         GlowControl.GlowColor = glowColor;
 
-        const int pulseMs = 1150; // 200ms fade-in + 400ms hold + 400ms fade-out + 150ms pause
+        const double peakOpacity = 0.4;
+        const int fadeInMs = 400;
+        const int holdMs = 500;
+        const int fadeOutMs = 600;
+        const int pauseMs = 250;
+        const int pulseMs = fadeInMs + holdMs + fadeOutMs + pauseMs;
         var pulseCount = Math.Max(1, durationMs / pulseMs);
         var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
 
         for (int i = 0; i < pulseCount && DateTime.UtcNow < deadline && !ct.IsCancellationRequested; i++)
         {
-            await CreateFadeAnimation(0.0, 0.85, 200).RunAsync(GlowControl, ct);
-            await Task.Delay(400, ct);
-            await CreateFadeAnimation(0.85, 0.0, 400).RunAsync(GlowControl, ct);
+            await CreateFadeAnimation(0.0, peakOpacity, fadeInMs).RunAsync(GlowControl, ct);
+            await Task.Delay(holdMs, ct);
+            await CreateFadeAnimation(peakOpacity, 0.0, fadeOutMs).RunAsync(GlowControl, ct);
 
             if (i < pulseCount - 1)
-                await Task.Delay(150, ct);
+                await Task.Delay(pauseMs, ct);
         }
 
         Close();

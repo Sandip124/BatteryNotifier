@@ -102,14 +102,14 @@ public sealed class NotificationDisplayService
         {
             // Low range alerts → amber/red, high range alerts → green
             if (alert.UpperBound <= 50)
-                return level <= 10 ? Color.Parse("#D32F2F") : Color.Parse("#F57A00");
+                return level <= 10 ? Color.Parse("#EF5350") : Color.Parse("#FFA726");
             if (alert.LowerBound >= 50)
-                return Color.Parse("#388E3C");
+                return Color.Parse("#66BB6A");
         }
 
-        if (level <= 10) return Color.Parse("#D32F2F");
-        if (level <= 30) return Color.Parse("#F57A00");
-        return Color.Parse("#388E3C");
+        if (level <= 10) return Color.Parse("#EF5350");
+        if (level <= 30) return Color.Parse("#FFA726");
+        return Color.Parse("#66BB6A");
     }
 
     private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
