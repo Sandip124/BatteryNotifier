@@ -14,6 +14,8 @@ using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using Serilog;
+using Velopack;
+using Velopack.Sources;
 
 namespace BatteryNotifier.Avalonia.Services;
 
@@ -316,7 +318,7 @@ internal sealed class TrayIconService : IDisposable
         {
             var safeTag = SanitizeExternalText(e.Release.TagName);
             _displayService?.ShowSimpleNotification("Update Available",
-                $"BatteryNotifier {safeTag} is available. Use tray menu to download.");
+                $"BatteryNotifier {safeTag} is available. Click 'Check for Updates' to install.");
         });
     }
 
@@ -341,42 +343,55 @@ internal sealed class TrayIconService : IDisposable
     {
         try
         {
-            // Show "Checking..." tooltip while the request is in flight
             if (_trayIcon != null)
                 _trayIcon.ToolTipText = "BatteryNotifier — Checking for updates...";
 
-            var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+            var mgr = new UpdateManager(new GithubSource(Constants.SourceRepositoryUrl, null, false));
 
-            switch (result.Status)
+            if (!mgr.IsInstalled)
             {
-                case CheckStatus.UpdateAvailable when result.Release != null:
+                // Portable/dev mode — fall back to opening GitHub
+                var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+                if (result.Status == CheckStatus.UpdateAvailable && result.Release != null)
                     OpenUrl(result.Release.HtmlUrl);
-                    break;
-
-                case CheckStatus.UpToDate:
+                else if (result.Status == CheckStatus.UpToDate)
                     _displayService?.ShowSimpleNotification("No Updates",
                         $"You're running the latest version ({Constants.ApplicationVersion}).");
-                    break;
-
-                case CheckStatus.AlreadyChecking:
-                    // User clicked again while a check is running — do nothing
-                    break;
-
-                case CheckStatus.Failed:
+                else if (result.Status == CheckStatus.Failed)
                     _displayService?.ShowSimpleNotification("Update Check Failed",
                         "Could not reach GitHub. Check your internet connection.");
-                    break;
+                return;
             }
+
+            var updateInfo = await mgr.CheckForUpdatesAsync();
+            if (updateInfo == null)
+            {
+                _displayService?.ShowSimpleNotification("No Updates",
+                    $"You're running the latest version ({Constants.ApplicationVersion}).");
+                return;
+            }
+
+            _displayService?.ShowSimpleNotification("Downloading Update",
+                $"Downloading BatteryNotifier {updateInfo.TargetFullRelease.Version}...");
+
+            await mgr.DownloadUpdatesAsync(updateInfo);
+
+            _displayService?.ShowSimpleNotification("Update Ready",
+                $"BatteryNotifier {updateInfo.TargetFullRelease.Version} downloaded. Restarting...");
+
+            // Brief delay so user can see the notification
+            await Task.Delay(2000);
+
+            mgr.ApplyUpdatesAndRestart(updateInfo.TargetFullRelease);
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Manual update check failed");
+            _logger.Error(ex, "Update check/download failed");
             _displayService?.ShowSimpleNotification("Update Check Failed",
-                "An unexpected error occurred.");
+                "An unexpected error occurred. Check your internet connection.");
         }
         finally
         {
-            // Restore normal tooltip
             UpdateToolTip();
         }
     }
