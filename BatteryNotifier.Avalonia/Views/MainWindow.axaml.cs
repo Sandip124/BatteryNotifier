@@ -27,6 +27,12 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        // Linux WMs (GNOME, KDE) ignore ExtendClientAreaToDecorationsHint and draw
+        // their own title bar with min/max/close buttons. Remove decorations entirely
+        // on Linux so the app renders the same chromeless look as Windows/macOS.
+        if (OperatingSystem.IsLinux())
+            SystemDecorations = SystemDecorations.None;
+
         InitializeComponent();
     }
 

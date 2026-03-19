@@ -51,7 +51,7 @@ namespace BatteryNotifier.Core.Managers
                 if (_isPlaying) return;
                 _isPlaying = true;
 
-                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.CancelAsync();
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = new CancellationTokenSource();
                 token = _cancellationTokenSource.Token;
@@ -137,7 +137,7 @@ namespace BatteryNotifier.Core.Managers
             else if (OperatingSystem.IsWindows())
                 PlayWithNAudio(source, loop, durationMs, token);
 #else
-            else if (OperatingSystem.IsWindows())
+            else if (OperatingSystem.IsLinux())
                 PlayWithSoundFlow(source, loop, durationMs, token);
 #endif
             else

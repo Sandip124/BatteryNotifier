@@ -33,13 +33,12 @@ jobs:
           - os: windows-latest
             rid: win-arm64
             artifact: BatteryNotifier-win-arm64
-          # Linux builds disabled for now
-          # - os: ubuntu-latest
-          #   rid: linux-x64
-          #   artifact: BatteryNotifier-linux-x64
-          # - os: ubuntu-latest
-          #   rid: linux-arm64
-          #   artifact: BatteryNotifier-linux-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: BatteryNotifier-linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+            artifact: BatteryNotifier-linux-arm64
 
     runs-on: ${{ matrix.os }}
 

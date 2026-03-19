@@ -26,10 +26,20 @@ public partial class ScreenFlashOverlay : Window
     {
         base.OnOpened(e);
 
-        if (OperatingSystem.IsMacOS())
-            ConfigureMacOverlay();
-        else if (OperatingSystem.IsWindows())
-            ConfigureWindowsOverlay();
+        try
+        {
+            if (OperatingSystem.IsMacOS())
+                ConfigureMacOverlay();
+            else if (OperatingSystem.IsWindows())
+                ConfigureWindowsOverlay();
+            else if (OperatingSystem.IsLinux())
+                ConfigureLinuxOverlay();
+        }
+        catch (DllNotFoundException)
+        {
+            // Platform library not available — overlay still works, just without
+            // click-through or advanced window level configuration
+        }
     }
 
     public async Task FlashAsync(Color glowColor, int durationMs = Core.Constants.NotificationDurationMs)
@@ -181,5 +191,41 @@ public partial class ScreenFlashOverlay : Window
 
         // Exclude from screen capture (WDA_EXCLUDEFROMCAPTURE = 0x11)
         SetWindowDisplayAffinity(handle, 0x11);
+    }
+
+    // ── Linux: click-through via X11 XShape extension ──
+
+    [DllImport("libX11.so.6")]
+    private static extern IntPtr XOpenDisplay(IntPtr display);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XCloseDisplay(IntPtr display);
+
+    [DllImport("libXext.so.6")]
+    private static extern void XShapeCombineRectangles(
+        IntPtr display, IntPtr window, int destKind, int xOff, int yOff,
+        IntPtr rectangles, int nRects, int op, int ordering);
+
+    private const int ShapeInput = 2;   // ShapeInput — input region (click-through)
+    private const int ShapeSet = 0;     // ShapeSet — replace region
+
+    private void ConfigureLinuxOverlay()
+    {
+        var xWindow = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        if (xWindow == IntPtr.Zero) return;
+
+        var display = XOpenDisplay(IntPtr.Zero);
+        if (display == IntPtr.Zero) return;
+
+        try
+        {
+            // Set an empty input shape — all mouse events pass through
+            XShapeCombineRectangles(display, xWindow, ShapeInput,
+                0, 0, IntPtr.Zero, 0, ShapeSet, 0);
+        }
+        finally
+        {
+            XCloseDisplay(display);
+        }
     }
 }
