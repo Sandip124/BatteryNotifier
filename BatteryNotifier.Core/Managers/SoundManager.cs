@@ -138,7 +138,7 @@ namespace BatteryNotifier.Core.Managers
                 PlayWithNAudio(source, loop, durationMs, token);
 #else
             else if (OperatingSystem.IsLinux())
-                PlayWithSoundFlow(source, loop, durationMs, token);
+                PlayOnLinux(source, loop, durationMs, token);
 #endif
             else
                 _logger.Warning("Unsupported platform for sound playback");
@@ -268,6 +268,45 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 #else
+        // ── Linux: try SoundFlow, fall back to subprocess ──────────────────────────
+
+        private void PlayOnLinux(string source, bool loop, int durationMs, CancellationToken token)
+        {
+            // Try SoundFlow (MiniAudio) first — best quality, supports looping
+            if (!_sfFailed)
+            {
+                try
+                {
+                    PlayWithSoundFlow(source, loop, durationMs, token);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warning(ex, "SoundFlow failed on Linux, falling back to subprocess");
+                }
+            }
+
+            // Fallback: subprocess playback via paplay (PulseAudio), pw-play (PipeWire), or aplay (ALSA)
+            var command = FindLinuxAudioCommand();
+            if (command != null)
+                PlayWithSubprocess(command, source, loop, durationMs, token);
+            else
+                _logger.Warning("No audio playback command found (tried paplay, pw-play, aplay)");
+        }
+
+        private static string? FindLinuxAudioCommand()
+        {
+            // Prefer PulseAudio (most common), then PipeWire CLI, then raw ALSA
+            string[] candidates = ["paplay", "pw-play", "aplay"];
+            foreach (var cmd in candidates)
+            {
+                var resolved = Constants.ResolveCommand(cmd);
+                if (resolved != cmd || File.Exists(resolved))
+                    return cmd;
+            }
+            return null;
+        }
+
         // ── Non-Windows: SoundFlow (MiniAudio) ──────────────────────────
 
         private static MiniAudioEngine? _sfEngine;
