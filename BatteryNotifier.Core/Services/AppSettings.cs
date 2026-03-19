@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
+using Serilog;
 
 namespace BatteryNotifier.Core.Services;
 
@@ -8,6 +10,8 @@ public sealed class AppSettings
 {
     private static readonly Lazy<AppSettings> _instance = new(() => new AppSettings());
     public static AppSettings Instance => _instance.Value;
+
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("AppSettings");
 
     private const string SettingsFileName = "appsettings.json";
     private readonly Lock _saveLock = new();
@@ -71,7 +75,10 @@ public sealed class AppSettings
         {
             if (!File.Exists(SettingsFilePath))
             {
-                Save(); // Create default settings
+                Logger.Information("No settings file found — creating defaults at {Path}", SettingsFilePath);
+                Alerts = CreateDefaultAlerts();
+                SettingsVersion = 2;
+                Save();
                 return;
             }
 
@@ -121,6 +128,8 @@ public sealed class AppSettings
                 {
                     alert.Sound = SanitizeSoundPath(alert.Sound);
                 }
+
+                Logger.Information("Settings loaded: v{Version}, {AlertCount} alerts", SettingsVersion, Alerts.Count);
             }
 
             // Re-save to encrypt if it was plaintext (migration)
@@ -129,12 +138,14 @@ public sealed class AppSettings
                 Save();
             }
         }
-        catch (CryptographicException)
+        catch (CryptographicException ex)
         {
+            Logger.Warning(ex, "Settings decryption failed (tampered or corrupt) — resetting to defaults. Path: {Path}", SettingsFilePath);
             Reset();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.Error(ex, "Failed to load settings — resetting to defaults. Path: {Path}", SettingsFilePath);
             Reset();
         }
     }
