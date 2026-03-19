@@ -346,7 +346,7 @@ jobs:
 
     steps:
       - name: Submit to winget
-        uses: vedantmgoyal9/winget-releaser@main
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
         with:
           identifier: Sandip124.BatteryNotifier
           installers-regex: 'Setup-win-x64\.exe$'
@@ -361,7 +361,7 @@ jobs:
 
     steps:
       - name: Update Homebrew formula
-        uses: Justintime50/homebrew-releaser@v1
+        uses: Justintime50/homebrew-releaser@8723315045b3b879065d4ce3e8ff143e6b958529 # v1
         with:
           homebrew_owner: Sandip124
           homebrew_tap: homebrew-tap
