@@ -51,6 +51,12 @@ public sealed class BatteryHealthInfo
     {
         get
         {
+            // All metrics unavailable — can't make any assessment
+            if (HealthStatus == MetricStatus.Unavailable
+                && CycleStatus == MetricStatus.Unavailable
+                && TemperatureStatus == MetricStatus.Unavailable)
+                return "Battery health data is not available on this device.";
+
             // Return recommendation based on worst metric
             if (HealthStatus == MetricStatus.Poor)
                 return "Battery health is degraded. Consider replacing the battery.";
@@ -62,7 +68,11 @@ public sealed class BatteryHealthInfo
                 return "Battery is aging normally. Monitor for changes.";
             if (TemperatureStatus == MetricStatus.Fair)
                 return "Temperature slightly elevated. Ensure good ventilation.";
-            return "Battery is in good condition.";
+            if (HealthStatus == MetricStatus.Good)
+                return "Battery is in good condition.";
+
+            // Some metrics available but health itself unknown
+            return "Limited battery data available. Some metrics could not be read.";
         }
     }
 }
