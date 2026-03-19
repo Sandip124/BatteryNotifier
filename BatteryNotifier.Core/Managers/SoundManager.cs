@@ -185,8 +185,9 @@ namespace BatteryNotifier.Core.Managers
                     }
                 }
                 catch (OperationCanceledException) { throw; }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.Warning(ex, "Subprocess sound playback failed ({Command})", command);
                     return;
                 }
                 finally
@@ -286,25 +287,127 @@ namespace BatteryNotifier.Core.Managers
                 }
             }
 
-            // Fallback: subprocess playback via paplay (PulseAudio), pw-play (PipeWire), or aplay (ALSA)
-            var command = FindLinuxAudioCommand();
+            var (command, extraArgs) = FindLinuxAudioCommand(source);
             if (command != null)
-                PlayWithSubprocess(command, source, loop, durationMs, token);
+                PlayWithLinuxSubprocess(command, extraArgs, source, loop, durationMs, token);
             else
-                _logger.Warning("No audio playback command found (tried paplay, pw-play, aplay)");
+                _logger.Warning("No audio playback command found on Linux (tried paplay, pw-play, aplay, mpv, ffplay)");
         }
 
-        private static string? FindLinuxAudioCommand()
+        // Cached available commands — detected once, reused for all playback
+        private static (string cmd, string[]? args)? _linuxWavPlayer;
+        private static (string cmd, string[]? args)? _linuxCompressedPlayer;
+        private static bool _linuxAudioScanned;
+
+        private static (string? command, string[]? extraArgs) FindLinuxAudioCommand(string source)
         {
-            // Prefer PulseAudio (most common), then PipeWire CLI, then raw ALSA
-            string[] candidates = ["paplay", "pw-play", "aplay"];
-            foreach (var cmd in candidates)
+            if (!_linuxAudioScanned)
+                ScanLinuxAudioCommands();
+
+            var ext = Path.GetExtension(source).ToLowerInvariant();
+            var needsDecoder = ext is ".mp3" or ".m4a" or ".aac" or ".ogg" or ".flac" or ".wma";
+
+            // For compressed formats, prefer a universal player (mpv/ffplay).
+            // For WAV, prefer lightweight native tools (paplay/pw-play/aplay).
+            // Fall back across categories if the preferred isn't available.
+            if (needsDecoder)
+                return _linuxCompressedPlayer ?? _linuxWavPlayer ?? (null, null);
+
+            return _linuxWavPlayer ?? _linuxCompressedPlayer ?? (null, null);
+        }
+
+        private static void ScanLinuxAudioCommands()
+        {
+            _linuxAudioScanned = true;
+
+            // WAV-capable (lightweight, pre-installed on most desktops)
+            (string cmd, string[]? args)[] wavCandidates =
+            [
+                ("paplay", null),
+                ("pw-play", null),
+                ("aplay", ["-q"]),
+            ];
+
+            foreach (var entry in wavCandidates)
             {
-                var resolved = Constants.ResolveCommand(cmd);
-                if (resolved != cmd || File.Exists(resolved))
-                    return cmd;
+                if (Path.IsPathRooted(Constants.ResolveCommand(entry.cmd)))
+                {
+                    _linuxWavPlayer = entry;
+                    Log.Debug("Linux WAV player: {Command}", entry.cmd);
+                    break;
+                }
             }
-            return null;
+
+            // Universal (handles MP3, M4A, OGG, FLAC, WAV — everything)
+            (string cmd, string[]? args)[] universalCandidates =
+            [
+                ("mpv", ["--no-video", "--really-quiet"]),
+                ("ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet"]),
+            ];
+
+            foreach (var entry in universalCandidates)
+            {
+                if (Path.IsPathRooted(Constants.ResolveCommand(entry.cmd)))
+                {
+                    _linuxCompressedPlayer = entry;
+                    Log.Debug("Linux universal player: {Command}", entry.cmd);
+                    break;
+                }
+            }
+        }
+
+        private void PlayWithLinuxSubprocess(string command, string[]? extraArgs, string source,
+            bool loop, int durationMs, CancellationToken token)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
+
+            do
+            {
+                token.ThrowIfCancellationRequested();
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = Constants.ResolveCommand(command),
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                };
+
+                if (extraArgs != null)
+                {
+                    foreach (var arg in extraArgs)
+                        psi.ArgumentList.Add(arg);
+                }
+                psi.ArgumentList.Add(source);
+
+                using var process = new Process { StartInfo = psi };
+                _currentProcess = process;
+
+                try
+                {
+                    process.Start();
+
+                    while (!process.WaitForExit(200))
+                    {
+                        if (token.IsCancellationRequested || DateTime.UtcNow >= deadline)
+                        {
+                            KillProcess(process);
+                            return;
+                        }
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    _logger.Warning(ex, "Linux subprocess sound playback failed ({Command})", command);
+                    return;
+                }
+                finally
+                {
+                    _currentProcess = null;
+                }
+            } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
         }
 
         // ── Non-Windows: SoundFlow (MiniAudio) ──────────────────────────

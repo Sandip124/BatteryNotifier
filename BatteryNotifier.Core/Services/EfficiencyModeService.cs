@@ -8,6 +8,7 @@ namespace BatteryNotifier.Core.Services;
 /// Manages OS-level power efficiency hints for the app.
 /// - Windows: EcoQoS via SetProcessInformation (efficiency cores + lower frequency)
 /// - macOS: App Nap prevention via NSProcessInfo activity assertion (keeps timers on time)
+/// - Linux: nice value for CPU scheduling priority
 ///
 /// Enable when the window is hidden (tray-only). Disable when visible or during notifications.
 /// </summary>
@@ -25,14 +26,14 @@ public sealed class EfficiencyModeService : IDisposable
     /// <summary>Number of active "normal mode" requests. Efficiency mode only activates when zero.</summary>
     private int _normalModeRefCount;
 
-    // macOS: retained activity assertion handle (prevents App Nap)
+    // macOS: retained activity assertion — prevents App Nap from throttling timers.
+    // Must be prevented from GC via CFRetain (raw IntPtr is not tracked by .NET GC).
     private IntPtr _macActivityAssertion = IntPtr.Zero;
 
     private EfficiencyModeService()
     {
         // macOS: immediately claim an activity assertion to prevent App Nap
-        // from throttling our 1s battery polling timer. This is held for the
-        // lifetime of the app — App Nap would otherwise delay timers by 10s+.
+        // from throttling our 1s battery polling timer. Held for app lifetime.
         if (OperatingSystem.IsMacOS())
             AcquireMacActivityAssertion();
     }
@@ -48,12 +49,9 @@ public sealed class EfficiencyModeService : IDisposable
             if (_disposed || _isEfficient) return;
             if (_normalModeRefCount > 0) return;
             _isEfficient = true;
-        }
 
-        if (OperatingSystem.IsWindows())
-            SetWindowsEcoQoS(true);
-        else if (OperatingSystem.IsLinux())
-            SetLinuxNice(true);
+            ApplyPlatformEfficiency(true);
+        }
 
         Logger.Debug("Efficiency mode enabled");
     }
@@ -67,12 +65,9 @@ public sealed class EfficiencyModeService : IDisposable
         {
             if (_disposed || !_isEfficient) return;
             _isEfficient = false;
-        }
 
-        if (OperatingSystem.IsWindows())
-            SetWindowsEcoQoS(false);
-        else if (OperatingSystem.IsLinux())
-            SetLinuxNice(false);
+            ApplyPlatformEfficiency(false);
+        }
 
         Logger.Debug("Efficiency mode disabled");
     }
@@ -86,9 +81,12 @@ public sealed class EfficiencyModeService : IDisposable
         lock (_lock)
         {
             _normalModeRefCount++;
+            if (_isEfficient)
+            {
+                _isEfficient = false;
+                ApplyPlatformEfficiency(false);
+            }
         }
-
-        DisableEfficiency();
     }
 
     /// <summary>
@@ -102,6 +100,15 @@ public sealed class EfficiencyModeService : IDisposable
             if (_normalModeRefCount > 0)
                 _normalModeRefCount--;
         }
+    }
+
+    /// <summary>Must be called inside _lock.</summary>
+    private static void ApplyPlatformEfficiency(bool enable)
+    {
+        if (OperatingSystem.IsWindows())
+            SetWindowsEcoQoS(enable);
+        else if (OperatingSystem.IsLinux())
+            SetLinuxNice(enable);
     }
 
     // ── Windows: EcoQoS via SetProcessInformation ──
@@ -170,7 +177,13 @@ public sealed class EfficiencyModeService : IDisposable
     [DllImport("/usr/lib/libobjc.dylib", EntryPoint = "objc_msgSend")]
     private static extern void objc_msgSend_IntPtr(IntPtr receiver, IntPtr selector, IntPtr arg);
 
-    // CFString helpers for creating the reason string
+    // CFRetain/CFRelease to prevent ObjC object from being collected
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")]
+    private static extern IntPtr CFRetain(IntPtr cf);
+
+    [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")]
+    private static extern void CFRelease(IntPtr cf);
+
     [DllImport("/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation")]
     private static extern IntPtr CFStringCreateWithCString(IntPtr allocator, string cStr, uint encoding);
 
@@ -184,24 +197,23 @@ public sealed class EfficiencyModeService : IDisposable
     {
         try
         {
-            // [NSProcessInfo processInfo]
             var nsProcessInfoClass = objc_getClass("NSProcessInfo");
             var processInfo = objc_msgSend(nsProcessInfoClass, sel_registerName("processInfo"));
             if (processInfo == IntPtr.Zero) return;
 
-            // Create NSString reason
             var reason = CFStringCreateWithCString(IntPtr.Zero,
                 "Battery monitoring requires timely timer firing", kCFStringEncodingUTF8);
             if (reason == IntPtr.Zero) return;
 
-            // [processInfo beginActivityWithOptions:reason:]
             var activity = objc_msgSend_ulong_IntPtr(processInfo,
                 sel_registerName("beginActivityWithOptions:reason:"),
                 NSActivityUserInitiatedAllowingIdleSystemSleep, reason);
 
             if (activity != IntPtr.Zero)
             {
-                // Prevent GC from collecting the activity token — must stay alive
+                // CFRetain prevents the ObjC runtime from releasing the activity object.
+                // Without this, ARC/autorelease pool could release it and App Nap resumes.
+                CFRetain(activity);
                 _macActivityAssertion = activity;
                 Logger.Debug("macOS App Nap prevention assertion acquired");
             }
@@ -214,44 +226,53 @@ public sealed class EfficiencyModeService : IDisposable
 
     private void ReleaseMacActivityAssertion()
     {
-        if (_macActivityAssertion == IntPtr.Zero) return;
-
-        try
+        lock (_lock)
         {
-            var nsProcessInfoClass = objc_getClass("NSProcessInfo");
-            var processInfo = objc_msgSend(nsProcessInfoClass, sel_registerName("processInfo"));
-            if (processInfo == IntPtr.Zero) return;
-
-            // [processInfo endActivity:_macActivityAssertion]
-            objc_msgSend_IntPtr(processInfo, sel_registerName("endActivity:"), _macActivityAssertion);
+            if (_macActivityAssertion == IntPtr.Zero) return;
+            var assertion = _macActivityAssertion;
             _macActivityAssertion = IntPtr.Zero;
-            Logger.Debug("macOS App Nap prevention assertion released");
-        }
-        catch (Exception ex)
-        {
-            Logger.Debug(ex, "Failed to release macOS activity assertion");
+
+            try
+            {
+                var nsProcessInfoClass = objc_getClass("NSProcessInfo");
+                var processInfo = objc_msgSend(nsProcessInfoClass, sel_registerName("processInfo"));
+                if (processInfo != IntPtr.Zero)
+                    objc_msgSend_IntPtr(processInfo, sel_registerName("endActivity:"), assertion);
+
+                CFRelease(assertion);
+                Logger.Debug("macOS App Nap prevention assertion released");
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug(ex, "Failed to release macOS activity assertion");
+            }
         }
     }
 
     // ── Linux: nice (CPU scheduling priority) ──
+    // Unprivileged users can increase nice (lower priority) but cannot decrease it back.
+    // We only increase nice when entering efficiency mode and accept it's one-way.
+    // On dispose, we don't attempt to reset (would fail without CAP_SYS_NICE).
 
-    // setpriority(PRIO_PROCESS, 0, nice_value) — 0 = current process
     [DllImport("libc", EntryPoint = "setpriority")]
     private static extern int setpriority(int which, int who, int prio);
 
     private const int PRIO_PROCESS = 0;
-    private const int NiceEfficient = 15;  // Low priority but not starved
-    private const int NiceNormal = 0;
+    private const int NiceEfficient = 10; // Moderate deprioritization (unprivileged max is 19)
 
-    private static void SetLinuxNice(bool efficient)
+    private static void SetLinuxNice(bool enable)
     {
+        if (!enable) return; // Cannot lower nice value without privileges — skip
+
         try
         {
-            setpriority(PRIO_PROCESS, 0, efficient ? NiceEfficient : NiceNormal);
+            var result = setpriority(PRIO_PROCESS, 0, NiceEfficient);
+            if (result != 0)
+                Logger.Debug("setpriority returned {Result} — nice value may not have changed", result);
         }
         catch (Exception ex)
         {
-            Logger.Debug(ex, "Failed to set Linux nice value");
+            Logger.Warning(ex, "Failed to set Linux nice value");
         }
     }
 
@@ -263,13 +284,8 @@ public sealed class EfficiencyModeService : IDisposable
             _disposed = true;
         }
 
-        if (_isEfficient)
-        {
-            if (OperatingSystem.IsWindows())
-                SetWindowsEcoQoS(false);
-            else if (OperatingSystem.IsLinux())
-                SetLinuxNice(false);
-        }
+        if (_isEfficient && OperatingSystem.IsWindows())
+            SetWindowsEcoQoS(false);
 
         if (OperatingSystem.IsMacOS())
             ReleaseMacActivityAssertion();
