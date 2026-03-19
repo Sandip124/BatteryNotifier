@@ -195,6 +195,9 @@ public sealed class NotificationDisplayService
 
         // Clear all flash overlays
         ClearOverlays();
+
+        // Release efficiency mode hold
+        EfficiencyModeService.Instance.ReleaseNormalMode();
     }
 
     private void DismissAllCards()

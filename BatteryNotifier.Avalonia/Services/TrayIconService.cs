@@ -181,6 +181,9 @@ internal sealed class TrayIconService : IDisposable
             return;
         }
 
+        // Temporarily exit efficiency mode for notification delivery
+        EfficiencyModeService.Instance.AcquireNormalMode();
+
         // Show Avalonia-native notification (screen flash + card)
         _logger.Information("Delivering notification: {Tag} — {Message}", notification.Tag, notification.Message);
         var alert = !string.IsNullOrEmpty(notification.Tag)
@@ -269,6 +272,7 @@ internal sealed class TrayIconService : IDisposable
 
         desktop.MainWindow?.Hide();
         MacOSDockIconHelper.HideDockIcon();
+        EfficiencyModeService.Instance.EnableEfficiency();
     }
 
     private static void ShowMainWindow()
@@ -278,6 +282,8 @@ internal sealed class TrayIconService : IDisposable
 
         if (desktop.MainWindow is not MainWindow mainWindow)
             return;
+
+        EfficiencyModeService.Instance.DisableEfficiency();
 
         // Show dock icon so CMD+Tab works while window is visible
         MacOSDockIconHelper.ShowDockIcon();

@@ -89,17 +89,22 @@ public class App : Application
             desktop.MainWindow.Hide();
             MacOSDockIconHelper.HideDockIcon();
 
+            // Start in efficiency mode since window is hidden
+            EfficiencyModeService.Instance.EnableEfficiency();
+
             // Hide to tray on window close (not actually close)
             desktop.MainWindow.Closing += (_, args) =>
             {
                 args.Cancel = true;
                 desktop.MainWindow.Hide();
                 MacOSDockIconHelper.HideDockIcon();
+                EfficiencyModeService.Instance.EnableEfficiency();
             };
 
             desktop.Exit += (_, _) =>
             {
                 _trayIconService?.Dispose();
+                EfficiencyModeService.Instance.Dispose();
                 settings.Save();
             };
         }
