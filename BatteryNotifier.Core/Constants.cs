@@ -1,12 +1,12 @@
-using System.IO;
 using System.Reflection;
 
 namespace BatteryNotifier.Core;
 
 public static class Constants
 {
-    public const string SourceRepositoryUrl = "https://github.com/Sandip124/BatteryNotifier";
-    public const string ReleaseUrl = "https://github.com/Sandip124/BatteryNotifier/releases/latest";
+    internal const string GitHubOwner = "Sandip124";
+    internal const string GitHubRepo = "BatteryNotifier";
+    public static readonly string SourceRepositoryUrl = $"https://github.com/{GitHubOwner}/{GitHubRepo}";
 
     /// <summary>
     /// Application version derived from the assembly's informational version attribute,
@@ -43,6 +43,15 @@ public static class Constants
     public const int NotificationDurationMs = 30000;
 
     public const int DefaultNotificationTimeout = 3000;
+    /// <summary>Timeout for quick subprocess queries (battery info, UID lookup).</summary>
+    public const int ProcessTimeoutShortMs = 3000;
+
+    /// <summary>Timeout for heavier subprocess queries (health check, display profiler).</summary>
+    public const int ProcessTimeoutMs = 5000;
+
+    /// <summary>Max characters to read from subprocess stdout to prevent OOM.</summary>
+    public const int MaxProcessOutputLength = 16384;
+
     public const string LowBatteryTag = "LowBattery";
     public const string FullBatteryTag = "FullBattery";
 

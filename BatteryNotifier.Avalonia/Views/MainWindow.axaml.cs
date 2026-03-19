@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -151,15 +152,7 @@ public partial class MainWindow : Window
             var saved = new PixelPoint(settings.WindowPositionX.Value, settings.WindowPositionY.Value);
 
             // Validate the saved position is still on a visible screen
-            var isOnScreen = false;
-            foreach (var screen in Screens.All)
-            {
-                if (screen.WorkingArea.Contains(saved))
-                {
-                    isOnScreen = true;
-                    break;
-                }
-            }
+            var isOnScreen = Screens.All.Any(screen => screen.WorkingArea.Contains(saved));
 
             if (isOnScreen)
                 Position = saved;

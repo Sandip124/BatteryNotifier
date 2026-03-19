@@ -20,8 +20,8 @@ public class NotificationServiceTests
     public void PublishNotification_FirstNotification_IsEmitted()
     {
         var svc = CreateService();
-        NotificationMessage? received = null;
-        EventHandler<NotificationMessage> handler = (_, msg) => received = msg;
+        NotificationMessageEventArgs? received = null;
+        EventHandler<NotificationMessageEventArgs> handler = (_, msg) => received = msg;
         svc.NotificationReceived += handler;
 
         try
@@ -43,7 +43,7 @@ public class NotificationServiceTests
     {
         var svc = CreateService();
         int receivedCount = 0;
-        EventHandler<NotificationMessage> handler = (_, _) => receivedCount++;
+        EventHandler<NotificationMessageEventArgs> handler = (_, _) => receivedCount++;
         svc.NotificationReceived += handler;
 
         try
@@ -66,7 +66,7 @@ public class NotificationServiceTests
     {
         var svc = CreateService();
         int receivedCount = 0;
-        EventHandler<NotificationMessage> handler = (_, _) => receivedCount++;
+        EventHandler<NotificationMessageEventArgs> handler = (_, _) => receivedCount++;
         svc.NotificationReceived += handler;
 
         try
@@ -88,7 +88,7 @@ public class NotificationServiceTests
         var svc = CreateService();
 
         // First notification to set _lastNotificationTime
-        svc.PublishNotification(new NotificationMessage
+        svc.PublishNotification(new NotificationMessageEventArgs
         {
             Message = "Initial",
             Type = NotificationType.Global,
@@ -98,7 +98,7 @@ public class NotificationServiceTests
         // Now set throttle high so next notifications are pending
         svc.SetThrottleInterval(TimeSpan.FromMinutes(10));
 
-        svc.PublishNotification(new NotificationMessage
+        svc.PublishNotification(new NotificationMessageEventArgs
         {
             Message = "Low priority",
             Type = NotificationType.Global,
@@ -106,7 +106,7 @@ public class NotificationServiceTests
             Priority = NotificationPriority.Low
         });
 
-        svc.PublishNotification(new NotificationMessage
+        svc.PublishNotification(new NotificationMessageEventArgs
         {
             Message = "High priority",
             Type = NotificationType.Global,
@@ -114,8 +114,8 @@ public class NotificationServiceTests
             Priority = NotificationPriority.High
         });
 
-        NotificationMessage? flushed = null;
-        EventHandler<NotificationMessage> handler = (_, msg) => flushed = msg;
+        NotificationMessageEventArgs? flushed = null;
+        EventHandler<NotificationMessageEventArgs> handler = (_, msg) => flushed = msg;
         svc.NotificationReceived += handler;
 
         try
@@ -147,7 +147,7 @@ public class NotificationServiceTests
     {
         var svc = CreateService();
         int receivedCount = 0;
-        EventHandler<NotificationMessage> handler = (_, _) => receivedCount++;
+        EventHandler<NotificationMessageEventArgs> handler = (_, _) => receivedCount++;
         svc.NotificationReceived += handler;
 
         try
@@ -174,7 +174,7 @@ public class NotificationServiceTests
     {
         var svc = CreateService();
         int receivedCount = 0;
-        EventHandler<NotificationMessage> handler = (_, _) => receivedCount++;
+        EventHandler<NotificationMessageEventArgs> handler = (_, _) => receivedCount++;
         svc.NotificationReceived += handler;
 
         try

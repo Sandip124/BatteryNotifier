@@ -38,7 +38,7 @@ internal class GlassBadge : Control
     private static readonly RelativePoint RelTop = new(0, 0, RelativeUnit.Relative);
     private static readonly RelativePoint RelBottom = new(0, 1, RelativeUnit.Relative);
 
-    public override void Render(DrawingContext ctx)
+    public override void Render(DrawingContext context)
     {
         var w = Bounds.Width;
         var h = Bounds.Height;
@@ -54,10 +54,10 @@ internal class GlassBadge : Control
 
         var bodyRect = new Rect(0, 0, bodyW, h);
 
-        DrawGlassBody(ctx, bodyRect, cornerR, color);
-        DrawReflections(ctx, bodyRect, cornerR);
-        DrawTerminalCap(ctx, bodyW + termGap, h, termW);
-        DrawText(ctx, bodyRect);
+        DrawGlassBody(context, bodyRect, cornerR, color);
+        DrawReflections(context, bodyRect, cornerR);
+        DrawTerminalCap(context, bodyW + termGap, h, termW);
+        DrawText(context, bodyRect);
     }
 
     // ── Glass body with metallic edge ──

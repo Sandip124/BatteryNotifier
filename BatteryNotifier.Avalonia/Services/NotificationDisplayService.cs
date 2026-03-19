@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -43,7 +42,7 @@ public sealed class NotificationDisplayService
         Current = this;
     }
 
-    public void ShowNotification(NotificationMessage notification, BatteryAlert? alert,
+    public void ShowNotification(NotificationMessageEventArgs notification, BatteryAlert? alert,
         bool playSound = false)
     {
         if (!Dispatcher.UIThread.CheckAccess())
@@ -108,9 +107,9 @@ public sealed class NotificationDisplayService
                 return Color.Parse("#388E3C");
         }
 
-        return level <= 10 ? Color.Parse("#D32F2F")
-             : level <= 30 ? Color.Parse("#F57A00")
-             : Color.Parse("#388E3C");
+        if (level <= 10) return Color.Parse("#D32F2F");
+        if (level <= 30) return Color.Parse("#F57A00");
+        return Color.Parse("#388E3C");
     }
 
     private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
@@ -188,7 +187,7 @@ public sealed class NotificationDisplayService
 
         // Remove and close the card
         lock (_cardsLock) { _activeCards.Remove(card); }
-        try { card.Close(); } catch { }
+        card.Close();
         PositionCards();
 
         // Stop sound
@@ -209,7 +208,7 @@ public sealed class NotificationDisplayService
 
         foreach (var card in cards)
         {
-            try { card.Close(); } catch { }
+            card.Close();
         }
     }
 
@@ -235,7 +234,7 @@ public sealed class NotificationDisplayService
 
         foreach (var card in cards)
         {
-            try { card.Close(); } catch { }
+            card.Close();
         }
 
         // Stop sound + clear overlays
@@ -254,7 +253,7 @@ public sealed class NotificationDisplayService
 
         foreach (var overlay in overlays)
         {
-            try { overlay.StopFlash(); } catch { }
+            overlay.StopFlash();
         }
     }
 

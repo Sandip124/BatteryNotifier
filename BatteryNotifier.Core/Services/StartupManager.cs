@@ -45,7 +45,7 @@ public static class StartupManager
             var oldVbsFile = Path.Combine(startupDir, $"{AppName}.vbs");
             if (File.Exists(oldVbsFile))
             {
-                try { File.Delete(oldVbsFile); } catch { }
+                File.Delete(oldVbsFile);
             }
 
             if (enabled)
@@ -159,10 +159,8 @@ public static class StartupManager
                 process.StartInfo.ArgumentList.Add(arg);
 
             process.Start();
-            if (!process.WaitForExit(5000))
-            {
-                try { process.Kill(); } catch { }
-            }
+            if (!process.WaitForExit(Constants.ProcessTimeoutMs) && !process.HasExited)
+                process.Kill();
         }
         catch (Exception ex)
         {
@@ -187,10 +185,8 @@ public static class StartupManager
             };
             process.Start();
             var uid = process.StandardOutput.ReadToEnd().Trim();
-            if (!process.WaitForExit(3000))
-            {
-                try { process.Kill(); } catch { }
-            }
+            if (!process.WaitForExit(Constants.ProcessTimeoutShortMs) && !process.HasExited)
+                process.Kill();
             return uid;
         }
         catch

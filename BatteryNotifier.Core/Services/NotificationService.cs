@@ -12,15 +12,15 @@ public sealed class NotificationService : IDisposable
 
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("NotificationService");
 
-    private readonly PriorityQueue<NotificationMessage, int> _notificationQueue;
+    private readonly PriorityQueue<NotificationMessageEventArgs, int> _notificationQueue;
     private readonly object _queueLock = new();
 
     private readonly Dictionary<string, NotificationTracker> _trackers =
         new Dictionary<string, NotificationTracker>(StringComparer.OrdinalIgnoreCase);
     private readonly object _trackersLock = new object();
 
-    private readonly Dictionary<string, NotificationMessage> _pendingNotifications =
-        new Dictionary<string, NotificationMessage>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, NotificationMessageEventArgs> _pendingNotifications =
+        new Dictionary<string, NotificationMessageEventArgs>(StringComparer.OrdinalIgnoreCase);
     private readonly object _pendingLock = new object();
 
     private Timer? _flushTimer;
@@ -50,16 +50,16 @@ public sealed class NotificationService : IDisposable
     // the tracker auto-resets so the user gets a fresh reminder cycle.
     private static readonly TimeSpan RecoveryInterval = TimeSpan.FromHours(2);
 
-    public event EventHandler<NotificationMessage>? NotificationReceived;
+    public event EventHandler<NotificationMessageEventArgs>? NotificationReceived;
 
     private NotificationService()
     {
-        _notificationQueue = new PriorityQueue<NotificationMessage, int>();
+        _notificationQueue = new PriorityQueue<NotificationMessageEventArgs, int>();
     }
 
     public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000, string? tag = null)
     {
-        var notification = new NotificationMessage
+        var notification = new NotificationMessageEventArgs
         {
             Message = message,
             Type = type,
@@ -70,7 +70,7 @@ public sealed class NotificationService : IDisposable
         PublishNotification(notification);
     }
 
-    public void PublishNotification(NotificationMessage notification)
+    public void PublishNotification(NotificationMessageEventArgs notification)
     {
         // Inline notifications bypass backoff — they're in-app only
         if (notification.Type == NotificationType.Inline)
@@ -90,7 +90,7 @@ public sealed class NotificationService : IDisposable
             }
 
             // Auto-recover after RecoveryInterval (Duolingo "recovering arm" concept)
-            if (tracker.IsSilenced && (DateTime.Now - tracker.LastNotificationTime) >= RecoveryInterval)
+            if (tracker.IsSilenced && (DateTime.UtcNow - tracker.LastNotificationTime) >= RecoveryInterval)
             {
                 tracker.Count = 0;
                 tracker.IsSilenced = false;
@@ -106,7 +106,7 @@ public sealed class NotificationService : IDisposable
             // Check backoff interval
             var backoffIndex = Math.Min(tracker.Count, BackoffIntervals.Length - 1);
             var requiredDelay = BackoffIntervals[backoffIndex];
-            var elapsed = DateTime.Now - tracker.LastNotificationTime;
+            var elapsed = DateTime.UtcNow - tracker.LastNotificationTime;
 
             if (tracker.Count > 0 && elapsed < requiredDelay)
             {
@@ -117,7 +117,7 @@ public sealed class NotificationService : IDisposable
 
             // Increment and check cap
             tracker.Count++;
-            tracker.LastNotificationTime = DateTime.Now;
+            tracker.LastNotificationTime = DateTime.UtcNow;
 
             if (tracker.Count >= MaxNotificationsBeforeSilence)
                 tracker.IsSilenced = true;
@@ -126,7 +126,7 @@ public sealed class NotificationService : IDisposable
         // Apply throttle for rapid-fire prevention
         DateTime lastTime;
         lock (_lastNotificationTimeLock) { lastTime = _lastNotificationTime; }
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         var timeSinceLastNotification = now - lastTime;
 
         if (timeSinceLastNotification < ThrottleInterval && notification.Priority < NotificationPriority.Critical)
@@ -201,7 +201,7 @@ public sealed class NotificationService : IDisposable
         }
     }
 
-    private void EnqueueAndEmit(NotificationMessage notification)
+    private void EnqueueAndEmit(NotificationMessageEventArgs notification)
     {
         lock (_queueLock)
         {
@@ -209,7 +209,7 @@ public sealed class NotificationService : IDisposable
             _notificationQueue.Enqueue(notification, priority);
         }
 
-        lock (_lastNotificationTimeLock) { _lastNotificationTime = DateTime.Now; }
+        lock (_lastNotificationTimeLock) { _lastNotificationTime = DateTime.UtcNow; }
 
         Logger.Information("Emitting notification: tag={Tag} message={Message}", notification.Tag, notification.Message);
         NotificationReceived?.Invoke(this, notification);
@@ -234,7 +234,7 @@ public sealed class NotificationService : IDisposable
         }
     }
 
-    public NotificationMessage? GetNextNotification()
+    public NotificationMessageEventArgs? GetNextNotification()
     {
         lock (_queueLock)
         {
@@ -308,11 +308,11 @@ internal sealed class NotificationTracker
 }
 
 #pragma warning disable CA1710 // Kept as NotificationMessage for domain clarity
-public sealed class NotificationMessage : EventArgs
+public sealed class NotificationMessageEventArgs : EventArgs
 #pragma warning restore CA1710
 {
     public string Message { get; set; } = string.Empty;
-    public DateTime Timestamp { get; protected set; } = DateTime.Now;
+    public DateTime Timestamp { get; private set; } = DateTime.UtcNow;
     public NotificationType Type { get; set; }
     public int Duration { get; set; } = 3000;
     public string? Tag { get; set; }
@@ -321,7 +321,7 @@ public sealed class NotificationMessage : EventArgs
 
     public override bool Equals(object? obj)
     {
-        if (obj is NotificationMessage other)
+        if (obj is NotificationMessageEventArgs other)
         {
             return Message == other.Message &&
                    Tag == other.Tag &&

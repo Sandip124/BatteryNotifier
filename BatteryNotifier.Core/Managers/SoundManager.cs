@@ -40,43 +40,10 @@ namespace BatteryNotifier.Core.Managers
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
 
-            // Resolve built-in sounds to their cached WAV file paths
-            var resolvedPath = BuiltInSounds.Resolve(source);
-            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return;
+            var resolvedPath = ResolveSoundPath(source);
+            if (resolvedPath == null) return;
 
-            // Canonicalize path — on macOS /var is a symlink to /private/var,
-            // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
-            try
-            {
-                resolvedPath = Path.GetFullPath(resolvedPath);
-            }
-            catch
-            {
-                _logger.Warning("Failed to canonicalize sound file path: {Path}", resolvedPath);
-                return;
-            }
-
-            // Validate the path is a real, rooted file path
-            if (!Path.IsPathRooted(resolvedPath) || !File.Exists(resolvedPath))
-            {
-                _logger.Warning("Rejected invalid sound file path: {Path}", resolvedPath);
-                return;
-            }
-
-            // Reject symlinks — prevents reading arbitrary files
-            var fileInfo = new FileInfo(resolvedPath);
-            if (fileInfo.LinkTarget != null)
-            {
-                _logger.Warning("Rejected symlink sound file path: {Path}", resolvedPath);
-                return;
-            }
-
-            // Reject files larger than 50 MB
-            if (fileInfo.Length > 50 * 1024 * 1024)
-            {
-                _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, resolvedPath);
-                return;
-            }
+            if (!ValidateSoundFile(resolvedPath)) return;
 
             CancellationToken token;
             lock (_playLock)
@@ -109,6 +76,57 @@ namespace BatteryNotifier.Core.Managers
                     _isPlaying = false;
                 }
             }
+        }
+
+        /// <summary>
+        /// Resolves a sound source (builtin:, bundled:, custom:, or absolute path) to a canonical file path.
+        /// </summary>
+        private string? ResolveSoundPath(string? source)
+        {
+            var resolvedPath = BuiltInSounds.Resolve(source);
+            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return null;
+
+            // Canonicalize path — on macOS /var is a symlink to /private/var,
+            // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
+            try
+            {
+                resolvedPath = Path.GetFullPath(resolvedPath);
+            }
+            catch
+            {
+                _logger.Warning("Failed to canonicalize sound file path: {Path}", resolvedPath);
+                return null;
+            }
+
+            if (!Path.IsPathRooted(resolvedPath) || !File.Exists(resolvedPath))
+            {
+                _logger.Warning("Rejected invalid sound file path: {Path}", resolvedPath);
+                return null;
+            }
+
+            return resolvedPath;
+        }
+
+        /// <summary>
+        /// Validates a resolved sound file: rejects symlinks and oversized files.
+        /// </summary>
+        private bool ValidateSoundFile(string path)
+        {
+            var fileInfo = new FileInfo(path);
+
+            if (fileInfo.LinkTarget != null)
+            {
+                _logger.Warning("Rejected symlink sound file path: {Path}", path);
+                return false;
+            }
+
+            if (fileInfo.Length > 50 * 1024 * 1024)
+            {
+                _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, path);
+                return false;
+            }
+
+            return true;
         }
 
         private void PlaySound(string source, bool loop, int durationMs, CancellationToken token)
@@ -155,8 +173,6 @@ namespace BatteryNotifier.Core.Managers
                 {
                     process.Start();
 
-                    var remainingMs = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
-                    if (remainingMs <= 0) remainingMs = 100;
 
                     // Wait for process to exit or timeout/cancellation
                     while (!process.WaitForExit(200))
@@ -276,8 +292,7 @@ namespace BatteryNotifier.Core.Managers
 
             EventHandler<EventArgs> onPlaybackEnded = (_, _) =>
             {
-                try { playbackDone.Set(); }
-                catch (ObjectDisposedException) { }
+                playbackDone.Set(); 
             };
             player.PlaybackEnded += onPlaybackEnded;
 
@@ -289,7 +304,6 @@ namespace BatteryNotifier.Core.Managers
             {
                 playbackDone.Wait(durationMs, token);
             }
-            catch (OperationCanceledException) { }
             finally
             {
                 player.Stop();

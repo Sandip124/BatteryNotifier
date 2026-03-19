@@ -77,7 +77,7 @@ public class RangeSlider : Control
 
     // ── Colors ──────────────────────────────────────────────────
 
-    private record Palette(Color ActiveTrack, Color InactiveTrack, Color Thumb, Color TickDot, Color TickDotActive);
+    private sealed record Palette(Color ActiveTrack, Color InactiveTrack, Color Thumb, Color TickDot, Color TickDotActive);
 
     private Palette _palette = DarkPalette;
 

@@ -1,6 +1,5 @@
 using System.Runtime.InteropServices;
 using BatteryNotifier.Core.Logger;
-using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Providers;
 using BatteryNotifier.Core.Store;
 using Serilog;
@@ -177,75 +176,61 @@ public sealed class BatteryMonitorService : IDisposable
         if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown)
             return;
 
-        var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
-
-        bool powerLineChanged;
-        bool levelChanged;
-
+        BatteryChangeResult change;
         lock (_statusLock)
         {
-            var lastLevel = _lastPowerStatus != null ? (int)(_lastPowerStatus.BatteryLifePercent * 100) : 0;
-            powerLineChanged = _lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
-            levelChanged = currentLevel != lastLevel;
+            var settings = AppSettings.Instance;
+            change = EvaluateBatteryChange(
+                _lastPowerStatus, currentStatus,
+                settings.LowBatteryNotificationValue, settings.FullBatteryNotificationValue, forceCheck);
         }
 
-        // Legacy threshold checks for BatteryStatusEventArgs (UI still uses these)
-        var settings = AppSettings.Instance;
-        bool isLowBattery = currentLevel <= settings.LowBatteryNotificationValue &&
-                            currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
-        bool isPluggedIn = currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online;
-        bool isFullBattery = currentLevel >= settings.FullBatteryNotificationValue && isPluggedIn;
+        UpdateBatteryManagerStore(currentStatus, change.CurrentLevel);
 
-        // Always update the store so it reflects the latest battery state
-        UpdateBatteryManagerStore(currentStatus, currentLevel);
-
-        // Always fire UI update events when anything changed (level, power line, or first check)
-        bool anythingChanged;
-        bool wasAlreadyTracking;
-        lock (_statusLock)
+        if (change.ShouldUpdateUI)
         {
-            wasAlreadyTracking = _lastPowerStatus != null;
-            anythingChanged = forceCheck || powerLineChanged || levelChanged || !wasAlreadyTracking;
-        }
-
-        if (anythingChanged)
-        {
-            if (powerLineChanged && wasAlreadyTracking)
-            {
-                _logger.Information("Power line state changed: {Status} (battery {Level}%)",
-                    currentStatus.PowerLineStatus, currentLevel);
-                PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-            }
-
-            if (levelChanged)
-            {
-                _logger.Information("Battery level changed: {Level}% ({ChargeStatus}, {PowerLine})",
-                    currentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
-            }
-
-            BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+            FireUIEvents(currentStatus, change);
 
             lock (_statusLock)
             {
                 _lastPowerStatus = currentStatus;
             }
 
-            // Reset notification trackers on power state change so notifications fire eagerly
-            if (powerLineChanged && wasAlreadyTracking)
-            {
-                _logger.Information("Resetting notification trackers due to power line change");
-                NotificationService.Instance.ResetAllTrackers();
-                AlertEvaluationService.Instance.ResetAll();
-            }
+            if (change.ShouldFirePowerLineChanged)
+                ResetNotificationTrackers();
         }
 
         // Publish alert notifications only on real state transitions (level or power changed).
         // forceCheck is for UI refresh only — it should not trigger notifications when nothing changed.
-        // This prevents spurious "unplug charger" notifications on app startup.
-        if (publishNotifications && (powerLineChanged || levelChanged))
+        if (publishNotifications && change.ShouldPublishNotification)
         {
-            PublishAlertNotifications(currentStatus, currentLevel);
+            PublishAlertNotifications(currentStatus, change.CurrentLevel);
         }
+    }
+
+    private void FireUIEvents(BatteryInfo currentStatus, BatteryChangeResult change)
+    {
+        if (change.ShouldFirePowerLineChanged)
+        {
+            _logger.Information("Power line state changed: {Status} (battery {Level}%)",
+                currentStatus.PowerLineStatus, change.CurrentLevel);
+            PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+        }
+
+        if (change.ShouldPublishNotification)
+        {
+            _logger.Information("Battery level changed: {Level}% ({ChargeStatus}, {PowerLine})",
+                change.CurrentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
+        }
+
+        BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+    }
+
+    private void ResetNotificationTrackers()
+    {
+        _logger.Information("Resetting notification trackers due to power line change");
+        NotificationService.Instance.ResetAllTrackers();
+        AlertEvaluationService.Instance.ResetAll();
     }
 
     private void PublishAlertNotifications(BatteryInfo currentStatus, int currentLevel)
@@ -328,9 +313,9 @@ public sealed class BatteryMonitorService : IDisposable
             process.StartInfo = psi;
             process.Start();
             var output = process.StandardOutput.ReadToEnd();
-            if (!process.WaitForExit(5000))
+            if (!process.WaitForExit(Constants.ProcessTimeoutMs))
             {
-                try { process.Kill(); } catch { }
+                if (!process.HasExited) process.Kill();
                 return false;
             }
 
@@ -338,7 +323,8 @@ public sealed class BatteryMonitorService : IDisposable
             int displayCount = 0;
             foreach (var line in output.Split('\n'))
             {
-                if (line.TrimStart().StartsWith("Resolution:", StringComparison.OrdinalIgnoreCase))
+                var trimmed = line.TrimStart().StartsWith("Resolution:", StringComparison.OrdinalIgnoreCase);
+                if (trimmed)
                     displayCount++;
             }
 

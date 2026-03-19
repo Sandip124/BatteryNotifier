@@ -2,9 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -38,49 +36,47 @@ public partial class ScreenFlashOverlay : Window
         var pulseCount = Math.Max(1, durationMs / pulseMs);
         var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
 
-        try
+
+        for (int i = 0; i < pulseCount && DateTime.UtcNow < deadline && !ct.IsCancellationRequested; i++)
         {
-            for (int i = 0; i < pulseCount && DateTime.UtcNow < deadline && !ct.IsCancellationRequested; i++)
+            var fadeIn = new Animation
             {
-                var fadeIn = new Animation
+                Duration = TimeSpan.FromMilliseconds(200),
+                FillMode = FillMode.Forward,
+                Children =
                 {
-                    Duration = TimeSpan.FromMilliseconds(200),
-                    FillMode = FillMode.Forward,
-                    Children =
-                    {
-                        new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
-                        new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.85) } }
-                    }
-                };
-                await fadeIn.RunAsync(GlowControl, ct);
+                    new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.0) } },
+                    new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.85) } }
+                }
+            };
+            await fadeIn.RunAsync(GlowControl, ct);
 
-                await Task.Delay(400, ct);
+            await Task.Delay(400, ct);
 
-                var fadeOut = new Animation
+            var fadeOut = new Animation
+            {
+                Duration = TimeSpan.FromMilliseconds(400),
+                FillMode = FillMode.Forward,
+                Children =
                 {
-                    Duration = TimeSpan.FromMilliseconds(400),
-                    FillMode = FillMode.Forward,
-                    Children =
-                    {
-                        new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.85) } },
-                        new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.0) } }
-                    }
-                };
-                await fadeOut.RunAsync(GlowControl, ct);
+                    new KeyFrame { Cue = new Cue(0), Setters = { new Setter(OpacityProperty, 0.85) } },
+                    new KeyFrame { Cue = new Cue(1), Setters = { new Setter(OpacityProperty, 0.0) } }
+                }
+            };
+            await fadeOut.RunAsync(GlowControl, ct);
 
-                if (i < pulseCount - 1)
-                    await Task.Delay(150, ct);
-            }
+            if (i < pulseCount - 1)
+                await Task.Delay(150, ct);
         }
-        catch (OperationCanceledException) { }
 
-        try { Close(); } catch { }
+
+        Close();
     }
 
     public void StopFlash()
     {
         _flashCts?.Cancel();
-        try { Close(); } catch { }
+        Close();
     }
 
     private void ConfigureNativeOverlay()
@@ -136,7 +132,10 @@ public partial class ScreenFlashOverlay : Window
             // Exclude from screen capture/recording (sharingType = .none = 0)
             objc_msgSend_IntPtr(nsWindow, sel_registerName("setSharingType:"), IntPtr.Zero);
         }
-        catch { /* best effort */ }
+        catch
+        {
+            /* best effort */
+        }
     }
 
     // ── Windows: click-through via extended window style ──
@@ -168,6 +167,9 @@ public partial class ScreenFlashOverlay : Window
             // Exclude from screen capture (WDA_EXCLUDEFROMCAPTURE = 0x11)
             SetWindowDisplayAffinity(handle, 0x11);
         }
-        catch { /* best effort */ }
+        catch
+        {
+            /* best effort */
+        }
     }
 }

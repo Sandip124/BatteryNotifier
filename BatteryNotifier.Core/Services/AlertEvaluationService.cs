@@ -39,50 +39,61 @@ public sealed class AlertEvaluationService
             {
                 if (!alert.IsEnabled) continue;
 
-                bool isInside = currentLevel >= alert.LowerBound && currentLevel <= alert.UpperBound;
-
-                // For "full battery" style alerts (upper bound near 100), require plugged in
-                if (alert.UpperBound >= 95 && alert.LowerBound >= 50)
-                {
-                    isInside = isInside && powerStatus == BatteryPowerLineStatus.Online;
-                }
-
-                // For "low battery" style alerts (lower bound near 0), require not charging
-                if (alert.LowerBound <= 5 && alert.UpperBound <= 50)
-                {
-                    isInside = isInside && chargeStatus != BatteryChargeStatus.Charging;
-                }
-
+                bool isInside = IsInsideAlertRange(alert, currentLevel, chargeStatus, powerStatus);
                 _wasInsideRange.TryGetValue(alert.Id, out var wasInside);
 
-                if (isInside && !wasInside)
-                {
-                    // Transition from outside → inside: trigger
-                    triggered.Add(alert);
-                    _wasInsideRange[alert.Id] = true;
-                }
-                else if (!isInside && wasInside)
-                {
-                    // Check debounce: only disarm if battery moved beyond the buffer
-                    bool outsideBuffer =
-                        currentLevel < alert.LowerBound - DebounceBuffer ||
-                        currentLevel > alert.UpperBound + DebounceBuffer;
-
-                    if (outsideBuffer)
-                    {
-                        _wasInsideRange[alert.Id] = false;
-                    }
-                    // else: stay armed (within debounce zone)
-                }
-                else if (isInside)
-                {
-                    // Already inside — no new trigger, but keep tracking
-                    _wasInsideRange[alert.Id] = true;
-                }
+                UpdateTrackingState(alert, isInside, wasInside, currentLevel, triggered);
             }
         }
 
         return triggered;
+    }
+
+    private static bool IsInsideAlertRange(
+        BatteryAlert alert,
+        int currentLevel,
+        BatteryChargeStatus chargeStatus,
+        BatteryPowerLineStatus powerStatus)
+    {
+        if (currentLevel < alert.LowerBound || currentLevel > alert.UpperBound)
+            return false;
+
+        // Full battery style alerts (upper bound near 100) require plugged in
+        if (alert.UpperBound >= 95 && alert.LowerBound >= 50 && powerStatus != BatteryPowerLineStatus.Online)
+            return false;
+
+        // Low battery style alerts (lower bound near 0) require not charging
+        if (alert.LowerBound <= 5 && alert.UpperBound <= 50 && chargeStatus == BatteryChargeStatus.Charging)
+            return false;
+
+        return true;
+    }
+
+    private void UpdateTrackingState(
+        BatteryAlert alert,
+        bool isInside,
+        bool wasInside,
+        int currentLevel,
+        List<BatteryAlert> triggered)
+    {
+        if (isInside && !wasInside)
+        {
+            triggered.Add(alert);
+            _wasInsideRange[alert.Id] = true;
+        }
+        else if (!isInside && wasInside)
+        {
+            bool outsideBuffer =
+                currentLevel < alert.LowerBound - DebounceBuffer ||
+                currentLevel > alert.UpperBound + DebounceBuffer;
+
+            if (outsideBuffer)
+                _wasInsideRange[alert.Id] = false;
+        }
+        else if (isInside)
+        {
+            _wasInsideRange[alert.Id] = true;
+        }
     }
 
     /// <summary>

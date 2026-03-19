@@ -5,7 +5,7 @@ using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Tests;
 
-public class SettingsEncryptionTests : IDisposable
+public sealed class SettingsEncryptionTests : IDisposable
 {
     private readonly string _tempDir;
 
@@ -19,7 +19,10 @@ public class SettingsEncryptionTests : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(_tempDir, recursive: true); } catch { }
+        if (Directory.Exists(_tempDir))
+            Directory.Delete(_tempDir, recursive: true);
+
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -158,7 +161,7 @@ public class SettingsEncryptionTests : IDisposable
         var key1 = File.ReadAllBytes(keyPath);
 
         // Second encrypt should reuse the same key
-        var encrypted = SettingsEncryption.Encrypt("test2", _tempDir);
+        SettingsEncryption.Encrypt("test2", _tempDir);
         var key2 = File.ReadAllBytes(keyPath);
 
         Assert.Equal(key1, key2);
@@ -185,7 +188,7 @@ public class SettingsEncryptionTests : IDisposable
         }
         finally
         {
-            try { Directory.Delete(otherDir, recursive: true); } catch { }
+            Directory.Delete(otherDir, recursive: true);
         }
     }
 
@@ -226,7 +229,7 @@ public class SettingsEncryptionTests : IDisposable
         }
         finally
         {
-            try { Directory.Delete(otherDir, recursive: true); } catch { }
+            Directory.Delete(otherDir, recursive: true);
         }
     }
 

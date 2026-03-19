@@ -61,7 +61,7 @@ internal class BatteryIndicatorControl : Control
 
     // ── Render ───────────────────────────────────────────────────
 
-    public override void Render(DrawingContext ctx)
+    public override void Render(DrawingContext context)
     {
         var w = Bounds.Width;
         var h = Bounds.Height;
@@ -84,13 +84,13 @@ internal class BatteryIndicatorControl : Control
         var innerRect = bodyRect.Deflate(inset);
 
         // Draw layers back-to-front
-        DrawAmbientGlow(ctx, w, h);
-        DrawGlassBody(ctx, bodyRect, cornerR, p);
-        DrawInnerWell(ctx, innerRect, cornerR * 0.65, p);
-        DrawFill(ctx, innerRect, cornerR * 0.65, pct);
-        DrawGlassReflections(ctx, bodyRect, cornerR);
-        DrawTerminalCap(ctx, bodyW + termGap, batteryH, termW, p);
-        DrawStatusBadge(ctx, bodyRect, badgeRadius, p);
+        DrawAmbientGlow(context, w, h);
+        DrawGlassBody(context, bodyRect, cornerR, p);
+        DrawInnerWell(context, innerRect, cornerR * 0.65, p);
+        DrawFill(context, innerRect, cornerR * 0.65, pct);
+        DrawGlassReflections(context, bodyRect, cornerR);
+        DrawTerminalCap(context, bodyW + termGap, batteryH, termW, p);
+        DrawStatusBadge(context, bodyRect, badgeRadius, p);
     }
 
     // ── Layer 0: Ambient glow ────────────────────────────────────

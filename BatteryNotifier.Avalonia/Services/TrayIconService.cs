@@ -10,7 +10,6 @@ using Avalonia.Platform;
 using BatteryNotifier.Avalonia.Views;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
-using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
@@ -18,11 +17,10 @@ using Serilog;
 
 namespace BatteryNotifier.Avalonia.Services;
 
-public sealed class TrayIconService : IDisposable
+internal sealed class TrayIconService : IDisposable
 {
     private readonly ILogger _logger;
     private TrayIcon? _trayIcon;
-    private NativeMenu? _trayMenu;
     private NotificationManager? _notificationManager;
     private NotificationDisplayService? _displayService;
     private CancellationTokenSource? _tooltipRevertCts;
@@ -61,7 +59,7 @@ public sealed class TrayIconService : IDisposable
             UpdateToolTip();
 
             // Create menu
-            _trayMenu = new NativeMenu();
+             var trayMenu = new NativeMenu();
 
             _showHideMenuItem = new NativeMenuItem { Header = "Show Window" };
             _showHideMenuItem.Click += OnShowHideWindow;
@@ -75,14 +73,14 @@ public sealed class TrayIconService : IDisposable
             _exitMenuItem = new NativeMenuItem { Header = "Exit" };
             _exitMenuItem.Click += OnExit;
 
-            _trayMenu.Add(_showHideMenuItem);
-            _trayMenu.Add(new NativeMenuItemSeparator());
-            _trayMenu.Add(_updateMenuItem);
-            _trayMenu.Add(_aboutMenuItem);
-            _trayMenu.Add(new NativeMenuItemSeparator());
-            _trayMenu.Add(_exitMenuItem);
+            trayMenu.Add(_showHideMenuItem);
+            trayMenu.Add(new NativeMenuItemSeparator());
+            trayMenu.Add(_updateMenuItem);
+            trayMenu.Add(_aboutMenuItem);
+            trayMenu.Add(new NativeMenuItemSeparator());
+            trayMenu.Add(_exitMenuItem);
 
-            _trayIcon.Menu = _trayMenu;
+            _trayIcon.Menu = trayMenu;
 
             // Handle click
             _trayIcon.Clicked += OnTrayIconClicked;
@@ -103,10 +101,9 @@ public sealed class TrayIconService : IDisposable
 
             // Subscribe to window visibility changes to keep tray menu label in sync.
             // This catches hides from the in-window menu, the X button, tray toggle, etc.
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dt
-                && dt.MainWindow is { } mainWin)
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } mainWin })
             {
-                _visibilitySubscription = mainWin.GetObservable(Window.IsVisibleProperty)
+                _visibilitySubscription = mainWin.GetObservable(Visual.IsVisibleProperty)
                     .Subscribe(_ => UpdateShowHideMenuLabel());
             }
 
@@ -121,7 +118,6 @@ public sealed class TrayIconService : IDisposable
             {
                 _logger.Warning(updateEx, "Update service could not be initialized");
             }
-
         }
         catch (Exception ex)
         {
@@ -149,7 +145,7 @@ public sealed class TrayIconService : IDisposable
         _trayIcon.ToolTipText = $"BatteryNotifier - {batteryPercent:F0}% ({status})";
     }
 
-    private void OnNotificationReceived(object? sender, NotificationMessage notification)
+    private void OnNotificationReceived(object? sender, NotificationMessageEventArgs notification)
     {
         if (notification.Type == NotificationType.Inline) return;
 
@@ -195,7 +191,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void UpdateToolTipWithNotification(NotificationMessage notification)
+    private void UpdateToolTipWithNotification(NotificationMessageEventArgs notification)
     {
         if (_trayIcon == null) return;
 
@@ -218,28 +214,21 @@ public sealed class TrayIconService : IDisposable
 
     private async Task RevertToolTipAfterDelayAsync(CancellationToken ct)
     {
-        try
-        {
-            await Task.Delay(5000, ct).ConfigureAwait(false);
-            UpdateToolTip();
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancelled by a newer notification or disposal — expected
-        }
+        await Task.Delay(5000, ct).ConfigureAwait(false);
+        UpdateToolTip();
     }
 
-    private void OnTrayIconClicked(object? sender, EventArgs e)
+    private static void OnTrayIconClicked(object? sender, EventArgs e)
     {
         ToggleMainWindow();
     }
 
-    private void OnShowHideWindow(object? sender, EventArgs e)
+    private static void OnShowHideWindow(object? sender, EventArgs e)
     {
         ToggleMainWindow();
     }
 
-    private void ToggleMainWindow()
+    private static void ToggleMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -296,7 +285,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void OnOpenAbout(object? sender, EventArgs e)
+    private static void OnOpenAbout(object? sender, EventArgs e)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -338,6 +327,7 @@ public sealed class TrayIconService : IDisposable
             if (!char.IsControl(input[i]))
                 chars[j++] = input[i];
         }
+
         return new string(chars, 0, j);
     }
 
@@ -405,7 +395,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void OnExit(object? sender, EventArgs e)
+    private static void OnExit(object? sender, EventArgs e)
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -419,14 +409,11 @@ public sealed class TrayIconService : IDisposable
 
         try
         {
-            try
-            {
-                BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
-                NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
-                UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
-                UpdateService.Instance.Dispose();
-            }
-            catch { }
+            BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
+            NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+            UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
+            UpdateService.Instance.Dispose();
+
 
             _visibilitySubscription?.Dispose();
             _visibilitySubscription = null;
@@ -441,12 +428,30 @@ public sealed class TrayIconService : IDisposable
             _displayService = null;
 
             // Unsubscribe menu item Click handlers to prevent event leaks
-            if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }
-            if (_aboutMenuItem != null) { _aboutMenuItem.Click -= OnOpenAbout; _aboutMenuItem = null; }
-            if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
-            if (_exitMenuItem != null) { _exitMenuItem.Click -= OnExit; _exitMenuItem = null; }
-            _trayMenu = null;
+            if (_showHideMenuItem != null)
+            {
+                _showHideMenuItem.Click -= OnShowHideWindow;
+                _showHideMenuItem = null;
+            }
 
+            if (_aboutMenuItem != null)
+            {
+                _aboutMenuItem.Click -= OnOpenAbout;
+                _aboutMenuItem = null;
+            }
+
+            if (_updateMenuItem != null)
+            {
+                _updateMenuItem.Click -= OnCheckForUpdates;
+                _updateMenuItem = null;
+            }
+
+            if (_exitMenuItem != null)
+            {
+                _exitMenuItem.Click -= OnExit;
+                _exitMenuItem = null;
+            }
+            
             if (_trayIcon != null)
             {
                 _trayIcon.Clicked -= OnTrayIconClicked;

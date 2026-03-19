@@ -14,7 +14,6 @@ public partial class NotificationCard : Window
 {
     private static readonly TransformOperations Hidden = TransformOperations.Parse("scale(0.9,0.9) translateY(-12px)");
     private static readonly TransformOperations Visible = TransformOperations.Parse("scale(1,1) translateY(0px)");
-    private static readonly TimeSpan AnimInDuration = TimeSpan.FromMilliseconds(400);
     private static readonly TimeSpan AnimOutDuration = TimeSpan.FromMilliseconds(300);
 
     private DispatcherTimer? _progressTimer;
@@ -66,7 +65,7 @@ public partial class NotificationCard : Window
         _progressTimer.Start();
     }
 
-    public async void Dismiss()
+    private async Task Dismiss()
     {
         if (_isDismissing) return;
         _isDismissing = true;
@@ -78,7 +77,7 @@ public partial class NotificationCard : Window
         CardBorder.RenderTransform = Hidden;
 
         // Wait for the transition to finish
-        await Task.Delay(AnimOutDuration);
+        await Task.Delay(AnimOutDuration).ConfigureAwait(true);
 
         if (DataContext is NotificationCardViewModel vm)
             vm.DismissCommand.Execute().Subscribe();

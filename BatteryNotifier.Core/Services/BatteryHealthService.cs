@@ -334,13 +334,12 @@ public sealed class BatteryHealthService : IDisposable
             process.StartInfo = psi;
             process.Start();
 
-            // Bounded read
             var output = process.StandardOutput.ReadToEnd();
-            if (output.Length > 16384) output = output[..16384];
-            if (!process.WaitForExit(5000))
-            {
-                try { process.Kill(); } catch { }
-            }
+            if (output.Length > Constants.MaxProcessOutputLength)
+                output = output[..Constants.MaxProcessOutputLength];
+
+            if (!process.WaitForExit(Constants.ProcessTimeoutMs) && !process.HasExited)
+                process.Kill();
             return output;
         }
         catch

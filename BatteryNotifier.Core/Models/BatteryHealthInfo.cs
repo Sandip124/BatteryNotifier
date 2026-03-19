@@ -34,6 +34,19 @@ public sealed class BatteryHealthInfo
         _ => MetricStatus.Poor
     };
 
+    /// <summary>
+    /// Merges non-null fields from <paramref name="other"/> into this instance.
+    /// </summary>
+    public void MergeFrom(BatteryHealthInfo other)
+    {
+        if (other.HealthPercent.HasValue) HealthPercent = other.HealthPercent;
+        if (other.CycleCount.HasValue) CycleCount = other.CycleCount;
+        if (other.DesignCycleCount.HasValue) DesignCycleCount = other.DesignCycleCount;
+        if (other.TemperatureCelsius.HasValue) TemperatureCelsius = other.TemperatureCelsius;
+        if (other.VoltageVolts.HasValue) VoltageVolts = other.VoltageVolts;
+        if (other.PowerRateWatts.HasValue) PowerRateWatts = other.PowerRateWatts;
+    }
+
     public string RecommendationMessage
     {
         get

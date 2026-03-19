@@ -10,8 +10,8 @@ public sealed class AppSettings
     public static AppSettings Instance => _instance.Value;
 
     private const string SettingsFileName = "appsettings.json";
-    private readonly object _saveLock = new();
-    private string SettingsFilePath => Path.Combine(GetSettingsDirectory(), SettingsFileName);
+    private readonly Lock _saveLock = new();
+    private static string SettingsFilePath => Path.Combine(GetSettingsDirectory(), SettingsFileName);
 
     // Notification Settings
     public bool FullBatteryNotification { get; set; } = true;

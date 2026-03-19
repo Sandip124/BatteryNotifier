@@ -34,16 +34,9 @@ public class CrashReporterSanitizationTests
     [Theory]
     [InlineData(@"Error at C:\Users\Alice\Projects\app.cs", "Alice")]
     [InlineData(@"File: C:\Users\Bob\Desktop\file.txt", "Bob")]
-    public void SanitizeLine_RemovesWindowsUsernames(string input, string username)
-    {
-        var result = SanitizeLine(input);
-        Assert.DoesNotContain(username, result);
-    }
-
-    [Theory]
     [InlineData("/home/alice/projects/app.cs", "alice")]
     [InlineData("/Users/bob/Desktop/file.txt", "bob")]
-    public void SanitizeLine_RemovesUnixUsernames(string input, string username)
+    public void SanitizeLine_RemovesUsernames(string input, string username)
     {
         var result = SanitizeLine(input);
         Assert.DoesNotContain(username, result);
@@ -210,7 +203,7 @@ public class CrashReporterSanitizationTests
         }
         finally
         {
-            try { File.Delete(path); } catch { }
+            File.Delete(path);
         }
     }
 }

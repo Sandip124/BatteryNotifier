@@ -12,10 +12,10 @@ namespace BatteryNotifier.Core.Managers
             _soundManager = soundManager;
         }
 
-        public async Task EmitGlobalNotification(NotificationMessage notificationMessage,
+        public async Task EmitGlobalNotification(NotificationMessageEventArgs notificationMessageEventArgs,
             Func<Task>? showNotification = null)
         {
-            if (notificationMessage.Type == NotificationType.Inline) return;
+            if (notificationMessageEventArgs.Type == NotificationType.Inline) return;
 
             if (showNotification != null)
             {
@@ -23,7 +23,7 @@ namespace BatteryNotifier.Core.Managers
             }
 
             // Look up sound from the alert that triggered this notification
-            var tag = notificationMessage.Tag;
+            var tag = notificationMessageEventArgs.Tag;
             string? sound = null;
 
             if (!string.IsNullOrEmpty(tag))

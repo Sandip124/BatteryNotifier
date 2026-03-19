@@ -184,10 +184,10 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
 
     private void PreviewAlert()
     {
-        var displayService = Services.NotificationDisplayService.Current;
+        var displayService = NotificationDisplayService.Current;
         if (displayService == null) return;
 
-        var notification = new Core.Services.NotificationMessage
+        var notification = new Core.Services.NotificationMessageEventArgs
         {
             Message = $"Preview — {_label} ({_lowerBound}%–{_upperBound}%)",
             Tag = _alert.Id

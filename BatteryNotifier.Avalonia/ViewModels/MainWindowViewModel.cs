@@ -13,7 +13,6 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using BatteryNotifier.Core;
-using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
@@ -76,8 +75,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             Dispatcher.UIThread.Post(() =>
             {
                 this.RaisePropertyChanged(nameof(HealthSummary));
-                this.RaisePropertyChanged(nameof(HealthAccentColor));
-                this.RaisePropertyChanged(nameof(HealthIcon));
+                this.RaisePropertyChanged(nameof(ViewModels.MainWindowViewModel.HealthAccentColor));
+                this.RaisePropertyChanged(nameof(ViewModels.MainWindowViewModel.HealthIcon));
             });
         };
 
@@ -399,7 +398,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public string HealthSummary
+    public static string HealthSummary
     {
         get
         {
@@ -407,9 +406,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             if (health == null) return "Checking...";
             return health.HealthStatus switch
             {
-                Core.Models.MetricStatus.Good => "Healthy",
-                Core.Models.MetricStatus.Fair => "Fair",
-                Core.Models.MetricStatus.Poor => "Service Recommended",
+                MetricStatus.Good => "Healthy",
+                MetricStatus.Fair => "Fair",
+                MetricStatus.Poor => "Service Recommended",
                 _ => "Checking..."
             };
         }
@@ -421,7 +420,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private static global::Avalonia.Media.Geometry? ResolveIcon(string key)
     {
-        var app = global::Avalonia.Application.Current;
+        var app = Application.Current;
         if (app?.Resources.TryGetResource(key, null, out var res) == true
             && res is global::Avalonia.Media.Geometry geo)
             return geo;
@@ -432,7 +431,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         return null;
     }
 
-    public global::Avalonia.Media.Geometry? HealthIcon
+    public static global::Avalonia.Media.Geometry? HealthIcon
     {
         get
         {
@@ -447,7 +446,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public string HealthAccentColor
+    public static string HealthAccentColor
     {
         get
         {
@@ -762,26 +761,22 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private static void OpenUrlInBrowser(string url)
     {
-        try
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                var psi = new ProcessStartInfo(Constants.ResolveCommand("open")) { UseShellExecute = false };
-                psi.ArgumentList.Add(url);
-                using var p = Process.Start(psi);
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            }
-            else
-            {
-                var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
-                psi.ArgumentList.Add(url);
-                using var p = Process.Start(psi);
-            }
+            var psi = new ProcessStartInfo(Constants.ResolveCommand("open")) { UseShellExecute = false };
+            psi.ArgumentList.Add(url);
+            using var p = Process.Start(psi);
         }
-        catch { }
+        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        else
+        {
+            var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
+            psi.ArgumentList.Add(url);
+            using var p = Process.Start(psi);
+        }
     }
 
     private void NavigateToSettings()
@@ -807,12 +802,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         CancelTypewriter();
         CurrentView?.Dispose();
         HealthDashboard.Dispose();
-        try
-        {
-            BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
-            BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
-        }
-        catch { }
+        BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
+        BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
         _inlineNotifications.StateChanged -= OnInlineNotificationStateChanged;
         SystemStateDetector.CleanupFocusMonitor();
         _disposed = true;

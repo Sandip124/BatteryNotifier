@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 
@@ -39,8 +38,10 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 return IsMacDoNotDisturbActive();
 
+#if WINDOWS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFocusAssistActive();
+#endif
 
         }
         catch (Exception ex)
@@ -61,8 +62,10 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 return IsMacFullscreenActive();
 
+#if WINDOWS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFullscreenActive();
+#endif
 
         }
         catch (Exception ex)
@@ -276,9 +279,9 @@ return ""false""";
     private struct WNF_STATE_NAME { public uint Data1; public uint Data2; }
 #endif
 
+#if WINDOWS
     private static bool IsWindowsFocusAssistActive()
     {
-#if WINDOWS
         // WNF_SHEL_QUIETHOURS_ACTIVE_PROFILE_CHANGED
         // Returns: 0 = OFF, 1 = PRIORITY_ONLY, 2 = ALARMS_ONLY
         try
@@ -293,14 +296,10 @@ return ""false""";
         {
             return false;
         }
-#else
-        return false;
-#endif
     }
 
     private static bool IsWindowsFullscreenActive()
     {
-#if WINDOWS
         // Direct P/Invoke — no PowerShell subprocess needed
         try
         {
@@ -315,10 +314,8 @@ return ""false""";
         {
             return false;
         }
-#else
-        return false;
-#endif
     }
+#endif
 
     // ── macOS Focus State Change Monitor (Darwin notifications) ──
 
@@ -393,7 +390,7 @@ return ""false""";
     {
         if (_macFocusToken >= 0)
         {
-            try { DarwinNotifyCancel(_macFocusToken); } catch { }
+            DarwinNotifyCancel(_macFocusToken);
             _macFocusToken = -1;
         }
     }

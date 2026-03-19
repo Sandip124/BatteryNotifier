@@ -83,7 +83,7 @@ public class MaterialSlider : Control
 
     // ── Colors ─────────────────────────────────────────────────
 
-    private record Palette(
+    private sealed record Palette(
         Color ActiveTrack, Color InactiveTrack,
         Color Thumb,
         Color ActiveTick, Color InactiveTick);
@@ -272,23 +272,22 @@ public class MaterialSlider : Control
 
         // ── Draw tick dots (fixed 10 visual ticks) ──
         const int tickCount = 10;
+        
+        for (int i = 0; i <= tickCount; i++)
         {
-            for (int i = 0; i <= tickCount; i++)
-            {
-                var tickFraction = (double)i / tickCount;
-                var tickX = thumbRangeLeft + tickFraction * (thumbRangeRight - thumbRangeLeft);
+            var tickFraction = (double)i / tickCount;
+            var tickX = thumbRangeLeft + tickFraction * (thumbRangeRight - thumbRangeLeft);
 
-                // Skip ticks inside the thumb gap
-                if (tickX > thumbX - ThumbWidth / 2 - ThumbGap + 1 &&
-                    tickX < thumbX + ThumbWidth / 2 + ThumbGap - 1)
-                    continue;
+            // Skip ticks inside the thumb gap
+            if (tickX > thumbX - ThumbWidth / 2 - ThumbGap + 1 &&
+                tickX < thumbX + ThumbWidth / 2 + ThumbGap - 1)
+                continue;
 
-                var isActive = tickX < thumbX;
-                var tickColor = isActive ? _palette.ActiveTick : _palette.InactiveTick;
-                context.DrawEllipse(
-                    new SolidColorBrush(tickColor), null,
-                    new Point(tickX, centerY), TickDotRadius, TickDotRadius);
-            }
+            var isActive = tickX < thumbX;
+            var tickColor = isActive ? _palette.ActiveTick : _palette.InactiveTick;
+            context.DrawEllipse(
+                new SolidColorBrush(tickColor), null,
+                new Point(tickX, centerY), TickDotRadius, TickDotRadius);
         }
 
         // ── Draw thumb (vertical capsule) ──
