@@ -70,15 +70,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         catch { /* Battery monitoring not available on this platform */ }
 
         // Subscribe to health updates for the compact bar
-        BatteryHealthService.Instance.HealthUpdated += (_, _) =>
-        {
-            Dispatcher.UIThread.Post(() =>
-            {
-                this.RaisePropertyChanged(nameof(HealthSummary));
-                this.RaisePropertyChanged(nameof(HealthAccentColor));
-                this.RaisePropertyChanged(nameof(HealthIcon));
-            });
-        };
+        BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
 
         // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
@@ -236,6 +228,16 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             Dispatcher.UIThread.Post(RefreshBatteryStatus);
         else
             _pendingRefresh = true;
+    }
+
+    private void OnHealthUpdated(object? sender, BatteryHealthInfo info)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            this.RaisePropertyChanged(nameof(HealthSummary));
+            this.RaisePropertyChanged(nameof(HealthAccentColor));
+            this.RaisePropertyChanged(nameof(HealthIcon));
+        });
     }
 
     private void RefreshBatteryStatus()
@@ -805,6 +807,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         HealthDashboard.Dispose();
         BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
         BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
+        BatteryHealthService.Instance.HealthUpdated -= OnHealthUpdated;
         _inlineNotifications.StateChanged -= OnInlineNotificationStateChanged;
         SystemStateDetector.CleanupFocusMonitor();
         _disposed = true;
