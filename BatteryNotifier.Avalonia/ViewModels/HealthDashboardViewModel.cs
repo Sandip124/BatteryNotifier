@@ -52,8 +52,24 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
             return;
         }
 
+        var store = Core.Store.BatteryManagerStore.Instance;
+
+        // No battery present (desktop) or battery not detected
+        if (store.HasNoBattery || store.IsUnknown)
+        {
+            SetNoBatteryState();
+            return;
+        }
+
         var cached = MergeWithCache(info);
         _lastUpdated = DateTime.UtcNow;
+
+        // Battery is fully degraded — all metrics empty/zero after fetch
+        if (IsBatteryDataEmpty(cached))
+        {
+            SetDegradedBatteryState();
+            return;
+        }
 
         UpdateDisplayValues(cached);
         UpdateStatusValues(cached);
@@ -74,6 +90,46 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         CurrentDisplay = "...";
         CapacityDisplay = "...";
         RecommendationMessage = "Fetching battery health data...";
+    }
+
+    private void SetNoBatteryState()
+    {
+        HealthPercent = -1;
+        CycleCountDisplay = "N/A";
+        TemperatureDisplay = "N/A";
+        VoltageDisplay = "N/A";
+        PowerRateDisplay = "N/A";
+        CurrentDisplay = "N/A";
+        CapacityDisplay = "N/A";
+        IsCharging = false;
+        ChargingStatusDisplay = "AC Power";
+        HealthStatus = MetricStatus.Unavailable;
+        RecommendationMessage = "No battery detected. This device is running on AC power only.";
+    }
+
+    private void SetDegradedBatteryState()
+    {
+        HealthPercent = 0;
+        CycleCountDisplay = "N/A";
+        TemperatureDisplay = "N/A";
+        VoltageDisplay = "N/A";
+        PowerRateDisplay = "N/A";
+        CurrentDisplay = "N/A";
+        CapacityDisplay = "0%";
+        IsCharging = Core.Store.BatteryManagerStore.Instance.IsPluggedIn;
+        ChargingStatusDisplay = "AC Power (battery degraded)";
+        HealthStatus = MetricStatus.Poor;
+        RecommendationMessage = "Battery appears fully degraded and cannot hold a charge. "
+            + "The device is running on AC power only. Consider replacing the battery.";
+    }
+
+    private static bool IsBatteryDataEmpty(BatteryHealthInfo info)
+    {
+        return !info.HealthPercent.HasValue
+            && !info.CycleCount.HasValue
+            && !info.TemperatureCelsius.HasValue
+            && !info.VoltageVolts.HasValue
+            && !info.PowerRateWatts.HasValue;
     }
 
     private BatteryHealthInfo MergeWithCache(BatteryHealthInfo? info)
