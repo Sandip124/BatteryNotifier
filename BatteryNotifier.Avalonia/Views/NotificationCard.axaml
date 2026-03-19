@@ -13,7 +13,7 @@
         Width="340" Height="88"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="-1"
+        ExtendClientAreaTitleBarHeightHint="0"
         ShowActivated="False">
 
     <Border x:Name="CardBorder"
