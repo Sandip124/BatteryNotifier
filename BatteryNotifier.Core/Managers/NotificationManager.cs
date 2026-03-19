@@ -22,28 +22,39 @@ namespace BatteryNotifier.Core.Managers
                 await showNotification().ConfigureAwait(false);
             }
 
-            var settings = AppSettings.Instance;
+            // Look up sound from the alert that triggered this notification
+            var tag = notificationMessage.Tag;
+            string? sound = null;
 
-            if (notificationMessage.Tag == Constants.LowBatteryTag)
+            if (!string.IsNullOrEmpty(tag))
             {
-                if (settings.LowBatteryNotification &&
-                    !string.IsNullOrEmpty(settings.LowBatteryNotificationMusic))
+                var alert = AppSettings.Instance.Alerts.Find(a => a.Id == tag);
+                if (alert != null)
                 {
-                    // Built-in tones are short — loop them. Custom sounds play once in full.
-                    bool shouldLoop = BuiltInSounds.IsBuiltIn(settings.LowBatteryNotificationMusic);
-                    await _soundManager.PlaySoundAsync(settings.LowBatteryNotificationMusic, loop: shouldLoop).ConfigureAwait(false);
+                    sound = alert.Sound;
                 }
             }
-            else if (notificationMessage.Tag == Constants.FullBatteryTag)
+
+            // Fallback to legacy settings for backward compatibility
+            if (string.IsNullOrEmpty(sound))
             {
-                if (settings.FullBatteryNotification &&
-                    !string.IsNullOrEmpty(settings.FullBatteryNotificationMusic))
-                {
-                    bool shouldLoop = BuiltInSounds.IsBuiltIn(settings.FullBatteryNotificationMusic);
-                    await _soundManager.PlaySoundAsync(settings.FullBatteryNotificationMusic, loop: shouldLoop).ConfigureAwait(false);
-                }
+                var settings = AppSettings.Instance;
+                if (tag == Constants.LowBatteryTag)
+                    sound = settings.LowBatteryNotificationMusic;
+                else if (tag == Constants.FullBatteryTag)
+                    sound = settings.FullBatteryNotificationMusic;
+            }
+
+            if (!string.IsNullOrEmpty(sound))
+            {
+                // Loop all sounds for the notification duration — short sounds repeat,
+                // long sounds get cut at the deadline. StopSound() ends playback on dismiss.
+                await _soundManager.PlaySoundAsync(sound, loop: true,
+                    durationMs: Constants.NotificationDurationMs).ConfigureAwait(false);
             }
         }
+
+        public void StopSound() => _soundManager.StopSound();
 
         public void Dispose()
         {

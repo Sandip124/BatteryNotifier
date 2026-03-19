@@ -1,3 +1,5 @@
+using BatteryNotifier.Core.Models;
+
 namespace BatteryNotifier.Core.Services;
 
 /// <summary>
@@ -170,6 +172,31 @@ public static class NotificationTemplates
         };
 
         return PickMessage(templates, escalation, level);
+    }
+
+    /// <summary>
+    /// Gets a message for a multi-level alert based on range position and escalation.
+    /// Low ranges (upper bound ≤ 50) use low battery tone.
+    /// High ranges (lower bound ≥ 50) use full battery tone.
+    /// Mid ranges use a neutral informational tone.
+    /// </summary>
+    public static string GetAlertMessage(BatteryAlert alert, int currentLevel, int escalation)
+    {
+        if (alert.UpperBound <= 50)
+            return GetLowBatteryMessage(currentLevel, escalation);
+
+        if (alert.LowerBound >= 50)
+            return GetFullBatteryMessage(currentLevel, escalation);
+
+        // Mid-range alert — use a neutral message
+        var templates = new[]
+        {
+            "Battery at {0}% — in your '{1}' alert range.",
+            "Battery level is {0}% ({1} alert).",
+            "Heads up: battery at {0}% — {1} range.",
+        };
+        var msg = templates[Random.Shared.Next(templates.Length)];
+        return string.Format(msg, currentLevel, alert.Label);
     }
 
     private static string PickMessage(string[][] templates, int escalation, int level)

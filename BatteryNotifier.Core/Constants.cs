@@ -37,6 +37,11 @@ public static class Constants
 
     public const string AppName = "BatteryNotifier";
 
+    /// <summary>
+    /// Unified duration for notification card display, screen flash, and sound playback.
+    /// </summary>
+    public const int NotificationDurationMs = 30000;
+
     public const int DefaultNotificationTimeout = 3000;
     public const string LowBatteryTag = "LowBattery";
     public const string FullBatteryTag = "FullBattery";

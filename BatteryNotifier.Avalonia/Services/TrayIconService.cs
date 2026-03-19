@@ -10,6 +10,7 @@ using Avalonia.Platform;
 using BatteryNotifier.Avalonia.Views;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
@@ -23,6 +24,7 @@ public sealed class TrayIconService : IDisposable
     private TrayIcon? _trayIcon;
     private NativeMenu? _trayMenu;
     private NotificationManager? _notificationManager;
+    private NotificationDisplayService? _displayService;
     private CancellationTokenSource? _tooltipRevertCts;
     private IDisposable? _visibilitySubscription;
     private bool _disposed;
@@ -91,6 +93,8 @@ public sealed class TrayIconService : IDisposable
                 BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
                 NotificationService.Instance.NotificationReceived += OnNotificationReceived;
                 _notificationManager = new NotificationManager(new SoundManager());
+                _displayService = new NotificationDisplayService();
+                _displayService.SetNotificationManager(_notificationManager);
             }
             catch (Exception serviceEx)
             {
@@ -173,9 +177,12 @@ public sealed class TrayIconService : IDisposable
             return;
         }
 
-        // Show native notification
-        _logger.Information("Delivering native notification: {Tag} — {Message}", notification.Tag, notification.Message);
-        ShowNativeNotification(notification);
+        // Show Avalonia-native notification (screen flash + card)
+        _logger.Information("Delivering notification: {Tag} — {Message}", notification.Tag, notification.Message);
+        var alert = !string.IsNullOrEmpty(notification.Tag)
+            ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
+            : null;
+        _displayService?.ShowNotification(notification, alert);
 
         // Play sound unless DND is active (critical overrides)
         if (!suppression.ShouldSuppressSound || isCritical)
@@ -220,35 +227,6 @@ public sealed class TrayIconService : IDisposable
         {
             // Cancelled by a newer notification or disposal — expected
         }
-    }
-
-    private void ShowNativeNotification(NotificationMessage notification)
-    {
-        try
-        {
-            if (_trayIcon == null) return;
-
-            string title = notification.Tag switch
-            {
-                Constants.LowBatteryTag => "Low Battery",
-                Constants.FullBatteryTag => "Full Battery",
-                _ => Constants.AppName
-            };
-
-            // Remove emoji from message for cleaner notification
-            var message = notification.Message.Replace("🔋", "").Trim();
-
-            ShowPlatformNotification(title, message);
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex, "Failed to show native notification");
-        }
-    }
-
-    private static void ShowPlatformNotification(string title, string message)
-    {
-        NotificationPlatformService.ShowNativeNotification(title, message);
     }
 
     private void OnTrayIconClicked(object? sender, EventArgs e)
@@ -342,15 +320,13 @@ public sealed class TrayIconService : IDisposable
         global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             var safeTag = SanitizeExternalText(e.Release.TagName);
-            ShowPlatformNotification("Update Available",
+            _displayService?.ShowSimpleNotification("Update Available",
                 $"BatteryNotifier {safeTag} is available. Use tray menu to download.");
         });
     }
 
     /// <summary>
     /// Strip control characters and truncate text from external sources (GitHub API).
-    /// The downstream NotificationPlatformService does platform-specific sanitization,
-    /// but defense-in-depth ensures no unexpected content reaches it.
     /// </summary>
     private static string SanitizeExternalText(string input)
     {
@@ -382,7 +358,7 @@ public sealed class TrayIconService : IDisposable
                     break;
 
                 case CheckStatus.UpToDate:
-                    ShowPlatformNotification("No Updates",
+                    _displayService?.ShowSimpleNotification("No Updates",
                         $"You're running the latest version ({Constants.ApplicationVersion}).");
                     break;
 
@@ -391,7 +367,7 @@ public sealed class TrayIconService : IDisposable
                     break;
 
                 case CheckStatus.Failed:
-                    ShowPlatformNotification("Update Check Failed",
+                    _displayService?.ShowSimpleNotification("Update Check Failed",
                         "Could not reach GitHub. Check your internet connection.");
                     break;
             }
@@ -399,7 +375,7 @@ public sealed class TrayIconService : IDisposable
         catch (Exception ex)
         {
             _logger.Error(ex, "Manual update check failed");
-            ShowPlatformNotification("Update Check Failed",
+            _displayService?.ShowSimpleNotification("Update Check Failed",
                 "An unexpected error occurred.");
         }
         finally
@@ -461,6 +437,8 @@ public sealed class TrayIconService : IDisposable
 
             _notificationManager?.Dispose();
             _notificationManager = null;
+            _displayService?.DismissAll();
+            _displayService = null;
 
             // Unsubscribe menu item Click handlers to prevent event leaks
             if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }

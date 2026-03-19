@@ -16,7 +16,7 @@ namespace BatteryNotifier.Core.Managers
     /// <summary>
     /// Cross-platform audio playback.
     /// - macOS: afplay subprocess (ArgumentList for injection safety)
-    /// - Linux: paplay subprocess, falls back to aplay
+    /// - Non-Windows: SoundFlow (MiniAudio backend)
     /// - Windows: SoundFlow (MiniAudio backend)
     /// </summary>
     public class SoundManager : IDisposable
@@ -115,8 +115,6 @@ namespace BatteryNotifier.Core.Managers
         {
             if (OperatingSystem.IsMacOS())
                 PlayWithSubprocess("afplay", source, loop, durationMs, token);
-            else if (OperatingSystem.IsLinux())
-                PlayWithLinuxSubprocess(source, loop, durationMs, token);
 #if WINDOWS
             else if (OperatingSystem.IsWindows())
                 PlayWithNAudio(source, loop, durationMs, token);
@@ -128,7 +126,7 @@ namespace BatteryNotifier.Core.Managers
                 _logger.Warning("Unsupported platform for sound playback");
         }
 
-        // ── macOS / Linux: subprocess playback ──────────────────────
+        // ── macOS: subprocess playback ──────────────────────
 
         private void PlayWithSubprocess(string command, string source, bool loop,
             int durationMs, CancellationToken token)
@@ -180,20 +178,6 @@ namespace BatteryNotifier.Core.Managers
                     _currentProcess = null;
                 }
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
-        }
-
-        private void PlayWithLinuxSubprocess(string source, bool loop,
-            int durationMs, CancellationToken token)
-        {
-            // Try paplay first (PulseAudio/PipeWire), then aplay (ALSA)
-            try
-            {
-                PlayWithSubprocess("paplay", source, loop, durationMs, token);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                PlayWithSubprocess("aplay", source, loop, durationMs, token);
-            }
         }
 
 #if WINDOWS

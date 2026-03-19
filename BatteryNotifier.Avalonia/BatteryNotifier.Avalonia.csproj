@@ -69,6 +69,7 @@
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="11.3.12" />
         <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+        <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
         <!-- Removed Avalonia.Fonts.Inter (~8 MB) — uses system fonts instead -->
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using BatteryNotifier.Core.Models;
 
 namespace BatteryNotifier.Core.Services;
 
@@ -33,6 +34,16 @@ public sealed class AppSettings
 
     // Update Settings
     public bool AutoCheckForUpdates { get; set; } = true;
+
+    // Multi-level alerts
+    public List<BatteryAlert> Alerts { get; set; } = new();
+    public int SettingsVersion { get; set; } = 1;
+
+    // Screen flash for Avalonia-native notifications
+    public bool ScreenFlashEnabled { get; set; } = true;
+
+    // Notification card position on screen
+    public NotificationPosition NotificationPosition { get; set; } = NotificationPosition.TopCenter;
 
     // App Identity
     public string AppId { get; set; } = Guid.NewGuid().ToString();
@@ -94,7 +105,22 @@ public sealed class AppSettings
                 ThemeMode = settings.ThemeMode;
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AutoCheckForUpdates = settings.AutoCheckForUpdates;
+                ScreenFlashEnabled = settings.ScreenFlashEnabled;
+                SettingsVersion = settings.SettingsVersion;
+                Alerts = settings.Alerts ?? new List<BatteryAlert>();
                 AppId = settings.AppId;
+
+                // Migrate v1 → v2: convert flat thresholds to alerts
+                if (SettingsVersion < 2)
+                {
+                    MigrateToAlerts();
+                }
+
+                // Sanitize alert sounds
+                foreach (var alert in Alerts)
+                {
+                    alert.Sound = SanitizeSoundPath(alert.Sound);
+                }
             }
 
             // Re-save to encrypt if it was plaintext (migration)
@@ -178,6 +204,55 @@ public sealed class AppSettings
         return canonical;
     }
 
+    private void MigrateToAlerts()
+    {
+        if (Alerts.Count == 0)
+        {
+            Alerts = CreateDefaultAlerts();
+
+            // Carry forward old settings into the default alerts
+            if (Alerts.Count >= 2)
+            {
+                var fullAlert = Alerts[0];
+                fullAlert.LowerBound = FullBatteryNotificationValue;
+                fullAlert.UpperBound = 100;
+                fullAlert.IsEnabled = FullBatteryNotification;
+                fullAlert.Sound = FullBatteryNotificationMusic;
+
+                var lowAlert = Alerts[1];
+                lowAlert.LowerBound = 0;
+                lowAlert.UpperBound = LowBatteryNotificationValue;
+                lowAlert.IsEnabled = LowBatteryNotification;
+                lowAlert.Sound = LowBatteryNotificationMusic;
+            }
+        }
+
+        SettingsVersion = 2;
+        Save();
+    }
+
+    public static List<BatteryAlert> CreateDefaultAlerts() =>
+    [
+        new BatteryAlert
+        {
+            Id = "fullbatt",
+            Label = "Full Battery",
+            LowerBound = 80,
+            UpperBound = 100,
+            IsEnabled = true,
+            Sound = "builtin:Harp"
+        },
+        new BatteryAlert
+        {
+            Id = "lowbatt_",
+            Label = "Low Battery",
+            LowerBound = 0,
+            UpperBound = 25,
+            IsEnabled = true,
+            Sound = "builtin:Klaxon"
+        }
+    ];
+
     public void Reset()
     {
         FullBatteryNotification = true;
@@ -192,6 +267,9 @@ public sealed class AppSettings
         ThemeMode = ThemeMode.System;
         LaunchAtStartup = true;
         AutoCheckForUpdates = true;
+        ScreenFlashEnabled = true;
+        Alerts = CreateDefaultAlerts();
+        SettingsVersion = 2;
         // AppId intentionally preserved — unique per install
 
         Save();
@@ -203,4 +281,14 @@ public enum ThemeMode
     System,
     Light,
     Dark
+}
+
+public enum NotificationPosition
+{
+    TopLeft,
+    TopCenter,
+    TopRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight
 }

@@ -1,0 +1,97 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+        xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
+        x:Class="BatteryNotifier.Avalonia.Views.NotificationCard"
+        x:DataType="vm:NotificationCardViewModel"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        CanResize="False"
+        Width="340" Height="88"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="-1"
+        ShowActivated="False">
+
+    <Border x:Name="CardBorder"
+            CornerRadius="16"
+            Background="{DynamicResource AppWindowBackground}"
+            BorderBrush="{DynamicResource NotificationCardBorder}"
+            BorderThickness="1"
+            BoxShadow="0 8 32 0 #50000000, 0 2 8 0 #20000000"
+            Margin="8"
+            ClipToBounds="True"
+            Opacity="0"
+            RenderTransformOrigin="0.5,0"
+            RenderTransform="scale(0.9,0.9) translateY(-12px)">
+        <Border.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.35" Easing="CubicEaseOut" />
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.4">
+                    <TransformOperationsTransition.Easing>
+                        <SplineEasing X1="0.175" Y1="0.885" X2="0.32" Y2="1.275" />
+                    </TransformOperationsTransition.Easing>
+                </TransformOperationsTransition>
+            </Transitions>
+        </Border.Transitions>
+
+        <Grid RowDefinitions="*,Auto">
+
+            <!-- Content layer -->
+            <Panel Grid.Row="0">
+                <!-- Subtle accent color wash — left to right -->
+                <Border x:Name="AccentWash" CornerRadius="16,16,0,0" Opacity="0.1" />
+
+                <Grid ColumnDefinitions="Auto,12,*,Auto" Margin="14,10,14,8">
+                    <!-- Battery percentage — glass badge -->
+                    <controls:GlassBadge Grid.Column="0"
+                            Width="72" Height="40"
+                            Text="{Binding BatteryPercent}"
+                            AccentColor="{Binding AccentColorValue}"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding ShowPercent}" />
+
+                    <!-- Title + message -->
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                        <TextBlock Text="{Binding Title}"
+                                   FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AppForeground}" />
+                        <TextBlock Text="{Binding Message}"
+                                   FontSize="11.5" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource AppSubtleText}"
+                                   MaxLines="2"
+                                   TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+
+                    <!-- Dismiss X button -->
+                    <Button Grid.Column="3"
+                            Click="DismissButton_Click"
+                            Theme="{StaticResource PrimaryButton}"
+                            Padding="6"
+                            VerticalAlignment="Top"
+                            Margin="-2,-2,0,0"
+                            ToolTip.Tip="Dismiss"
+                            Cursor="Hand">
+                        <PathIcon Data="{StaticResource Icon.X}" Width="10" Height="10"
+                                  Foreground="{DynamicResource AppSubtleText}" />
+                    </Button>
+                </Grid>
+            </Panel>
+
+            <!-- Countdown progress bar -->
+            <Border Grid.Row="1" Height="3"
+                    CornerRadius="0,0,16,16"
+                    ClipToBounds="True">
+                <Border x:Name="ProgressBar"
+                        Background="{Binding AccentColor}"
+                        HorizontalAlignment="Left"
+                        CornerRadius="0,0,0,16"
+                        Opacity="0.6" />
+            </Border>
+
+        </Grid>
+    </Border>
+</Window>

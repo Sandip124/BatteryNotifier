@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Runtime.InteropServices;
@@ -14,6 +15,7 @@ using Avalonia.Threading;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
+using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using ReactiveUI;
@@ -24,11 +26,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
     private readonly AppSettings _settings = AppSettings.Instance;
 
-    private bool _fullBatteryNotification;
-    private bool _lowBatteryNotification;
     private bool _disposed;
-    private readonly IDisposable? _fullBatteryNotificationSub;
-    private readonly IDisposable? _lowBatteryNotificationSub;
 
     /// <summary>True when the main window is visible to the user.</summary>
     private bool _isWindowVisible;
@@ -47,9 +45,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public MainWindowViewModel()
     {
-        _fullBatteryNotification = _settings.FullBatteryNotification;
-        _lowBatteryNotification = _settings.LowBatteryNotification;
-
         NavigateToSettingsCommand = ReactiveCommand.Create(NavigateToSettings);
         HideWindowCommand = ReactiveCommand.Create(HideWindow);
         OpenAboutCommand = ReactiveCommand.CreateFromTask(async () =>
@@ -75,24 +70,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
         catch { /* Battery monitoring not available on this platform */ }
 
+        // Subscribe to health updates for the compact bar
+        BatteryHealthService.Instance.HealthUpdated += (_, _) =>
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                this.RaisePropertyChanged(nameof(HealthSummary));
+                this.RaisePropertyChanged(nameof(HealthAccentColor));
+                this.RaisePropertyChanged(nameof(HealthIcon));
+            });
+        };
+
         // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
-
-        _fullBatteryNotificationSub = this.WhenAnyValue(x => x.FullBatteryNotification)
-            .Skip(1)
-            .Subscribe(enabled =>
-            {
-                _settings.FullBatteryNotification = enabled;
-                _settings.Save();
-            });
-
-        _lowBatteryNotificationSub = this.WhenAnyValue(x => x.LowBatteryNotification)
-            .Skip(1)
-            .Subscribe(enabled =>
-            {
-                _settings.LowBatteryNotification = enabled;
-                _settings.Save();
-            });
     }
 
     // ── Visibility-aware UI updates ──────────────────────────────
@@ -354,16 +344,122 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
 
-    public bool FullBatteryNotification
+    public string AlertsSummary
     {
-        get => _fullBatteryNotification;
-        set => this.RaiseAndSetIfChanged(ref _fullBatteryNotification, value);
+        get
+        {
+            var alerts = _settings.Alerts;
+            var active = alerts.Count(a => a.IsEnabled);
+            return active switch
+            {
+                0 => "No alerts active",
+                1 => "1 alert active",
+                _ => $"{active} alerts active"
+            };
+        }
     }
 
-    public bool LowBatteryNotification
+    public bool FullBatteryAlertEnabled
     {
-        get => _lowBatteryNotification;
-        set => this.RaiseAndSetIfChanged(ref _lowBatteryNotification, value);
+        get => _settings.Alerts.Find(a => a.Id == "fullbatt")?.IsEnabled ?? true;
+        set
+        {
+            var alert = _settings.Alerts.Find(a => a.Id == "fullbatt");
+            if (alert != null)
+            {
+                alert.IsEnabled = value;
+                _settings.Save();
+                this.RaisePropertyChanged();
+            }
+        }
+    }
+
+    public bool LowBatteryAlertEnabled
+    {
+        get => _settings.Alerts.Find(a => a.Id == "lowbatt_")?.IsEnabled ?? true;
+        set
+        {
+            var alert = _settings.Alerts.Find(a => a.Id == "lowbatt_");
+            if (alert != null)
+            {
+                alert.IsEnabled = value;
+                _settings.Save();
+                this.RaisePropertyChanged();
+            }
+        }
+    }
+
+    // ── Health Dashboard ────────────────────────────────────────
+
+    public HealthDashboardViewModel HealthDashboard { get; } = new();
+
+    public bool IsHealthSheetOpen
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public string HealthSummary
+    {
+        get
+        {
+            var health = BatteryHealthService.Instance.LatestHealth;
+            if (health == null) return "Checking...";
+            return health.HealthStatus switch
+            {
+                Core.Models.MetricStatus.Good => "Healthy",
+                Core.Models.MetricStatus.Fair => "Fair",
+                Core.Models.MetricStatus.Poor => "Service Recommended",
+                _ => "Checking..."
+            };
+        }
+    }
+
+    private static global::Avalonia.Media.Geometry? _iconCheck;
+    private static global::Avalonia.Media.Geometry? _iconHeart;
+    private static global::Avalonia.Media.Geometry? _iconWarn;
+
+    private static global::Avalonia.Media.Geometry? ResolveIcon(string key)
+    {
+        var app = global::Avalonia.Application.Current;
+        if (app?.Resources.TryGetResource(key, null, out var res) == true
+            && res is global::Avalonia.Media.Geometry geo)
+            return geo;
+        // Try merged dictionaries
+        foreach (var dict in app?.Resources.MergedDictionaries ?? [])
+            if (dict.TryGetResource(key, null, out var r) && r is global::Avalonia.Media.Geometry g)
+                return g;
+        return null;
+    }
+
+    public global::Avalonia.Media.Geometry? HealthIcon
+    {
+        get
+        {
+            var health = BatteryHealthService.Instance.LatestHealth;
+            return health?.HealthStatus switch
+            {
+                MetricStatus.Good => _iconCheck ??= ResolveIcon("Icon.CheckFat"),
+                MetricStatus.Fair => _iconHeart ??= ResolveIcon("Icon.HeartFill"),
+                MetricStatus.Poor => _iconWarn ??= ResolveIcon("Icon.ExclamationMarkFill"),
+                _ => _iconHeart ??= ResolveIcon("Icon.HeartFill")
+            };
+        }
+    }
+
+    public string HealthAccentColor
+    {
+        get
+        {
+            var health = BatteryHealthService.Instance.LatestHealth;
+            return health?.HealthStatus switch
+            {
+                MetricStatus.Good => "#388E3C",
+                MetricStatus.Fair => "#F9A825",
+                MetricStatus.Poor => "#D32F2F",
+                _ => "#808080"
+            };
+        }
     }
 
     public SettingsViewModel? CurrentView
@@ -698,6 +794,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var old = CurrentView;
         CurrentView = null;
         old?.Dispose();
+        this.RaisePropertyChanged(nameof(AlertsSummary));
+        this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
+        this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
     }
 
     public void Dispose()
@@ -706,9 +805,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         StopDndMonitor();
         StopPhraseCycling();
         CancelTypewriter();
-        _fullBatteryNotificationSub?.Dispose();
-        _lowBatteryNotificationSub?.Dispose();
         CurrentView?.Dispose();
+        HealthDashboard.Dispose();
         try
         {
             BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;

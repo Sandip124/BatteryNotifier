@@ -1,9 +1,11 @@
 using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Services;
@@ -13,9 +15,14 @@ namespace BatteryNotifier.Avalonia.Views;
 
 public partial class MainWindow : Window
 {
+    private static readonly TransformOperations SettingsOffScreen = TransformOperations.Parse("translateX(400px)");
+    private static readonly TransformOperations SettingsOnScreen = TransformOperations.Parse("translateX(0px)");
+    private static readonly TimeSpan SettingsAnimDuration = TimeSpan.FromMilliseconds(300);
+
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
     private IDisposable? _aboutInteractionHandler;
+    private bool _isSettingsAnimating;
 
     public MainWindow()
     {
@@ -38,6 +45,9 @@ public partial class MainWindow : Window
 
         _aboutInteractionHandler?.Dispose();
         _aboutInteractionHandler = null;
+
+        if (DataContext is INotifyPropertyChanged npc)
+            npc.PropertyChanged += OnViewModelPropertyChanged;
 
         if (DataContext is MainWindowViewModel vm)
         {
@@ -123,6 +133,14 @@ public partial class MainWindow : Window
         }
     }
 
+    private void HealthBar_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.IsHealthSheetOpen = !vm.IsHealthSheetOpen;
+        }
+    }
+
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
@@ -165,6 +183,47 @@ public partial class MainWindow : Window
             settings.WindowPositionY = e.Point.Y;
             settings.Save();
         }, 500);
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(MainWindowViewModel.CurrentView)) return;
+        if (sender is not MainWindowViewModel vm) return;
+
+        if (vm.CurrentView != null)
+            AnimateSettingsOpen();
+        else
+            AnimateSettingsClose();
+    }
+
+    private void AnimateSettingsOpen()
+    {
+        if (_isSettingsAnimating) return;
+
+        SettingsContent.Opacity = 0;
+        SettingsContent.RenderTransform = SettingsOffScreen;
+        SettingsContent.IsVisible = true;
+
+        DispatcherTimer.RunOnce(() =>
+        {
+            SettingsContent.Opacity = 1;
+            SettingsContent.RenderTransform = SettingsOnScreen;
+        }, TimeSpan.FromMilliseconds(16));
+    }
+
+    private void AnimateSettingsClose()
+    {
+        if (_isSettingsAnimating) return;
+        _isSettingsAnimating = true;
+
+        SettingsContent.Opacity = 0;
+        SettingsContent.RenderTransform = SettingsOffScreen;
+
+        DispatcherTimer.RunOnce(() =>
+        {
+            SettingsContent.IsVisible = false;
+            _isSettingsAnimating = false;
+        }, SettingsAnimDuration);
     }
 
     protected override void OnClosed(EventArgs e)

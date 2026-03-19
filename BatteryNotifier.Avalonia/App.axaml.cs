@@ -81,9 +81,6 @@ public class App : Application
             // Check for crash from previous session
             CheckForPreviousCrash();
 
-            // Extract notification icon to disk (must happen on UI thread while AssetLoader is available)
-            NotificationPlatformService.Initialize();
-
             // Initialize tray icon
             _trayIconService = new TrayIconService();
             _trayIconService.Initialize();

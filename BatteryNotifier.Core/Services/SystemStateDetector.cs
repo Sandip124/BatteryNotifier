@@ -42,8 +42,6 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFocusAssistActive();
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return IsLinuxDoNotDisturbActive();
         }
         catch (Exception ex)
         {
@@ -66,8 +64,6 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFullscreenActive();
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return IsLinuxFullscreenActive();
         }
         catch (Exception ex)
         {
@@ -322,109 +318,6 @@ return ""false""";
 #else
         return false;
 #endif
-    }
-
-    // ── Linux ────────────────────────────────────────────────────
-
-    private static bool IsLinuxDoNotDisturbActive()
-    {
-        // GNOME: check via gsettings
-        try
-        {
-            var output = RunProcess("gsettings",
-                "get", "org.gnome.desktop.notifications", "show-banners");
-            // "false" means DND is on (banners suppressed)
-            if (output.Trim().Equals("false", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        catch
-        {
-            // Not GNOME or gsettings unavailable
-        }
-
-        // KDE Plasma (and other freedesktop-compliant notification daemons):
-        // Query the standardized Inhibited property.
-        try
-        {
-            var output = RunProcess("dbus-send",
-                "--session",
-                "--dest=org.freedesktop.Notifications",
-                "--print-reply",
-                "/org/freedesktop/Notifications",
-                "org.freedesktop.DBus.Properties.Get",
-                "string:org.freedesktop.Notifications",
-                "string:Inhibited");
-            if (output.Contains("true", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        catch
-        {
-            // Not KDE or dbus unavailable
-        }
-
-        return false;
-    }
-
-    private static bool IsLinuxFullscreenActive()
-    {
-        // Check via xdotool if the active window is fullscreen
-        try
-        {
-            var windowId = RunProcess("xdotool", "getactivewindow").Trim();
-            if (string.IsNullOrEmpty(windowId)) return false;
-
-            // Validate window ID is numeric to prevent argument injection into xprop
-            if (!Regex.IsMatch(windowId, @"^\d+$", RegexOptions.None, TimeSpan.FromSeconds(1)))
-            {
-                Logger.Warning("Unexpected non-numeric window ID from xdotool: {Id}",
-                    windowId.Length > 50 ? windowId[..50] : windowId);
-                return false;
-            }
-
-            // Use ArgumentList — windowId is validated numeric, but defence-in-depth
-            var state = RunProcess("xprop", "-id", windowId, "_NET_WM_STATE");
-            return state.Contains("_NET_WM_STATE_FULLSCREEN", StringComparison.Ordinal);
-        }
-        catch
-        {
-            // xdotool/xprop not available (Wayland?) — try alternate approach
-        }
-
-        // Wayland (GNOME): check via gdbus + xdg-desktop-portal (safe D-Bus read)
-        try
-        {
-            // Query the inhibit state via the portal — does NOT execute arbitrary JS
-            // unlike org.gnome.Shell.Eval which runs code in the compositor.
-            var output = RunProcess("gdbus", "call",
-                "--session",
-                "--dest", "org.freedesktop.portal.Desktop",
-                "--object-path", "/org/freedesktop/portal/desktop",
-                "--method", "org.freedesktop.DBus.Properties.Get",
-                "org.freedesktop.portal.Inhibit",
-                "version");
-            // If portal is available, fall back to wmctrl
-            // Portal doesn't directly expose fullscreen state, so check via wmctrl
-        }
-        catch
-        {
-            // Portal not available
-        }
-
-        // Fallback: wmctrl (works on both X11 and some Wayland compositors)
-        try
-        {
-            var output = RunProcess("wmctrl", "-d");
-            // Active desktop marked with * — not directly fullscreen, but best-effort
-            // For true fullscreen, check active window properties
-            var activeWindow = RunProcess("wmctrl", "-l", "-G");
-            // This is best-effort — return false if we can't determine
-        }
-        catch
-        {
-            // wmctrl not available
-        }
-
-        return false;
     }
 
     // ── macOS Focus State Change Monitor (Darwin notifications) ──
