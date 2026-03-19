@@ -52,19 +52,21 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore --runtime ${{ matrix.rid }}
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore --runtime ${{ matrix.rid }}
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        # Tests run as platform-neutral (no RID) to avoid cross-compilation issues
+        run: dotnet test BatteryNotifier.Tests/ --configuration Release --verbosity normal
 
       - name: Publish
         run: >
           dotnet publish ${{ env.PROJECT }}
           --configuration Release
           --runtime ${{ matrix.rid }}
+          --no-restore
           --self-contained true
           -p:PublishSingleFile=false
           -p:PublishTrimmed=true

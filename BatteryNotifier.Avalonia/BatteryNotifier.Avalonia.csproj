@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
         <TargetFramework>net10.0</TargetFramework>
@@ -11,8 +11,16 @@
         <AssemblyName>BatteryNotifier</AssemblyName>
         <Product>BatteryNotifier</Product>
         <Version>4.0.1</Version>
-        <Company>Sandip Sapkota</Company>
+        <AssemblyVersion>$(Version).0</AssemblyVersion>
+        <FileVersion>$(Version).0</FileVersion>
+        <Company>Sandip Choudhary</Company>
+        <Authors>Sandip Choudhary</Authors>
+        <Copyright>Copyright © Sandip Choudhary 2024-$([System.DateTime]::Now.Year)</Copyright>
         <Description>Cross-platform battery monitoring and notification app</Description>
+        <PackageProjectUrl>https://github.com/Sandip124/BatteryNotifier</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/Sandip124/BatteryNotifier</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <NeutralLanguage>en</NeutralLanguage>
 
         <!-- Security hardening -->
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
