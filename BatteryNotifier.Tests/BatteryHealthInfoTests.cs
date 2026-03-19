@@ -64,10 +64,10 @@ public class BatteryHealthInfoTests
     }
 
     [Fact]
-    public void Recommendation_AllNull_FallsBackToGood()
+    public void Recommendation_AllNull_ShowsUnavailable()
     {
-        // All null means unavailable → no bad metrics → "good condition"
+        // All null means unavailable → no data to assess
         var info = new BatteryHealthInfo();
-        Assert.Contains("good condition", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("not available", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
     }
 }
