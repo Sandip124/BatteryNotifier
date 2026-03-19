@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
@@ -150,24 +151,311 @@ public sealed class BatteryHealthService : IDisposable
     }
 
 #if WINDOWS
+    // ── Windows: IOCTL_BATTERY via DeviceIoControl (no elevation required) ──
+
+    private static readonly Guid GUID_DEVINTERFACE_BATTERY =
+        new("72631e54-78a4-11d0-bcf7-00aa00b7b32a");
+
+    private const uint IOCTL_BATTERY_QUERY_TAG = 0x00294040;
+    private const uint IOCTL_BATTERY_QUERY_INFORMATION = 0x00294044;
+    private const uint IOCTL_BATTERY_QUERY_STATUS = 0x0029404C;
+
+    private const uint DIGCF_PRESENT = 0x02;
+    private const uint DIGCF_DEVICEINTERFACE = 0x10;
+    private const int INVALID_HANDLE_VALUE = -1;
+
+    private enum BATTERY_QUERY_INFORMATION_LEVEL
+    {
+        BatteryInformation = 0,
+        BatteryTemperature = 2,
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BATTERY_INFORMATION
+    {
+        public uint Capabilities;
+        public byte Technology;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+        public byte[] Reserved;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+        public byte[] Chemistry;
+        public uint DesignedCapacity;      // mWh
+        public uint FullChargedCapacity;   // mWh
+        public uint DefaultAlert1;
+        public uint DefaultAlert2;
+        public uint CriticalBias;
+        public uint CycleCount;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BATTERY_QUERY_INFORMATION
+    {
+        public uint BatteryTag;
+        public BATTERY_QUERY_INFORMATION_LEVEL InformationLevel;
+        public uint AtRate;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BATTERY_WAIT_STATUS
+    {
+        public uint BatteryTag;
+        public uint Timeout;
+        public uint PowerState;
+        public uint LowCapacity;
+        public uint HighCapacity;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct BATTERY_STATUS
+    {
+        public uint PowerState;
+        public uint Capacity;     // mWh
+        public uint Voltage;      // mV
+        public int Rate;          // mW (negative = discharging)
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SP_DEVICE_INTERFACE_DATA
+    {
+        public uint cbSize;
+        public Guid InterfaceClassGuid;
+        public uint Flags;
+        public IntPtr Reserved;
+    }
+
+    [DllImport("setupapi.dll", SetLastError = true)]
+    private static extern IntPtr SetupDiGetClassDevs(
+        ref Guid ClassGuid, IntPtr Enumerator, IntPtr hwndParent, uint Flags);
+
+    [DllImport("setupapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiEnumDeviceInterfaces(
+        IntPtr DeviceInfoSet, IntPtr DeviceInfoData, ref Guid InterfaceClassGuid,
+        uint MemberIndex, ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData);
+
+    [DllImport("setupapi.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiGetDeviceInterfaceDetail(
+        IntPtr DeviceInfoSet, ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData,
+        IntPtr DeviceInterfaceDetailData, uint DeviceInterfaceDetailDataSize,
+        out uint RequiredSize, IntPtr DeviceInfoData);
+
+    [DllImport("setupapi.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetupDiDestroyDeviceInfoList(IntPtr DeviceInfoSet);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    private static extern IntPtr CreateFile(
+        string lpFileName, uint dwDesiredAccess, uint dwShareMode,
+        IntPtr lpSecurityAttributes, uint dwCreationDisposition,
+        uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeviceIoControl(
+        IntPtr hDevice, uint dwIoControlCode,
+        ref uint lpInBuffer, uint nInBufferSize,
+        out uint lpOutBuffer, uint nOutBufferSize,
+        out uint lpBytesReturned, IntPtr lpOverlapped);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeviceIoControl(
+        IntPtr hDevice, uint dwIoControlCode,
+        ref BATTERY_QUERY_INFORMATION lpInBuffer, uint nInBufferSize,
+        out BATTERY_INFORMATION lpOutBuffer, uint nOutBufferSize,
+        out uint lpBytesReturned, IntPtr lpOverlapped);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeviceIoControl(
+        IntPtr hDevice, uint dwIoControlCode,
+        ref BATTERY_QUERY_INFORMATION lpInBuffer, uint nInBufferSize,
+        out uint lpOutBuffer, uint nOutBufferSize,
+        out uint lpBytesReturned, IntPtr lpOverlapped);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeviceIoControl(
+        IntPtr hDevice, uint dwIoControlCode,
+        ref BATTERY_WAIT_STATUS lpInBuffer, uint nInBufferSize,
+        out BATTERY_STATUS lpOutBuffer, uint nOutBufferSize,
+        out uint lpBytesReturned, IntPtr lpOverlapped);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
+
     private static BatteryHealthInfo FetchWindowsHealth()
     {
         var info = new BatteryHealthInfo();
 
         try
         {
-            FetchWindowsCapacityAndCycles(info);
-            FetchWindowsBatteryStatus(info);
+            FetchViaIoctl(info);
         }
         catch (Exception ex)
         {
-            Logger.Warning(ex, "Failed to query Windows battery health via WMI");
+            Logger.Warning(ex, "IOCTL battery query failed, trying WMI fallback");
+            try { FetchViaWmi(info); }
+            catch (Exception wmiEx) { Logger.Warning(wmiEx, "WMI battery query also failed"); }
         }
 
         return info;
     }
 
-    private static void FetchWindowsCapacityAndCycles(BatteryHealthInfo info)
+    private static void FetchViaIoctl(BatteryHealthInfo info)
+    {
+        var guid = GUID_DEVINTERFACE_BATTERY;
+        var hDevInfo = SetupDiGetClassDevs(ref guid, IntPtr.Zero, IntPtr.Zero,
+            DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+
+        if (hDevInfo == new IntPtr(INVALID_HANDLE_VALUE))
+            throw new InvalidOperationException("SetupDiGetClassDevs failed");
+
+        try
+        {
+            var diData = new SP_DEVICE_INTERFACE_DATA
+            {
+                cbSize = (uint)Marshal.SizeOf<SP_DEVICE_INTERFACE_DATA>()
+            };
+
+            // Get the first battery device
+            if (!SetupDiEnumDeviceInterfaces(hDevInfo, IntPtr.Zero, ref guid, 0, ref diData))
+                throw new InvalidOperationException("No battery device found");
+
+            var devicePath = GetDevicePath(hDevInfo, ref diData);
+            if (devicePath == null)
+                throw new InvalidOperationException("Failed to get battery device path");
+
+            // Open battery device handle
+            const uint GENERIC_READ = 0x80000000;
+            const uint GENERIC_WRITE = 0x40000000;
+            const uint FILE_SHARE_READ_WRITE = 0x03;
+            const uint OPEN_EXISTING = 3;
+
+            var hBattery = CreateFile(devicePath, GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ_WRITE, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+
+            if (hBattery == new IntPtr(INVALID_HANDLE_VALUE))
+                throw new InvalidOperationException("Failed to open battery device");
+
+            try
+            {
+                // Step 1: Get battery tag
+                uint waitTimeout = 0;
+                if (!DeviceIoControl(hBattery, IOCTL_BATTERY_QUERY_TAG,
+                        ref waitTimeout, sizeof(uint),
+                        out uint batteryTag, sizeof(uint),
+                        out _, IntPtr.Zero) || batteryTag == 0)
+                    throw new InvalidOperationException("Failed to get battery tag");
+
+                // Step 2: Get BATTERY_INFORMATION (design capacity, full charge, cycle count)
+                QueryBatteryInformation(hBattery, batteryTag, info);
+
+                // Step 3: Get BATTERY_STATUS (voltage, rate)
+                QueryBatteryStatus(hBattery, batteryTag, info);
+
+                // Step 4: Try to get temperature (not all drivers support this)
+                QueryBatteryTemperature(hBattery, batteryTag, info);
+            }
+            finally
+            {
+                CloseHandle(hBattery);
+            }
+        }
+        finally
+        {
+            SetupDiDestroyDeviceInfoList(hDevInfo);
+        }
+    }
+
+    private static void QueryBatteryInformation(IntPtr hBattery, uint batteryTag, BatteryHealthInfo info)
+    {
+        var query = new BATTERY_QUERY_INFORMATION
+        {
+            BatteryTag = batteryTag,
+            InformationLevel = BATTERY_QUERY_INFORMATION_LEVEL.BatteryInformation
+        };
+
+        if (!DeviceIoControl(hBattery, IOCTL_BATTERY_QUERY_INFORMATION,
+                ref query, (uint)Marshal.SizeOf(query),
+                out BATTERY_INFORMATION batInfo, (uint)Marshal.SizeOf<BATTERY_INFORMATION>(),
+                out _, IntPtr.Zero))
+            return;
+
+        if (batInfo.DesignedCapacity > 0 && batInfo.FullChargedCapacity > 0)
+            info.HealthPercent = Math.Round((double)batInfo.FullChargedCapacity / batInfo.DesignedCapacity * 100, 1);
+
+        if (batInfo.CycleCount > 0)
+            info.CycleCount = (int)batInfo.CycleCount;
+    }
+
+    private static void QueryBatteryStatus(IntPtr hBattery, uint batteryTag, BatteryHealthInfo info)
+    {
+        var waitStatus = new BATTERY_WAIT_STATUS { BatteryTag = batteryTag };
+
+        if (!DeviceIoControl(hBattery, IOCTL_BATTERY_QUERY_STATUS,
+                ref waitStatus, (uint)Marshal.SizeOf(waitStatus),
+                out BATTERY_STATUS status, (uint)Marshal.SizeOf<BATTERY_STATUS>(),
+                out _, IntPtr.Zero))
+            return;
+
+        if (status.Voltage > 0)
+            info.VoltageVolts = status.Voltage / 1000.0;
+
+        if (status.Rate != 0)
+            info.PowerRateWatts = Math.Round(Math.Abs(status.Rate) / 1000.0, 2);
+    }
+
+    private static void QueryBatteryTemperature(IntPtr hBattery, uint batteryTag, BatteryHealthInfo info)
+    {
+        var query = new BATTERY_QUERY_INFORMATION
+        {
+            BatteryTag = batteryTag,
+            InformationLevel = BATTERY_QUERY_INFORMATION_LEVEL.BatteryTemperature
+        };
+
+        // Many drivers don't support temperature — silently ignore failure
+        if (DeviceIoControl(hBattery, IOCTL_BATTERY_QUERY_INFORMATION,
+                ref query, (uint)Marshal.SizeOf(query),
+                out uint tempDecikelvin, sizeof(uint),
+                out _, IntPtr.Zero) && tempDecikelvin > 0)
+        {
+            info.TemperatureCelsius = Math.Round((tempDecikelvin / 10.0) - 273.15, 1);
+        }
+    }
+
+    private static string? GetDevicePath(IntPtr hDevInfo, ref SP_DEVICE_INTERFACE_DATA diData)
+    {
+        // First call to get required size
+        SetupDiGetDeviceInterfaceDetail(hDevInfo, ref diData, IntPtr.Zero, 0,
+            out uint requiredSize, IntPtr.Zero);
+
+        if (requiredSize == 0) return null;
+
+        var detailDataPtr = Marshal.AllocHGlobal((int)requiredSize);
+        try
+        {
+            // First field is cbSize — must be set to 5 on x86, 8 on x64
+            // (sizeof(uint) + offset of DevicePath, accounting for packing)
+            Marshal.WriteInt32(detailDataPtr, IntPtr.Size == 8 ? 8 : 6);
+
+            if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ref diData, detailDataPtr,
+                    requiredSize, out _, IntPtr.Zero))
+                return null;
+
+            // DevicePath starts at offset 4 (after cbSize DWORD)
+            return Marshal.PtrToStringAuto(detailDataPtr + 4);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(detailDataPtr);
+        }
+    }
+
+    /// <summary>WMI fallback for machines where IOCTL fails.</summary>
+    private static void FetchViaWmi(BatteryHealthInfo info)
     {
         using var searcher = new System.Management.ManagementObjectSearcher("root\\WMI",
             "SELECT DesignedCapacity FROM BatteryStaticData");
@@ -187,33 +475,15 @@ public sealed class BatteryHealthService : IDisposable
             break;
         }
 
-        if (designCap > 0 && fullCap > 0)
+        if (designCap > 0 && fullCap > 0 && !info.HealthPercent.HasValue)
             info.HealthPercent = Math.Round((double)fullCap / designCap * 100, 1);
 
         using var cycleSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
             "SELECT CycleCount FROM BatteryCycleCount");
         foreach (System.Management.ManagementObject obj in cycleSearcher.Get())
         {
-            info.CycleCount = Convert.ToInt32(obj["CycleCount"]);
-            break;
-        }
-    }
-
-    private static void FetchWindowsBatteryStatus(BatteryHealthInfo info)
-    {
-        using var statusSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
-            "SELECT Voltage, Temperature, DischargeRate FROM BatteryStatus WHERE Voltage > 0");
-        foreach (System.Management.ManagementObject obj in statusSearcher.Get())
-        {
-            var voltage = Convert.ToInt32(obj["Voltage"]);
-            if (voltage > 0) info.VoltageVolts = voltage / 1000.0;
-
-            var temp = Convert.ToInt32(obj["Temperature"]);
-            if (temp > 0) info.TemperatureCelsius = (temp - 2732) / 10.0; // decikelvin → celsius
-
-            var rate = Convert.ToInt32(obj["DischargeRate"]);
-            if (rate != 0) info.PowerRateWatts = Math.Abs(rate) / 1000.0;
-
+            if (!info.CycleCount.HasValue)
+                info.CycleCount = Convert.ToInt32(obj["CycleCount"]);
             break;
         }
     }
