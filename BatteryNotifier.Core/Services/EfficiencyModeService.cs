@@ -52,6 +52,8 @@ public sealed class EfficiencyModeService : IDisposable
 
         if (OperatingSystem.IsWindows())
             SetWindowsEcoQoS(true);
+        else if (OperatingSystem.IsLinux())
+            SetLinuxNice(true);
 
         Logger.Debug("Efficiency mode enabled");
     }
@@ -69,6 +71,8 @@ public sealed class EfficiencyModeService : IDisposable
 
         if (OperatingSystem.IsWindows())
             SetWindowsEcoQoS(false);
+        else if (OperatingSystem.IsLinux())
+            SetLinuxNice(false);
 
         Logger.Debug("Efficiency mode disabled");
     }
@@ -229,6 +233,28 @@ public sealed class EfficiencyModeService : IDisposable
         }
     }
 
+    // ── Linux: nice (CPU scheduling priority) ──
+
+    // setpriority(PRIO_PROCESS, 0, nice_value) — 0 = current process
+    [DllImport("libc", EntryPoint = "setpriority")]
+    private static extern int setpriority(int which, int who, int prio);
+
+    private const int PRIO_PROCESS = 0;
+    private const int NiceEfficient = 15;  // Low priority but not starved
+    private const int NiceNormal = 0;
+
+    private static void SetLinuxNice(bool efficient)
+    {
+        try
+        {
+            setpriority(PRIO_PROCESS, 0, efficient ? NiceEfficient : NiceNormal);
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug(ex, "Failed to set Linux nice value");
+        }
+    }
+
     public void Dispose()
     {
         lock (_lock)
@@ -237,8 +263,13 @@ public sealed class EfficiencyModeService : IDisposable
             _disposed = true;
         }
 
-        if (_isEfficient && OperatingSystem.IsWindows())
-            SetWindowsEcoQoS(false);
+        if (_isEfficient)
+        {
+            if (OperatingSystem.IsWindows())
+                SetWindowsEcoQoS(false);
+            else if (OperatingSystem.IsLinux())
+                SetLinuxNice(false);
+        }
 
         if (OperatingSystem.IsMacOS())
             ReleaseMacActivityAssertion();

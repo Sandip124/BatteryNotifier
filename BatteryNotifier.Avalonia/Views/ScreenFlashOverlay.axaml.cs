@@ -6,6 +6,7 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using BatteryNotifier.Core.Logger;
 
 namespace BatteryNotifier.Avalonia.Views;
 
@@ -35,10 +36,10 @@ public partial class ScreenFlashOverlay : Window
             else if (OperatingSystem.IsLinux())
                 ConfigureLinuxOverlay();
         }
-        catch (DllNotFoundException)
+        catch (DllNotFoundException ex)
         {
-            // Platform library not available — overlay still works, just without
-            // click-through or advanced window level configuration
+            BatteryNotifierAppLogger.ForContext<ScreenFlashOverlay>()
+                .Debug(ex, "Native overlay configuration unavailable — click-through disabled");
         }
     }
 

@@ -51,6 +51,9 @@ public static class SystemStateDetector
                 return IsWindowsFocusAssistActive();
 #endif
 
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return IsLinuxDndActive();
+
         }
         catch (Exception ex)
         {
@@ -74,6 +77,9 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFullscreenActive();
 #endif
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                return IsLinuxFullscreenActive();
 
         }
         catch (Exception ex)
@@ -432,6 +438,75 @@ return ""false""";
             DarwinNotifyCancel(_macFocusToken);
             _macFocusToken = -1;
         }
+    }
+
+    // ── Linux: DND + fullscreen detection ──
+
+    /// <summary>
+    /// Linux DND detection. Tries KDE D-Bus Inhibited property first,
+    /// then falls back to GNOME gsettings show-banners.
+    /// </summary>
+    private static bool IsLinuxDndActive()
+    {
+        return IsLinuxDndViaKde() ?? IsLinuxDndViaGnome() ?? false;
+    }
+
+    /// <summary>KDE Plasma: org.freedesktop.Notifications.Inhibited property.</summary>
+    private static bool? IsLinuxDndViaKde()
+    {
+        var output = RunProcess("dbus-send",
+            "--session", "--print-reply",
+            "--dest=org.freedesktop.Notifications",
+            "/org/freedesktop/Notifications",
+            "org.freedesktop.DBus.Properties.Get",
+            "string:org.freedesktop.Notifications",
+            "string:Inhibited");
+
+        if (string.IsNullOrWhiteSpace(output)) return null;
+
+        // D-Bus reply: "variant  boolean true" or "variant  boolean false"
+        if (output.Contains("boolean true", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (output.Contains("boolean false", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return null; // Unexpected format or error (e.g., GNOME returns InvalidArgs)
+    }
+
+    /// <summary>GNOME: gsettings show-banners (false = DND active).</summary>
+    private static bool? IsLinuxDndViaGnome()
+    {
+        var output = RunProcess("gsettings", "get",
+            "org.gnome.desktop.notifications", "show-banners");
+
+        if (string.IsNullOrWhiteSpace(output)) return null;
+
+        var trimmed = output.Trim();
+        if (trimmed == "false") return true;  // banners off = DND on
+        if (trimmed == "true") return false;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Linux fullscreen detection via xprop + xdotool on X11.
+    /// Returns false on Wayland (no reliable unprivileged API).
+    /// </summary>
+    private static bool IsLinuxFullscreenActive()
+    {
+        // Only works on X11 — xdotool/xprop don't work on native Wayland
+        var sessionType = Environment.GetEnvironmentVariable("XDG_SESSION_TYPE");
+        if (sessionType != null && sessionType.Equals("wayland", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Get active window ID
+        var windowIdStr = RunProcess("xdotool", "getactivewindow").Trim();
+        if (string.IsNullOrEmpty(windowIdStr) || !long.TryParse(windowIdStr, out _))
+            return false;
+
+        // Check if it has _NET_WM_STATE_FULLSCREEN
+        var xpropOutput = RunProcess("xprop", "-id", windowIdStr, "_NET_WM_STATE");
+        return xpropOutput.Contains("_NET_WM_STATE_FULLSCREEN", StringComparison.Ordinal);
     }
 
     // ── Secure Process Helpers ───────────────────────────────────
