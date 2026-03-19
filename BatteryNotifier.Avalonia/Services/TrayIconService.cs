@@ -133,6 +133,12 @@ internal sealed class TrayIconService : IDisposable
 
     private void UpdateToolTip()
     {
+        if (!global::Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(UpdateToolTip);
+            return;
+        }
+
         if (_trayIcon == null) return;
 
         var batteryPercent = BatteryManagerStore.Instance.BatteryLifePercent;
@@ -339,7 +345,7 @@ internal sealed class TrayIconService : IDisposable
             if (_trayIcon != null)
                 _trayIcon.ToolTipText = "BatteryNotifier — Checking for updates...";
 
-            var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
+            var result = await UpdateService.Instance.CheckForUpdateManualAsync();
 
             switch (result.Status)
             {
