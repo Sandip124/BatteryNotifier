@@ -89,10 +89,10 @@ public sealed class BatteryHealthService : IDisposable
         if (OperatingSystem.IsLinux())
             return FetchLinuxHealth();
 #if WINDOWS
-        return FetchWindowsHealth();
-#else
-        return new BatteryHealthInfo();
+        if (OperatingSystem.IsWindows())
+            return FetchWindowsHealth();
 #endif
+        return new BatteryHealthInfo();
     }
 
     private static BatteryHealthInfo FetchMacHealth()
@@ -156,50 +156,8 @@ public sealed class BatteryHealthService : IDisposable
 
         try
         {
-            using var searcher = new System.Management.ManagementObjectSearcher("root\\WMI",
-                "SELECT DesignedCapacity FROM BatteryStaticData");
-            long designCap = 0;
-            foreach (System.Management.ManagementObject obj in searcher.Get())
-            {
-                designCap = Convert.ToInt64(obj["DesignedCapacity"]);
-                break;
-            }
-
-            using var fullSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
-                "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity");
-            long fullCap = 0;
-            foreach (System.Management.ManagementObject obj in fullSearcher.Get())
-            {
-                fullCap = Convert.ToInt64(obj["FullChargedCapacity"]);
-                break;
-            }
-
-            if (designCap > 0 && fullCap > 0)
-                info.HealthPercent = Math.Round((double)fullCap / designCap * 100, 1);
-
-            using var cycleSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
-                "SELECT CycleCount FROM BatteryCycleCount");
-            foreach (System.Management.ManagementObject obj in cycleSearcher.Get())
-            {
-                info.CycleCount = Convert.ToInt32(obj["CycleCount"]);
-                break;
-            }
-
-            using var statusSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
-                "SELECT Voltage, Temperature, DischargeRate FROM BatteryStatus WHERE Voltage > 0");
-            foreach (System.Management.ManagementObject obj in statusSearcher.Get())
-            {
-                var voltage = Convert.ToInt32(obj["Voltage"]);
-                if (voltage > 0) info.VoltageVolts = voltage / 1000.0;
-
-                var temp = Convert.ToInt32(obj["Temperature"]);
-                if (temp > 0) info.TemperatureCelsius = (temp - 2732) / 10.0; // decikelvin → celsius
-
-                var rate = Convert.ToInt32(obj["DischargeRate"]);
-                if (rate != 0) info.PowerRateWatts = Math.Abs(rate) / 1000.0;
-
-                break;
-            }
+            FetchWindowsCapacityAndCycles(info);
+            FetchWindowsBatteryStatus(info);
         }
         catch (Exception ex)
         {
@@ -207,6 +165,57 @@ public sealed class BatteryHealthService : IDisposable
         }
 
         return info;
+    }
+
+    private static void FetchWindowsCapacityAndCycles(BatteryHealthInfo info)
+    {
+        using var searcher = new System.Management.ManagementObjectSearcher("root\\WMI",
+            "SELECT DesignedCapacity FROM BatteryStaticData");
+        long designCap = 0;
+        foreach (System.Management.ManagementObject obj in searcher.Get())
+        {
+            designCap = Convert.ToInt64(obj["DesignedCapacity"]);
+            break;
+        }
+
+        using var fullSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
+            "SELECT FullChargedCapacity FROM BatteryFullChargedCapacity");
+        long fullCap = 0;
+        foreach (System.Management.ManagementObject obj in fullSearcher.Get())
+        {
+            fullCap = Convert.ToInt64(obj["FullChargedCapacity"]);
+            break;
+        }
+
+        if (designCap > 0 && fullCap > 0)
+            info.HealthPercent = Math.Round((double)fullCap / designCap * 100, 1);
+
+        using var cycleSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
+            "SELECT CycleCount FROM BatteryCycleCount");
+        foreach (System.Management.ManagementObject obj in cycleSearcher.Get())
+        {
+            info.CycleCount = Convert.ToInt32(obj["CycleCount"]);
+            break;
+        }
+    }
+
+    private static void FetchWindowsBatteryStatus(BatteryHealthInfo info)
+    {
+        using var statusSearcher = new System.Management.ManagementObjectSearcher("root\\WMI",
+            "SELECT Voltage, Temperature, DischargeRate FROM BatteryStatus WHERE Voltage > 0");
+        foreach (System.Management.ManagementObject obj in statusSearcher.Get())
+        {
+            var voltage = Convert.ToInt32(obj["Voltage"]);
+            if (voltage > 0) info.VoltageVolts = voltage / 1000.0;
+
+            var temp = Convert.ToInt32(obj["Temperature"]);
+            if (temp > 0) info.TemperatureCelsius = (temp - 2732) / 10.0; // decikelvin → celsius
+
+            var rate = Convert.ToInt32(obj["DischargeRate"]);
+            if (rate != 0) info.PowerRateWatts = Math.Abs(rate) / 1000.0;
+
+            break;
+        }
     }
 #endif
 
