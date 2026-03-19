@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
 using Serilog;
@@ -96,7 +97,7 @@ public sealed class AppSettings
                 json = SettingsEncryption.Decrypt(rawBytes, GetSettingsDirectory());
             }
 
-            var settings = JsonSerializer.Deserialize<AppSettings>(json);
+            var settings = JsonSerializer.Deserialize(json, AppSettingsJsonContext.Default.AppSettings);
 
             if (settings != null)
             {
@@ -156,12 +157,7 @@ public sealed class AppSettings
         {
             try
             {
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                };
-
-                var json = JsonSerializer.Serialize(this, options);
+                var json = JsonSerializer.Serialize(this, AppSettingsJsonContext.Default.AppSettings);
                 var encrypted = SettingsEncryption.Encrypt(json, GetSettingsDirectory());
 
                 var tmpPath = SettingsFilePath + ".tmp";
@@ -303,3 +299,7 @@ public enum NotificationPosition
     BottomCenter,
     BottomRight
 }
+
+[JsonSerializable(typeof(AppSettings))]
+[JsonSourceGenerationOptions(WriteIndented = true)]
+internal partial class AppSettingsJsonContext : JsonSerializerContext;
