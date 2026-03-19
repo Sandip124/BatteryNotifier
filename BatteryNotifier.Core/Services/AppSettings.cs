@@ -149,6 +149,11 @@ public sealed class AppSettings
             Logger.Warning(ex, "Settings decryption failed (tampered or corrupt) — resetting to defaults. Path: {Path}", SettingsFilePath);
             Reset();
         }
+        catch (JsonException ex)
+        {
+            Logger.Warning(ex, "Settings JSON is corrupt after decryption — resetting to defaults. Path: {Path}", SettingsFilePath);
+            Reset();
+        }
         catch (Exception ex)
         {
             Logger.Error(ex, "Failed to load settings — resetting to defaults. Path: {Path}", SettingsFilePath);
