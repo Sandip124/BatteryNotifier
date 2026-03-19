@@ -9,7 +9,7 @@ namespace BatteryNotifier.Core.Services;
 
 public sealed class AppSettings
 {
-    private static readonly Lazy<AppSettings> _instance = new(() => new AppSettings());
+    private static readonly Lazy<AppSettings> _instance = new(() => new AppSettings(load: true));
     public static AppSettings Instance => _instance.Value;
 
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("AppSettings");
@@ -53,7 +53,12 @@ public sealed class AppSettings
     // App Identity
     public string AppId { get; set; } = Guid.NewGuid().ToString();
 
-    private AppSettings()
+    /// <summary>Used by the JSON deserializer — does NOT call Load().</summary>
+    [JsonConstructor]
+    internal AppSettings() { }
+
+    /// <summary>Singleton constructor — loads settings from disk.</summary>
+    private AppSettings(bool load)
     {
         Load();
     }
