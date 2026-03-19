@@ -29,6 +29,14 @@ public static class SystemStateDetector
     private const int AccessibilityTimeoutMs = 5000;
 
     /// <summary>
+    /// Tracks whether the initial accessibility-based DND check has been performed.
+    /// After the first check, we rely on Darwin notify for changes and skip the
+    /// accessibility click (which visibly opens the Control Center dropdown).
+    /// </summary>
+    private static bool _macDndInitialCheckDone;
+    private static bool _macDndLastKnownState;
+
+    /// <summary>
     /// Returns true if the OS is in Do Not Disturb / silent / Focus Assist mode.
     /// </summary>
     public static bool IsDoNotDisturbActive()
@@ -92,11 +100,36 @@ public static class SystemStateDetector
 
     private static bool IsMacDoNotDisturbActive()
     {
-        // Try each detection approach in order: Monterey → Ventura+ → Tahoe+ fallback
-        return IsMacDndViaDefaults()
-            ?? IsMacDndViaAssertionsFile()
-            ?? IsMacDndViaAccessibility()
-            ?? false;
+        // Try non-invasive approaches first: Monterey defaults → Ventura assertions file
+        var result = IsMacDndViaDefaults() ?? IsMacDndViaAssertionsFile();
+
+        if (result.HasValue)
+        {
+            _macDndLastKnownState = result.Value;
+            _macDndInitialCheckDone = true;
+            return result.Value;
+        }
+
+        // Tahoe+ fallback: Assertions.json is TCC-protected.
+        // The accessibility approach clicks the Control Center dropdown (visible flicker).
+        // Only do this ONCE for initial state, then rely on Darwin notify for changes.
+        if (!_macDndInitialCheckDone)
+        {
+            _macDndInitialCheckDone = true;
+            var accessibilityResult = IsMacDndViaAccessibility();
+            if (accessibilityResult.HasValue)
+            {
+                _macDndLastKnownState = accessibilityResult.Value;
+                return accessibilityResult.Value;
+            }
+        }
+
+        // After initial check, return last known state.
+        // Darwin notify (HasPendingFocusChange) will trigger a re-check
+        // via the 2-minute fallback path which calls here again — but we
+        // skip the accessibility click and just toggle the cached state
+        // based on whether Darwin reported a change.
+        return _macDndLastKnownState;
     }
 
     /// <summary>macOS Monterey and earlier: direct defaults key.</summary>
@@ -375,8 +408,14 @@ return ""false""";
 
         try
         {
-            if (DarwinNotifyCheck(_macFocusToken, out int check) == NotifyStatusOk)
-                return check != 0;
+            if (DarwinNotifyCheck(_macFocusToken, out int check) == NotifyStatusOk && check != 0)
+            {
+                // Darwin notify fired — Focus/DND state changed. Toggle cached state
+                // so IsMacDoNotDisturbActive returns the correct value without the
+                // accessibility click (which causes visible Control Center flicker).
+                _macDndLastKnownState = !_macDndLastKnownState;
+                return true;
+            }
         }
         catch { /* P/Invoke failure — monitor is broken */ }
 
