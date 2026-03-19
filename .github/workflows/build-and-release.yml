@@ -337,3 +337,39 @@ jobs:
             --title "$TAG" \
             --generate-notes \
             --draft
+
+  # ── Winget: auto-submit package to microsoft/winget-pkgs ──
+  winget:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+
+    steps:
+      - name: Submit to winget
+        uses: vedantmgoyal9/winget-releaser@main
+        with:
+          identifier: Sandip124.BatteryNotifier
+          installers-regex: 'Setup-win-x64\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+          release-tag: ${{ github.ref_name }}
+
+  # ── Homebrew: update formula in personal tap ──
+  homebrew:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update Homebrew formula
+        uses: Justintime50/homebrew-releaser@v1
+        with:
+          homebrew_owner: Sandip124
+          homebrew_tap: homebrew-tap
+          formula_folder: Casks
+          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          commit_owner: Sandip Choudhary
+          commit_email: ${{ secrets.GIT_EMAIL }}
+          install: 'prefix.install Dir["*"]'
+          target_darwin_amd64: true
+          target_darwin_arm64: true
+          update_readme_table: true
