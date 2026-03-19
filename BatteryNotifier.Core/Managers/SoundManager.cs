@@ -16,7 +16,7 @@ namespace BatteryNotifier.Core.Managers
     /// <summary>
     /// Cross-platform audio playback.
     /// - macOS: afplay subprocess (ArgumentList for injection safety)
-    /// - Linux: paplay subprocess, falls back to aplay
+    /// - Non-Windows: SoundFlow (MiniAudio backend)
     /// - Windows: SoundFlow (MiniAudio backend)
     /// </summary>
     public class SoundManager : IDisposable
@@ -40,43 +40,10 @@ namespace BatteryNotifier.Core.Managers
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
 
-            // Resolve built-in sounds to their cached WAV file paths
-            var resolvedPath = BuiltInSounds.Resolve(source);
-            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return;
+            var resolvedPath = ResolveSoundPath(source);
+            if (resolvedPath == null) return;
 
-            // Canonicalize path — on macOS /var is a symlink to /private/var,
-            // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
-            try
-            {
-                resolvedPath = Path.GetFullPath(resolvedPath);
-            }
-            catch
-            {
-                _logger.Warning("Failed to canonicalize sound file path: {Path}", resolvedPath);
-                return;
-            }
-
-            // Validate the path is a real, rooted file path
-            if (!Path.IsPathRooted(resolvedPath) || !File.Exists(resolvedPath))
-            {
-                _logger.Warning("Rejected invalid sound file path: {Path}", resolvedPath);
-                return;
-            }
-
-            // Reject symlinks — prevents reading arbitrary files
-            var fileInfo = new FileInfo(resolvedPath);
-            if (fileInfo.LinkTarget != null)
-            {
-                _logger.Warning("Rejected symlink sound file path: {Path}", resolvedPath);
-                return;
-            }
-
-            // Reject files larger than 50 MB
-            if (fileInfo.Length > 50 * 1024 * 1024)
-            {
-                _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, resolvedPath);
-                return;
-            }
+            if (!ValidateSoundFile(resolvedPath)) return;
 
             CancellationToken token;
             lock (_playLock)
@@ -84,7 +51,7 @@ namespace BatteryNotifier.Core.Managers
                 if (_isPlaying) return;
                 _isPlaying = true;
 
-                _cancellationTokenSource?.Cancel();
+                _cancellationTokenSource?.CancelAsync();
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = new CancellationTokenSource();
                 token = _cancellationTokenSource.Token;
@@ -111,24 +78,73 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 
+        /// <summary>
+        /// Resolves a sound source (builtin:, bundled:, custom:, or absolute path) to a canonical file path.
+        /// </summary>
+        private string? ResolveSoundPath(string? source)
+        {
+            var resolvedPath = BuiltInSounds.Resolve(source);
+            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return null;
+
+            // Canonicalize path — on macOS /var is a symlink to /private/var,
+            // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
+            try
+            {
+                resolvedPath = Path.GetFullPath(resolvedPath);
+            }
+            catch
+            {
+                _logger.Warning("Failed to canonicalize sound file path: {Path}", resolvedPath);
+                return null;
+            }
+
+            if (!Path.IsPathRooted(resolvedPath) || !File.Exists(resolvedPath))
+            {
+                _logger.Warning("Rejected invalid sound file path: {Path}", resolvedPath);
+                return null;
+            }
+
+            return resolvedPath;
+        }
+
+        /// <summary>
+        /// Validates a resolved sound file: rejects symlinks and oversized files.
+        /// </summary>
+        private bool ValidateSoundFile(string path)
+        {
+            var fileInfo = new FileInfo(path);
+
+            if (fileInfo.LinkTarget != null)
+            {
+                _logger.Warning("Rejected symlink sound file path: {Path}", path);
+                return false;
+            }
+
+            if (fileInfo.Length > 50 * 1024 * 1024)
+            {
+                _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, path);
+                return false;
+            }
+
+            return true;
+        }
+
         private void PlaySound(string source, bool loop, int durationMs, CancellationToken token)
         {
             if (OperatingSystem.IsMacOS())
                 PlayWithSubprocess("afplay", source, loop, durationMs, token);
-            else if (OperatingSystem.IsLinux())
-                PlayWithLinuxSubprocess(source, loop, durationMs, token);
 #if WINDOWS
             else if (OperatingSystem.IsWindows())
                 PlayWithNAudio(source, loop, durationMs, token);
 #else
-            else if (OperatingSystem.IsWindows())
-                PlayWithSoundFlow(source, loop, durationMs, token);
+            else if (OperatingSystem.IsLinux())
+                PlayOnLinux(source, loop, durationMs, token);
 #endif
             else
                 _logger.Warning("Unsupported platform for sound playback");
         }
 
-        // ── macOS / Linux: subprocess playback ──────────────────────
+        // ── macOS: subprocess playback ──────────────────────
 
         private void PlayWithSubprocess(string command, string source, bool loop,
             int durationMs, CancellationToken token)
@@ -157,8 +173,6 @@ namespace BatteryNotifier.Core.Managers
                 {
                     process.Start();
 
-                    var remainingMs = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
-                    if (remainingMs <= 0) remainingMs = 100;
 
                     // Wait for process to exit or timeout/cancellation
                     while (!process.WaitForExit(200))
@@ -180,20 +194,6 @@ namespace BatteryNotifier.Core.Managers
                     _currentProcess = null;
                 }
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
-        }
-
-        private void PlayWithLinuxSubprocess(string source, bool loop,
-            int durationMs, CancellationToken token)
-        {
-            // Try paplay first (PulseAudio/PipeWire), then aplay (ALSA)
-            try
-            {
-                PlayWithSubprocess("paplay", source, loop, durationMs, token);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                PlayWithSubprocess("aplay", source, loop, durationMs, token);
-            }
         }
 
 #if WINDOWS
@@ -268,6 +268,45 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 #else
+        // ── Linux: try SoundFlow, fall back to subprocess ──────────────────────────
+
+        private void PlayOnLinux(string source, bool loop, int durationMs, CancellationToken token)
+        {
+            // Try SoundFlow (MiniAudio) first — best quality, supports looping
+            if (!_sfFailed)
+            {
+                try
+                {
+                    PlayWithSoundFlow(source, loop, durationMs, token);
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warning(ex, "SoundFlow failed on Linux, falling back to subprocess");
+                }
+            }
+
+            // Fallback: subprocess playback via paplay (PulseAudio), pw-play (PipeWire), or aplay (ALSA)
+            var command = FindLinuxAudioCommand();
+            if (command != null)
+                PlayWithSubprocess(command, source, loop, durationMs, token);
+            else
+                _logger.Warning("No audio playback command found (tried paplay, pw-play, aplay)");
+        }
+
+        private static string? FindLinuxAudioCommand()
+        {
+            // Prefer PulseAudio (most common), then PipeWire CLI, then raw ALSA
+            string[] candidates = ["paplay", "pw-play", "aplay"];
+            foreach (var cmd in candidates)
+            {
+                var resolved = Constants.ResolveCommand(cmd);
+                if (resolved != cmd || File.Exists(resolved))
+                    return cmd;
+            }
+            return null;
+        }
+
         // ── Non-Windows: SoundFlow (MiniAudio) ──────────────────────────
 
         private static MiniAudioEngine? _sfEngine;
@@ -292,8 +331,7 @@ namespace BatteryNotifier.Core.Managers
 
             EventHandler<EventArgs> onPlaybackEnded = (_, _) =>
             {
-                try { playbackDone.Set(); }
-                catch (ObjectDisposedException) { }
+                playbackDone.Set(); 
             };
             player.PlaybackEnded += onPlaybackEnded;
 
@@ -305,7 +343,6 @@ namespace BatteryNotifier.Core.Managers
             {
                 playbackDone.Wait(durationMs, token);
             }
-            catch (OperationCanceledException) { }
             finally
             {
                 player.Stop();

@@ -1,16 +1,22 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Models;
+using Serilog;
 
 namespace BatteryNotifier.Core.Services;
 
 public sealed class AppSettings
 {
-    private static readonly Lazy<AppSettings> _instance = new(() => new AppSettings());
+    private static readonly Lazy<AppSettings> _instance = new(() => new AppSettings(load: true));
     public static AppSettings Instance => _instance.Value;
 
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("AppSettings");
+
     private const string SettingsFileName = "appsettings.json";
-    private readonly object _saveLock = new();
-    private string SettingsFilePath => Path.Combine(GetSettingsDirectory(), SettingsFileName);
+    private readonly Lock _saveLock = new();
+    private static string SettingsFilePath => Path.Combine(GetSettingsDirectory(), SettingsFileName);
 
     // Notification Settings
     public bool FullBatteryNotification { get; set; } = true;
@@ -34,10 +40,25 @@ public sealed class AppSettings
     // Update Settings
     public bool AutoCheckForUpdates { get; set; } = true;
 
+    // Multi-level alerts
+    public List<BatteryAlert> Alerts { get; set; } = new();
+    public int SettingsVersion { get; set; } = 1;
+
+    // Screen flash for Avalonia-native notifications
+    public bool ScreenFlashEnabled { get; set; } = true;
+
+    // Notification card position on screen
+    public NotificationPosition NotificationPosition { get; set; } = NotificationPosition.TopCenter;
+
     // App Identity
     public string AppId { get; set; } = Guid.NewGuid().ToString();
 
-    private AppSettings()
+    /// <summary>Used by the JSON deserializer — does NOT call Load().</summary>
+    [JsonConstructor]
+    internal AppSettings() { }
+
+    /// <summary>Singleton constructor — loads settings from disk.</summary>
+    private AppSettings(bool load)
     {
         Load();
     }
@@ -60,7 +81,10 @@ public sealed class AppSettings
         {
             if (!File.Exists(SettingsFilePath))
             {
-                Save(); // Create default settings
+                Logger.Information("No settings file found — creating defaults at {Path}", SettingsFilePath);
+                Alerts = CreateDefaultAlerts();
+                SettingsVersion = 2;
+                Save();
                 return;
             }
 
@@ -78,7 +102,7 @@ public sealed class AppSettings
                 json = SettingsEncryption.Decrypt(rawBytes, GetSettingsDirectory());
             }
 
-            var settings = JsonSerializer.Deserialize<AppSettings>(json);
+            var settings = JsonSerializer.Deserialize(json, AppSettingsJsonContext.Default.AppSettings);
 
             if (settings != null)
             {
@@ -94,7 +118,24 @@ public sealed class AppSettings
                 ThemeMode = settings.ThemeMode;
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AutoCheckForUpdates = settings.AutoCheckForUpdates;
+                ScreenFlashEnabled = settings.ScreenFlashEnabled;
+                SettingsVersion = settings.SettingsVersion;
+                Alerts = settings.Alerts ?? new List<BatteryAlert>();
                 AppId = settings.AppId;
+
+                // Migrate v1 → v2: convert flat thresholds to alerts
+                if (SettingsVersion < 2)
+                {
+                    MigrateToAlerts();
+                }
+
+                // Sanitize alert sounds
+                foreach (var alert in Alerts)
+                {
+                    alert.Sound = SanitizeSoundPath(alert.Sound);
+                }
+
+                Logger.Information("Settings loaded: v{Version}, {AlertCount} alerts", SettingsVersion, Alerts.Count);
             }
 
             // Re-save to encrypt if it was plaintext (migration)
@@ -103,12 +144,14 @@ public sealed class AppSettings
                 Save();
             }
         }
-        catch (CryptographicException)
+        catch (CryptographicException ex)
         {
+            Logger.Warning(ex, "Settings decryption failed (tampered or corrupt) — resetting to defaults. Path: {Path}", SettingsFilePath);
             Reset();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Logger.Error(ex, "Failed to load settings — resetting to defaults. Path: {Path}", SettingsFilePath);
             Reset();
         }
     }
@@ -119,12 +162,7 @@ public sealed class AppSettings
         {
             try
             {
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true
-                };
-
-                var json = JsonSerializer.Serialize(this, options);
+                var json = JsonSerializer.Serialize(this, AppSettingsJsonContext.Default.AppSettings);
                 var encrypted = SettingsEncryption.Encrypt(json, GetSettingsDirectory());
 
                 var tmpPath = SettingsFilePath + ".tmp";
@@ -178,6 +216,55 @@ public sealed class AppSettings
         return canonical;
     }
 
+    private void MigrateToAlerts()
+    {
+        if (Alerts.Count == 0)
+        {
+            Alerts = CreateDefaultAlerts();
+
+            // Carry forward old settings into the default alerts
+            if (Alerts.Count >= 2)
+            {
+                var fullAlert = Alerts[0];
+                fullAlert.LowerBound = FullBatteryNotificationValue;
+                fullAlert.UpperBound = 100;
+                fullAlert.IsEnabled = FullBatteryNotification;
+                fullAlert.Sound = FullBatteryNotificationMusic;
+
+                var lowAlert = Alerts[1];
+                lowAlert.LowerBound = 0;
+                lowAlert.UpperBound = LowBatteryNotificationValue;
+                lowAlert.IsEnabled = LowBatteryNotification;
+                lowAlert.Sound = LowBatteryNotificationMusic;
+            }
+        }
+
+        SettingsVersion = 2;
+        Save();
+    }
+
+    public static List<BatteryAlert> CreateDefaultAlerts() =>
+    [
+        new BatteryAlert
+        {
+            Id = "fullbatt",
+            Label = "Full Battery",
+            LowerBound = 80,
+            UpperBound = 100,
+            IsEnabled = true,
+            Sound = "builtin:Harp"
+        },
+        new BatteryAlert
+        {
+            Id = "lowbatt_",
+            Label = "Low Battery",
+            LowerBound = 0,
+            UpperBound = 25,
+            IsEnabled = true,
+            Sound = "builtin:Klaxon"
+        }
+    ];
+
     public void Reset()
     {
         FullBatteryNotification = true;
@@ -192,6 +279,9 @@ public sealed class AppSettings
         ThemeMode = ThemeMode.System;
         LaunchAtStartup = true;
         AutoCheckForUpdates = true;
+        ScreenFlashEnabled = true;
+        Alerts = CreateDefaultAlerts();
+        SettingsVersion = 2;
         // AppId intentionally preserved — unique per install
 
         Save();
@@ -204,3 +294,17 @@ public enum ThemeMode
     Light,
     Dark
 }
+
+public enum NotificationPosition
+{
+    TopLeft,
+    TopCenter,
+    TopRight,
+    BottomLeft,
+    BottomCenter,
+    BottomRight
+}
+
+[JsonSerializable(typeof(AppSettings))]
+[JsonSourceGenerationOptions(WriteIndented = true)]
+internal partial class AppSettingsJsonContext : JsonSerializerContext;

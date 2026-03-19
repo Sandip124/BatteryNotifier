@@ -1,4 +1,5 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -6,11 +7,11 @@ using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
 
-public partial class BatteryNotificationSection : UserControl
+public partial class AlertRow : UserControl
 {
     private IDisposable? _interactionHandler;
 
-    public BatteryNotificationSection()
+    public AlertRow()
     {
         InitializeComponent();
     }
@@ -22,7 +23,7 @@ public partial class BatteryNotificationSection : UserControl
         _interactionHandler?.Dispose();
         _interactionHandler = null;
 
-        if (DataContext is BatteryNotificationSectionViewModel vm)
+        if (DataContext is AlertRowViewModel vm)
         {
             _interactionHandler = vm.OpenSoundPickerInteraction.RegisterHandler(async ctx =>
             {
@@ -33,23 +34,21 @@ public partial class BatteryNotificationSection : UserControl
                     return;
                 }
 
-                // Add backdrop overlay (non-interactive — clicks pass through to owner window)
-                var backdrop = new Border
-                {
-                    Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
-                    IsHitTestVisible = false
-                };
+                // Find the root panel to overlay into — avoids reparenting content
+                // which would reset the ScrollViewer position
+                var rootPanel = FindRootPanel(ownerWindow);
+                Border? backdrop = null;
 
-                Panel? overlayHost = null;
-                Control? existingContent = null;
-                if (ownerWindow.Content is Control content)
+                if (rootPanel != null)
                 {
-                    existingContent = content;
-                    overlayHost = new Panel();
-                    ownerWindow.Content = null;
-                    overlayHost.Children.Add(existingContent);
-                    overlayHost.Children.Add(backdrop);
-                    ownerWindow.Content = overlayHost;
+                    backdrop = new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
+                        IsHitTestVisible = false,
+                        Margin = new Thickness(-4), // extend past window padding
+                        ZIndex = 100
+                    };
+                    rootPanel.Children.Add(backdrop);
                 }
 
                 try
@@ -66,17 +65,36 @@ public partial class BatteryNotificationSection : UserControl
                 }
                 finally
                 {
-                    // Remove backdrop — restore original content (must run on UI thread)
-                    if (overlayHost != null && existingContent != null)
+                    if (rootPanel != null && backdrop != null)
                     {
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
-                            overlayHost.Children.Clear();
-                            ownerWindow.Content = existingContent;
+                            rootPanel.Children.Remove(backdrop);
                         });
                     }
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Walks the window content tree to find a Panel we can add an overlay child to.
+    /// </summary>
+    private static Panel? FindRootPanel(Window window)
+    {
+        if (window.Content is Panel panel)
+            return panel;
+
+        // The MainWindow structure is Border > Border > Grid — dig into it
+        if (window.Content is Decorator decorator)
+        {
+            var child = decorator.Child;
+            while (child is Decorator d)
+                child = d.Child;
+            if (child is Panel p)
+                return p;
+        }
+
+        return null;
     }
 }

@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -23,78 +22,15 @@ public static class CrashReporter
 
     private const string CrashMarkerFileName = ".crash-report";
     private const string CrashMarkerSigFileName = ".crash-report.sig";
-    private const string RateLimitFileName = ".last-report";
     private const int MaxLogLines = 200;
     private const int MaxLogFileSize = 512 * 1024; // 512 KB per file
     private const int MaxCrashMarkerSize = 64 * 1024; // 64 KB
     private const int MaxLineLength = 500; // Truncate individual lines
 
-    /// <summary>Minimum interval between reports (prevents spam).</summary>
-    private static readonly TimeSpan ReportCooldown = TimeSpan.FromHours(1);
-
     private static string DataDirectory => Constants.AppDataDirectory;
 
     private static string CrashMarkerPath => Path.Combine(DataDirectory, CrashMarkerFileName);
     private static string CrashMarkerSigPath => Path.Combine(DataDirectory, CrashMarkerSigFileName);
-    private static string RateLimitPath => Path.Combine(DataDirectory, RateLimitFileName);
-
-    // ── Rate Limiting ────────────────────────────────────────────
-
-    /// <summary>
-    /// Returns true if a report can be sent (cooldown has elapsed).
-    /// </summary>
-    public static bool CanSendReport()
-    {
-        try
-        {
-            if (!File.Exists(RateLimitPath)) return true;
-
-            var lastReportText = File.ReadAllText(RateLimitPath).Trim();
-            if (DateTime.TryParse(lastReportText, null,
-                    System.Globalization.DateTimeStyles.RoundtripKind, out var lastReport))
-            {
-                return (DateTime.UtcNow - lastReport) >= ReportCooldown;
-            }
-
-            return true; // Corrupted file — allow
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    /// <summary>
-    /// Returns the remaining cooldown time, or TimeSpan.Zero if ready.
-    /// </summary>
-    public static TimeSpan GetCooldownRemaining()
-    {
-        try
-        {
-            if (!File.Exists(RateLimitPath)) return TimeSpan.Zero;
-
-            var lastReportText = File.ReadAllText(RateLimitPath).Trim();
-            if (DateTime.TryParse(lastReportText, null,
-                    System.Globalization.DateTimeStyles.RoundtripKind, out var lastReport))
-            {
-                var remaining = ReportCooldown - (DateTime.UtcNow - lastReport);
-                return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
-            }
-        }
-        catch { }
-
-        return TimeSpan.Zero;
-    }
-
-    private static void RecordReportSent()
-    {
-        try
-        {
-            Directory.CreateDirectory(DataDirectory);
-            File.WriteAllText(RateLimitPath, DateTime.UtcNow.ToString("O"));
-        }
-        catch { }
-    }
 
     // ── Crash Marker (HMAC-signed) ───────────────────────────────
 
@@ -188,8 +124,20 @@ public static class CrashReporter
 
     private static void CleanupCrashMarker()
     {
-        try { File.Delete(CrashMarkerPath); } catch { }
-        try { File.Delete(CrashMarkerSigPath); } catch { }
+        DeleteFileQuietly(CrashMarkerPath);
+        DeleteFileQuietly(CrashMarkerSigPath);
+    }
+
+    private static void DeleteFileQuietly(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex)
+        {
+            Logger.Debug(ex, "Failed to delete file {Path}", path);
+        }
     }
 
     /// <summary>
@@ -464,7 +412,7 @@ public static class CrashReporter
                 .Skip(10);
             foreach (var old in oldReports)
             {
-                try { File.Delete(old); } catch { }
+                DeleteFileQuietly(old);
             }
 
             return filePath;

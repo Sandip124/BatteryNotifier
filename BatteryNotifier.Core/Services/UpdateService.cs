@@ -31,7 +31,7 @@ public sealed class UpdateService : IDisposable
     public event EventHandler<UpdateAvailableEventArgs>? UpdateAvailable;
 
     /// <summary>Only URLs matching this origin are trusted for browser open.</summary>
-    private const string TrustedUrlPrefix = "https://github.com/Sandip124/BatteryNotifier";
+    private static readonly string TrustedUrlPrefix = Constants.SourceRepositoryUrl;
 
     /// <summary>Max response size to prevent OOM from a malicious API response.</summary>
     private const long MaxResponseBytes = 1024 * 1024; // 1 MB
@@ -67,7 +67,7 @@ public sealed class UpdateService : IDisposable
     {
         try
         {
-            var apiUrl = "https://api.github.com/repos/Sandip124/BatteryNotifier/releases/latest";
+            var apiUrl = $"https://api.github.com/repos/{Constants.GitHubOwner}/{Constants.GitHubRepo}/releases/latest";
             var response = await _httpClient.GetAsync(apiUrl, ct).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)

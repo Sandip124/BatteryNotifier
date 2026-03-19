@@ -34,16 +34,9 @@ public class UpdateServiceTests
     [InlineData("v3.2.0")]
     [InlineData("V3.2.0")]
     [InlineData("v1.0.0")]
-    public void ParseVersion_LeadingV_IsStripped(string input)
-    {
-        var version = ParseVersion(input);
-        Assert.NotNull(version);
-    }
-
-    [Theory]
     [InlineData(" 3.2.0 ")]
     [InlineData("v 3.2.0")]
-    public void ParseVersion_Whitespace_IsTrimmed(string input)
+    public void ParseVersion_NormalizesInput(string input)
     {
         var version = ParseVersion(input);
         Assert.NotNull(version);

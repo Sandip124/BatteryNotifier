@@ -36,9 +36,9 @@ public static class CustomSoundsLibrary
             return null;
 
         // Prevent path traversal — only allow simple filenames
-        if (fileName.Contains(Path.DirectorySeparatorChar) ||
-            fileName.Contains(Path.AltDirectorySeparatorChar) ||
-            fileName.Contains('\0'))
+        if (fileName.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+            fileName.Contains(Path.AltDirectorySeparatorChar, StringComparison.Ordinal) ||
+            fileName.Contains('\0', StringComparison.Ordinal))
             return null;
 
         var path = Path.Combine(SoundsDir, fileName);
@@ -73,7 +73,7 @@ public static class CustomSoundsLibrary
         }
         catch
         {
-            try { File.Delete(tmpPath); } catch { }
+            File.Delete(tmpPath);
             return null;
         }
     }
@@ -100,22 +100,15 @@ public static class CustomSoundsLibrary
     public static bool Delete(string fileName)
     {
         if (string.IsNullOrEmpty(fileName) ||
-            fileName.Contains(Path.DirectorySeparatorChar) ||
-            fileName.Contains(Path.AltDirectorySeparatorChar))
+            fileName.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+            fileName.Contains(Path.AltDirectorySeparatorChar, StringComparison.Ordinal))
             return false;
 
         var path = Path.Combine(SoundsDir, fileName);
-        try
-        {
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-                return true;
-            }
-        }
-        catch { }
+        if (!File.Exists(path)) return false;
+        File.Delete(path);
+        return true;
 
-        return false;
     }
 
     private static bool ValidateSourceFile(string path)

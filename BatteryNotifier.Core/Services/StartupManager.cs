@@ -24,11 +24,6 @@ public static class StartupManager
             {
                 SetMacStartup(enabled);
             }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                SetLinuxStartup(enabled);
-            }
-
             Logger.Information("Startup {Action} successfully", enabled ? "enabled" : "disabled");
         }
         catch (Exception ex)
@@ -50,7 +45,7 @@ public static class StartupManager
             var oldVbsFile = Path.Combine(startupDir, $"{AppName}.vbs");
             if (File.Exists(oldVbsFile))
             {
-                try { File.Delete(oldVbsFile); } catch { }
+                File.Delete(oldVbsFile);
             }
 
             if (enabled)
@@ -132,50 +127,6 @@ public static class StartupManager
         }
     }
 
-    private static void SetLinuxStartup(bool enabled)
-    {
-        try
-        {
-            var executablePath = GetExecutablePath();
-            var autostartDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".config", "autostart");
-
-            if (!Directory.Exists(autostartDir))
-            {
-                Directory.CreateDirectory(autostartDir);
-            }
-
-            var desktopFilePath = Path.Combine(autostartDir, $"{AppName}.desktop");
-
-            if (enabled)
-            {
-                // Look for a .png icon next to the executable for the desktop entry
-                var iconPath = Path.Combine(Path.GetDirectoryName(executablePath) ?? ".", "BatteryNotifierLogo.png");
-
-                var desktopContent = $"[Desktop Entry]\nType=Application\nName={AppName}\nExec={executablePath}\nHidden=false\nNoDisplay=false\nX-GNOME-Autostart-enabled=true";
-
-                if (File.Exists(iconPath))
-                {
-                    desktopContent += $"\nIcon={iconPath}";
-                }
-
-                File.WriteAllText(desktopFilePath, desktopContent);
-            }
-            else
-            {
-                if (File.Exists(desktopFilePath))
-                {
-                    File.Delete(desktopFilePath);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Failed to set Linux startup");
-        }
-    }
-
     private static string GetExecutablePath()
     {
         var processPath = Environment.ProcessPath;
@@ -208,10 +159,8 @@ public static class StartupManager
                 process.StartInfo.ArgumentList.Add(arg);
 
             process.Start();
-            if (!process.WaitForExit(5000))
-            {
-                try { process.Kill(); } catch { }
-            }
+            if (!process.WaitForExit(Constants.ProcessTimeoutMs) && !process.HasExited)
+                process.Kill();
         }
         catch (Exception ex)
         {
@@ -236,10 +185,8 @@ public static class StartupManager
             };
             process.Start();
             var uid = process.StandardOutput.ReadToEnd().Trim();
-            if (!process.WaitForExit(3000))
-            {
-                try { process.Kill(); } catch { }
-            }
+            if (!process.WaitForExit(Constants.ProcessTimeoutShortMs) && !process.HasExited)
+                process.Kill();
             return uid;
         }
         catch
@@ -259,10 +206,6 @@ public static class StartupManager
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 return IsMacStartupEnabled();
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                return IsLinuxStartupEnabled();
             }
         }
         catch (Exception ex)
@@ -303,23 +246,6 @@ public static class StartupManager
 
             var plistPath = Path.Combine(launchAgentsDir, $"com.{AppName.ToLower()}.plist");
             return File.Exists(plistPath);
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private static bool IsLinuxStartupEnabled()
-    {
-        try
-        {
-            var autostartDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                ".config", "autostart");
-
-            var desktopFilePath = Path.Combine(autostartDir, $"{AppName}.desktop");
-            return File.Exists(desktopFilePath);
         }
         catch
         {

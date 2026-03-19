@@ -142,71 +142,39 @@ public class BatteryMonitorServiceTests
         Assert.False(result.ShouldFirePowerLineChanged, "No previous state = no power line event");
     }
 
-    // ── Low battery threshold ───────────────────────────────────
+    // ── Notification publishing on state transitions ───────────
 
-    [Theory]
-    [InlineData(25, true)]   // At threshold
-    [InlineData(24, true)]   // Below threshold
-    [InlineData(10, true)]   // Well below
-    [InlineData(26, false)]  // Above threshold
-    [InlineData(50, false)]  // Well above
-    public void EvaluateBatteryChange_LowBatteryDetection(int level, bool expectedLow)
+    [Fact]
+    public void EvaluateBatteryChange_LevelChange_TriggersNotification()
     {
-        var current = MakeStatus(level, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
+        var last = MakeStatus(50, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
+        var current = MakeStatus(25, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
 
-        var result = BatteryMonitorService.EvaluateBatteryChange(null, current, lowThreshold: 25, fullThreshold: 96, forceCheck: false);
+        var result = BatteryMonitorService.EvaluateBatteryChange(last, current, lowThreshold: 25, fullThreshold: 96, forceCheck: false);
 
-        Assert.Equal(expectedLow, result.IsLowBattery);
+        Assert.True(result.ShouldPublishNotification, "Level change should trigger notification evaluation");
     }
 
     [Fact]
-    public void EvaluateBatteryChange_LowBattery_NotTriggeredWhileCharging()
+    public void EvaluateBatteryChange_PowerLineChange_TriggersNotification()
     {
-        var current = MakeStatus(10, BatteryPowerLineStatus.Online, BatteryChargeStatus.Charging);
+        var last = MakeStatus(96, BatteryPowerLineStatus.Offline, BatteryChargeStatus.High);
+        var current = MakeStatus(96, BatteryPowerLineStatus.Online, BatteryChargeStatus.Charging);
 
-        var result = BatteryMonitorService.EvaluateBatteryChange(null, current, 25, 96, forceCheck: false);
+        var result = BatteryMonitorService.EvaluateBatteryChange(last, current, lowThreshold: 25, fullThreshold: 96, forceCheck: false);
 
-        Assert.False(result.IsLowBattery, "Should not alert low battery while charging");
-    }
-
-    // ── Full battery threshold ──────────────────────────────────
-
-    [Theory]
-    [InlineData(96, true)]   // At threshold
-    [InlineData(100, true)]  // Full
-    [InlineData(95, false)]  // Below threshold
-    public void EvaluateBatteryChange_FullBatteryDetection(int level, bool expectedFull)
-    {
-        var current = MakeStatus(level, BatteryPowerLineStatus.Online, BatteryChargeStatus.Charging);
-
-        var result = BatteryMonitorService.EvaluateBatteryChange(null, current, lowThreshold: 25, fullThreshold: 96, forceCheck: false);
-
-        Assert.Equal(expectedFull, result.IsFullBattery);
+        Assert.True(result.ShouldPublishNotification, "Power line change should trigger notification evaluation");
     }
 
     [Fact]
-    public void EvaluateBatteryChange_FullBattery_NotTriggeredWhenUnplugged()
+    public void EvaluateBatteryChange_NoChange_DoesNotTriggerNotification()
     {
-        // 100% but unplugged and discharging — not "full battery" scenario
-        var current = MakeStatus(100, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
-
-        var result = BatteryMonitorService.EvaluateBatteryChange(null, current, 25, 96, forceCheck: false);
-
-        Assert.False(result.IsFullBattery, "Should not alert full battery when unplugged and discharging");
-    }
-
-    // ── Notifications are independent of UI updates ─────────────
-
-    [Fact]
-    public void EvaluateBatteryChange_LowBattery_DetectedEvenWhenLevelUnchanged()
-    {
-        // Battery stays at 20% across two checks — still low
-        var last = MakeStatus(20, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
-        var current = MakeStatus(20, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
+        var last = MakeStatus(50, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
+        var current = MakeStatus(50, BatteryPowerLineStatus.Offline, BatteryChargeStatus.Low);
 
         var result = BatteryMonitorService.EvaluateBatteryChange(last, current, 25, 96, forceCheck: false);
 
-        Assert.False(result.ShouldUpdateUI, "Level didn't change");
-        Assert.True(result.IsLowBattery, "Still low battery regardless of UI update");
+        Assert.False(result.ShouldPublishNotification, "No change should not trigger notification");
+        Assert.False(result.ShouldUpdateUI, "No change should not trigger UI update");
     }
 }

@@ -132,22 +132,16 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 
     public async Task PreviewItem(SoundPickerItem item)
     {
-        try
-        {
-            _soundManager.StopSound();
-            await Task.Delay(100).ConfigureAwait(false);
+        _soundManager.StopSound();
+        await Task.Delay(100).ConfigureAwait(false);
 
-            var source = item.SettingsValue;
-            if (string.IsNullOrEmpty(source)) return;
+        var source = item.SettingsValue;
+        if (string.IsNullOrEmpty(source)) return;
 
-            // Built-in tones are short — preview with a cap. Other sounds play in full.
-            bool isShortTone = BuiltInSounds.IsBuiltIn(source);
-            int previewMs = isShortTone ? 5000 : 60_000;
-            await _soundManager.PlaySoundAsync(source, loop: false, durationMs: previewMs).ConfigureAwait(false);
-        }
-        catch
-        {
-        }
+        // Built-in tones are short — preview with a cap. Other sounds play in full.
+        bool isShortTone = BuiltInSounds.IsBuiltIn(source);
+        int previewMs = isShortTone ? 5000 : 60_000;
+        await _soundManager.PlaySoundAsync(source, loop: false, durationMs: previewMs).ConfigureAwait(false);
     }
 
     public void StopPreview()

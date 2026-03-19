@@ -13,7 +13,7 @@ public static class BatteryNotifierAppLogger
     public static ILogger ForContext<T>()
     {
         var typeName = typeof(T).Name;
-        return _loggers.GetOrAdd(typeName, _ => Log.ForContext<T>());
+        return _loggers.GetOrAdd(typeName, static _ => Log.ForContext<T>());
     }
 
     /// <summary>
@@ -21,7 +21,7 @@ public static class BatteryNotifierAppLogger
     /// </summary>
     public static ILogger ForContext(string contextName)
     {
-        return _loggers.GetOrAdd(contextName, _ => Log.ForContext("SourceContext", contextName));
+        return _loggers.GetOrAdd(contextName, static name => Log.ForContext("SourceContext", name));
     }
 
     // Convenience methods for quick logging

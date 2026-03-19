@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
              xmlns:components="clr-namespace:BatteryNotifier.Avalonia.Views.Components"
+             xmlns:services="clr-namespace:BatteryNotifier.Core.Services;assembly=BatteryNotifier.Core"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
              x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
              x:DataType="vm:SettingsViewModel">
@@ -102,23 +103,181 @@
                     </Grid>
                 </Border>
 
-                <!-- Notifications & Sounds -->
+                <!-- Notification Display -->
                 <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
                         BorderBrush="{DynamicResource AppCardBorder}"
                         Background="{DynamicResource AppCardBackground}">
-                    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
-                        <Border Grid.Row="0" Padding="12,10,12,4">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Margin="0,0,0,0" FontSize="12" FontWeight="Normal"
-                                           Foreground="{DynamicResource AppSubtleText}">NOTIFICATIONS &amp; SOUNDS</TextBlock>
+                    <StackPanel>
+                        <Border Padding="12,10,12,4">
+                            <TextBlock FontSize="12" FontWeight="Normal"
+                                       Foreground="{DynamicResource AppSubtleText}">NOTIFICATION DISPLAY</TextBlock>
+                        </Border>
+
+                        <!-- Position picker — monitor with position grid -->
+                        <Border Padding="12,6">
+                            <StackPanel Spacing="6">
+                                <TextBlock FontSize="12" Foreground="{DynamicResource AppSubtleText}">Notification Position</TextBlock>
+
+                                <!-- Monitor frame -->
+                                <StackPanel HorizontalAlignment="Center" Spacing="0">
+                                    <!-- Screen -->
+                                    <Border Background="{DynamicResource AppWindowBackground}"
+                                            CornerRadius="6" Padding="4"
+                                            BorderBrush="{DynamicResource AppCardBorder}"
+                                            BorderThickness="2"
+                                            Width="220" Height="90">
+                                        <Grid x:Name="PositionGrid" RowDefinitions="*,6,*" ColumnDefinitions="*,*,*">
+                                            <Grid.Styles>
+                                                <Style Selector="Button.pos-btn">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Setter Property="Padding" Value="0" />
+                                                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                                    <Setter Property="VerticalAlignment" Value="Stretch" />
+                                                    <Setter Property="Margin" Value="2" />
+                                                    <Setter Property="CornerRadius" Value="4" />
+                                                    <Setter Property="Cursor" Value="Hand" />
+                                                </Style>
+                                                <Style Selector="Button.pos-btn /template/ ContentPresenter">
+                                                    <Setter Property="Background" Value="{DynamicResource AppCardBackground}" />
+                                                    <Setter Property="CornerRadius" Value="4" />
+                                                    <Setter Property="Opacity" Value="0.5" />
+                                                </Style>
+                                                <Style Selector="Button.pos-btn:pointerover /template/ ContentPresenter">
+                                                    <Setter Property="Background" Value="{DynamicResource AppHoverBackground}" />
+                                                    <Setter Property="Opacity" Value="0.8" />
+                                                </Style>
+                                                <Style Selector="Button.pos-active /template/ ContentPresenter">
+                                                    <Setter Property="Background" Value="{DynamicResource AppAccentBackground}" />
+                                                    <Setter Property="Opacity" Value="1" />
+                                                </Style>
+                                                <Style Selector="Button.pos-btn > Border.pos-card">
+                                                    <Setter Property="Width" Value="24" />
+                                                    <Setter Property="Height" Value="8" />
+                                                    <Setter Property="CornerRadius" Value="2" />
+                                                    <Setter Property="Background" Value="{DynamicResource AppSubtleText}" />
+                                                    <Setter Property="Opacity" Value="0.5" />
+                                                </Style>
+                                                <Style Selector="Button.pos-active > Border.pos-card">
+                                                    <Setter Property="Background" Value="White" />
+                                                    <Setter Property="Opacity" Value="0.9" />
+                                                </Style>
+                                            </Grid.Styles>
+
+                                            <!-- Top row -->
+                                            <Button Grid.Row="0" Grid.Column="0" Classes="pos-btn"
+                                                    Command="{Binding SetPositionCommand}"
+                                                    CommandParameter="{x:Static services:NotificationPosition.TopLeft}"
+                                                    ToolTip.Tip="Top Left"
+                                                    x:Name="PosTopLeft">
+                                                <Border Classes="pos-card" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4,3" />
+                                            </Button>
+                                            <Button Grid.Row="0" Grid.Column="1" Classes="pos-btn"
+                                                    Command="{Binding SetPositionCommand}"
+                                                    CommandParameter="{x:Static services:NotificationPosition.TopCenter}"
+                                                    ToolTip.Tip="Top Center"
+                                                    x:Name="PosTopCenter">
+                                                <Border Classes="pos-card" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,3" />
+                                            </Button>
+                                            <Button Grid.Row="0" Grid.Column="2" Classes="pos-btn"
+                                                    Command="{Binding SetPositionCommand}"
+                                                    CommandParameter="{x:Static services:NotificationPosition.TopRight}"
+                                                    ToolTip.Tip="Top Right"
+                                                    x:Name="PosTopRight">
+                                                <Border Classes="pos-card" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="4,3" />
+                                            </Button>
+
+                                            <!-- Gap row (Row 1) separates top from bottom -->
+
+                                            <!-- Bottom row -->
+                                            <Button Grid.Row="2" Grid.Column="0" Classes="pos-btn"
+                                                    Command="{Binding SetPositionCommand}"
+                                                    CommandParameter="{x:Static services:NotificationPosition.BottomLeft}"
+                                                    ToolTip.Tip="Bottom Left"
+                                                    x:Name="PosBottomLeft">
+                                                <Border Classes="pos-card" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4,3" />
+                                            </Button>
+                                            <Button Grid.Row="2" Grid.Column="1" Classes="pos-btn"
+                                                    Command="{Binding SetPositionCommand}"
+                                                    CommandParameter="{x:Static services:NotificationPosition.BottomCenter}"
+                                                    ToolTip.Tip="Bottom Center"
+                                                    x:Name="PosBottomCenter">
+                                                <Border Classes="pos-card" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,3" />
+                                            </Button>
+                                            <Button Grid.Row="2" Grid.Column="2" Classes="pos-btn"
+                                                    Command="{Binding SetPositionCommand}"
+                                                    CommandParameter="{x:Static services:NotificationPosition.BottomRight}"
+                                                    ToolTip.Tip="Bottom Right"
+                                                    x:Name="PosBottomRight">
+                                                <Border Classes="pos-card" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="4,3" />
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Monitor stand -->
+                                    <Border Width="40" Height="6"
+                                            Background="{DynamicResource AppCardBorder}"
+                                            CornerRadius="0,0,2,2"
+                                            HorizontalAlignment="Center" />
+                                    <Border Width="60" Height="4"
+                                            Background="{DynamicResource AppCardBorder}"
+                                            CornerRadius="2"
+                                            HorizontalAlignment="Center" />
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Row="1" Padding="12">
-                            <StackPanel Spacing="12">
-                                <components:BatteryNotificationSection DataContext="{Binding FullBatterySection}" />
-                                <components:BatteryNotificationSection DataContext="{Binding LowBatterySection}" />
-                            </StackPanel>
+                        <!-- Screen flash toggle -->
+                        <Border Padding="12,6,12,10">
+                            <Grid ColumnDefinitions="*,42">
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Screen flash on notification</TextBlock>
+                                <ToggleSwitch Grid.Column="1"
+                                              IsChecked="{Binding ScreenFlashEnabled}"
+                                              OnContent="" OffContent=""
+                                              Margin="0" Padding="0" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Battery Alerts -->
+                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        BorderBrush="{DynamicResource AppCardBorder}"
+                        Background="{DynamicResource AppCardBackground}">
+                    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*">
+                        <Border Grid.Row="0" Padding="12,10,12,4">
+                            <TextBlock FontSize="12" FontWeight="Normal"
+                                       Foreground="{DynamicResource AppSubtleText}">BATTERY ALERTS</TextBlock>
+                        </Border>
+
+                        <Border Grid.Row="1" Padding="12,4,12,8">
+                            <ItemsControl ItemsSource="{Binding Alerts}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,4" Padding="8" CornerRadius="8"
+                                                BorderThickness="1"
+                                                BorderBrush="{DynamicResource AppCardBorder}">
+                                            <components:AlertRow />
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+
+                        <Border Grid.Row="2" Padding="12,0,12,10">
+                            <Button Command="{Binding AddAlertCommand}"
+                                    Theme="{StaticResource SecondaryButton}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Padding="8,6"
+                                    CornerRadius="6"
+                                    IsVisible="{Binding CanAddAlert}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Data="{StaticResource Icon.Plus}"
+                                              Width="12" Height="12"
+                                              Foreground="{DynamicResource AppAccentForeground}" />
+                                    <TextBlock FontSize="12" VerticalAlignment="Center">Add Custom Alert</TextBlock>
+                                </StackPanel>
+                            </Button>
                         </Border>
                     </Grid>
                 </Border>

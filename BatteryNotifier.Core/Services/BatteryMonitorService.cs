@@ -15,15 +15,11 @@ public sealed class BatteryMonitorService : IDisposable
 
     private readonly object _statusLock = new();
     private BatteryInfo? _lastPowerStatus;
-    private volatile int _lowBatteryThreshold = 25;
-    private volatile int _fullBatteryThreshold = 96;
 
     // macOS: Darwin notify covers plug/unplug AND level changes — poll infrequently as safety net.
     // Windows: WMI covers plug/unplug only — poll every 60s for level changes (reduced to 5s if WMI fails).
-    // Linux: no event API — poll every 5s.
     private static readonly int DefaultPollMs =
         OperatingSystem.IsMacOS() ? 120_000   // 2 min safety net (Darwin notify is primary)
-        : OperatingSystem.IsLinux() ? 5_000   // no events, must poll
         : 60_000;                             // Windows: WMI handles plug/unplug, poll for % changes
 
     private int _actualPollMs = DefaultPollMs;
@@ -43,10 +39,8 @@ public sealed class BatteryMonitorService : IDisposable
     {
         _logger = BatteryNotifierAppLogger.ForContext<BatteryMonitorService>();
 
-        // Load thresholds from settings
-        var settings = AppSettings.Instance;
-        _lowBatteryThreshold = settings.LowBatteryNotificationValue;
-        _fullBatteryThreshold = settings.FullBatteryNotificationValue;
+        // Ensure settings are loaded (triggers migration if needed)
+        _ = AppSettings.Instance;
 
         // Synchronous initial check so BatteryManagerStore is populated before UI reads it
         CheckBatteryAndPowerStatus(forceCheck: false, publishNotifications: false);
@@ -182,109 +176,84 @@ public sealed class BatteryMonitorService : IDisposable
         if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown)
             return;
 
-        var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
-
-        bool powerLineChanged;
-        bool levelChanged;
-
+        BatteryChangeResult change;
         lock (_statusLock)
         {
-            var lastLevel = _lastPowerStatus != null ? (int)(_lastPowerStatus.BatteryLifePercent * 100) : 0;
-            powerLineChanged = _lastPowerStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
-            levelChanged = currentLevel != lastLevel;
+            var settings = AppSettings.Instance;
+            change = EvaluateBatteryChange(
+                _lastPowerStatus, currentStatus,
+                settings.LowBatteryNotificationValue, settings.FullBatteryNotificationValue, forceCheck);
         }
 
-        bool isLowBattery = currentLevel <= _lowBatteryThreshold &&
-                            currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
+        UpdateBatteryManagerStore(currentStatus, change.CurrentLevel);
 
-        // Full battery notification only when charger is connected (plugged in).
-        // Unplugging while above threshold should NOT trigger a notification.
-        bool isPluggedIn = currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online;
-        bool isFullBattery = currentLevel >= _fullBatteryThreshold && isPluggedIn;
-
-        // Always update the store so it reflects the latest battery state
-        UpdateBatteryManagerStore(currentStatus, currentLevel);
-
-        // Always fire UI update events when anything changed (level, power line, or first check)
-        bool anythingChanged;
-        bool wasAlreadyTracking;
-        lock (_statusLock)
+        if (change.ShouldUpdateUI)
         {
-            wasAlreadyTracking = _lastPowerStatus != null;
-            anythingChanged = forceCheck || powerLineChanged || levelChanged || !wasAlreadyTracking;
-        }
-
-        if (anythingChanged)
-        {
-            if (powerLineChanged && wasAlreadyTracking)
-            {
-                _logger.Information("Power line state changed: {Status} (battery {Level}%)",
-                    currentStatus.PowerLineStatus, currentLevel);
-                PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
-            }
-
-            if (levelChanged)
-            {
-                _logger.Information("Battery level changed: {Level}% ({ChargeStatus}, {PowerLine})",
-                    currentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
-            }
-
-            BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+            FireUIEvents(currentStatus, change);
 
             lock (_statusLock)
             {
                 _lastPowerStatus = currentStatus;
             }
 
-            // Reset notification trackers on power state change so notifications fire eagerly
-            if (powerLineChanged && wasAlreadyTracking)
-            {
-                _logger.Information("Resetting notification trackers due to power line change");
-                NotificationService.Instance.ResetAllTrackers();
-            }
+            if (change.ShouldFirePowerLineChanged)
+                ResetNotificationTrackers();
         }
 
-        // Publish threshold notifications only on real state transitions (level or power changed).
+        // Publish alert notifications only on real state transitions (level or power changed).
         // forceCheck is for UI refresh only — it should not trigger notifications when nothing changed.
-        // This prevents spurious "unplug charger" notifications on app startup.
-        if (publishNotifications && (powerLineChanged || levelChanged))
+        if (publishNotifications && change.ShouldPublishNotification)
         {
-            PublishThresholdNotifications(currentStatus, currentLevel, isLowBattery, isFullBattery);
+            PublishAlertNotifications(currentStatus, change.CurrentLevel);
         }
     }
 
-    private void PublishThresholdNotifications(BatteryInfo currentStatus, int currentLevel,
-        bool isLowBattery, bool isFullBattery)
+    private void FireUIEvents(BatteryInfo currentStatus, BatteryChangeResult change)
     {
-        if (!isLowBattery && !isFullBattery) return;
+        if (change.ShouldFirePowerLineChanged)
+        {
+            _logger.Information("Power line state changed: {Status} (battery {Level}%)",
+                currentStatus.PowerLineStatus, change.CurrentLevel);
+            PowerLineStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+        }
 
+        if (change.ShouldPublishNotification)
+        {
+            _logger.Information("Battery level changed: {Level}% ({ChargeStatus}, {PowerLine})",
+                change.CurrentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
+        }
+
+        BatteryStatusChanged?.Invoke(this, CreateBatteryEventArgs(currentStatus));
+    }
+
+    private void ResetNotificationTrackers()
+    {
+        _logger.Information("Resetting notification trackers due to power line change");
+        NotificationService.Instance.ResetAllTrackers();
+        AlertEvaluationService.Instance.ResetAll();
+    }
+
+    private void PublishAlertNotifications(BatteryInfo currentStatus, int currentLevel)
+    {
         if (ShouldSuppressNotifications(currentStatus))
         {
             _logger.Information("Notification suppressed: external display detected (charger must stay connected)");
             return;
         }
 
-        var settings = AppSettings.Instance;
+        var alerts = AppSettings.Instance.Alerts;
+        var triggered = AlertEvaluationService.Instance.EvaluateAlerts(
+            alerts, currentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
 
-        if (isLowBattery)
-            PublishIfEnabled(settings.LowBatteryNotification, currentLevel, Constants.LowBatteryTag, GetLowBatteryMessage);
-
-        if (isFullBattery)
-            PublishIfEnabled(settings.FullBatteryNotification, currentLevel, Constants.FullBatteryTag, GetFullBatteryMessage);
-    }
-
-    private void PublishIfEnabled(bool enabled, int level, string tag, Func<int, string> messageFactory)
-    {
-        if (!enabled)
+        foreach (var alert in triggered)
         {
-            _logger.Information("{Tag} at {Level}% but notification is disabled in settings", tag, level);
-            return;
+            var escalation = NotificationService.Instance.GetEscalationCount(alert.Id);
+            var message = NotificationTemplates.GetAlertMessage(alert, currentLevel, escalation);
+            _logger.Information("Publishing alert '{Label}' ({Id}) at {Level}%: {Message}",
+                alert.Label, alert.Id, currentLevel, message);
+            NotificationService.Instance.PublishNotification(
+                message, NotificationType.Global, Constants.DefaultNotificationTimeout, alert.Id);
         }
-
-        var message = messageFactory(level);
-        _logger.Information("Publishing {Tag} notification at {Level}%: {Message}", tag, level, message);
-        NotificationService.Instance.PublishNotification(
-            message, NotificationType.Global, Constants.DefaultNotificationTimeout, tag);
     }
 
     private static void UpdateBatteryManagerStore(BatteryInfo currentStatus, int currentLevel)
@@ -302,15 +271,16 @@ public sealed class BatteryMonitorService : IDisposable
             currentStatus.BatteryChargeStatus == BatteryChargeStatus.Unknown);
     }
 
-    private BatteryStatusEventArgs CreateBatteryEventArgs(BatteryInfo status)
+    private static BatteryStatusEventArgs CreateBatteryEventArgs(BatteryInfo status)
     {
         var level = (int)(status.BatteryLifePercent * 100);
+        var settings = AppSettings.Instance;
         return new BatteryStatusEventArgs
         {
             BatteryLevel = level,
             IsCharging = status.PowerLineStatus == BatteryPowerLineStatus.Online,
-            IsLowBattery = level <= _lowBatteryThreshold,
-            IsFullBattery = level >= _fullBatteryThreshold,
+            IsLowBattery = level <= settings.LowBatteryNotificationValue,
+            IsFullBattery = level >= settings.FullBatteryNotificationValue,
             PowerLineStatus = status.PowerLineStatus,
             BatteryChargeStatus = status.BatteryChargeStatus,
             BatteryLifeRemaining = status.BatteryLifeRemaining
@@ -343,9 +313,9 @@ public sealed class BatteryMonitorService : IDisposable
             process.StartInfo = psi;
             process.Start();
             var output = process.StandardOutput.ReadToEnd();
-            if (!process.WaitForExit(5000))
+            if (!process.WaitForExit(Constants.ProcessTimeoutMs))
             {
-                try { process.Kill(); } catch { }
+                if (!process.HasExited) process.Kill();
                 return false;
             }
 
@@ -353,7 +323,8 @@ public sealed class BatteryMonitorService : IDisposable
             int displayCount = 0;
             foreach (var line in output.Split('\n'))
             {
-                if (line.TrimStart().StartsWith("Resolution:", StringComparison.OrdinalIgnoreCase))
+                var trimmed = line.TrimStart().StartsWith("Resolution:", StringComparison.OrdinalIgnoreCase);
+                if (trimmed)
                     displayCount++;
             }
 
@@ -365,28 +336,10 @@ public sealed class BatteryMonitorService : IDisposable
         }
     }
 
-    private static string GetLowBatteryMessage(int level)
-    {
-        var escalation = NotificationService.Instance.GetEscalationCount(Constants.LowBatteryTag);
-        return NotificationTemplates.GetLowBatteryMessage(level, escalation);
-    }
-
-    private static string GetFullBatteryMessage(int level)
-    {
-        var escalation = NotificationService.Instance.GetEscalationCount(Constants.FullBatteryTag);
-        return NotificationTemplates.GetFullBatteryMessage(level, escalation);
-    }
-
     /// <summary>
     /// Triggers an immediate battery status check (e.g., when the window becomes visible).
     /// </summary>
     public void ForceCheck() => CheckBatteryAndPowerStatus(forceCheck: true);
-
-    public void SetThresholds(int lowThreshold, int fullThreshold)
-    {
-        _lowBatteryThreshold = lowThreshold;
-        _fullBatteryThreshold = fullThreshold;
-    }
 
     /// <summary>
     /// Evaluates what actions should be taken given a battery state transition.
@@ -404,22 +357,13 @@ public sealed class BatteryMonitorService : IDisposable
         bool wasAlreadyTracking = lastStatus != null;
 
         bool shouldUpdateUI = forceCheck || powerLineChanged || levelChanged || !wasAlreadyTracking;
-
-        bool isLowBattery = currentLevel <= lowThreshold &&
-                            currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging;
-
-        bool isFullBattery = currentLevel >= fullThreshold &&
-                             currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online;
-
         bool realStateChange = powerLineChanged || levelChanged;
 
         return new BatteryChangeResult
         {
             ShouldUpdateUI = shouldUpdateUI,
             ShouldFirePowerLineChanged = powerLineChanged && wasAlreadyTracking,
-            ShouldPublishNotification = realStateChange && (isLowBattery || isFullBattery),
-            IsLowBattery = isLowBattery,
-            IsFullBattery = isFullBattery,
+            ShouldPublishNotification = realStateChange,
             CurrentLevel = currentLevel
         };
     }
@@ -429,8 +373,6 @@ public sealed class BatteryMonitorService : IDisposable
         public bool ShouldUpdateUI;
         public bool ShouldFirePowerLineChanged;
         public bool ShouldPublishNotification;
-        public bool IsLowBattery;
-        public bool IsFullBattery;
         public int CurrentLevel;
     }
 

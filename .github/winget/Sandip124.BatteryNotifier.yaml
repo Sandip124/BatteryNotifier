@@ -1,0 +1,32 @@
+# Winget manifest template for initial submission
+# Submit this to https://github.com/microsoft/winget-pkgs
+# Path: manifests/s/Sandip124/BatteryNotifier/<version>/Sandip124.BatteryNotifier.yaml
+#
+# After initial approval, winget-releaser in CI auto-submits updates.
+#
+# To generate the actual manifest with correct hashes, run:
+#   wingetcreate new <installer-url>
+
+PackageIdentifier: Sandip124.BatteryNotifier
+PackageVersion: "4.0.1"
+PackageName: BatteryNotifier
+Publisher: Sandip Choudhary
+License: MIT
+ShortDescription: Cross-platform battery monitoring and notification app
+PackageUrl: https://github.com/Sandip124/BatteryNotifier
+Tags:
+  - battery
+  - notification
+  - monitor
+  - system-tray
+  - cross-platform
+InstallerType: exe
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/Sandip124/BatteryNotifier/releases/download/v4.0.1/BatteryNotifier-Setup-win-x64.exe
+    InstallerSha256: # Fill after first release
+    InstallerSwitches:
+      Silent: /S
+      SilentWithProgress: /S
+ManifestType: singleton
+ManifestVersion: 1.6.0

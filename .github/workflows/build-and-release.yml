@@ -33,13 +33,12 @@ jobs:
           - os: windows-latest
             rid: win-arm64
             artifact: BatteryNotifier-win-arm64
-          # Linux builds disabled for now
-          # - os: ubuntu-latest
-          #   rid: linux-x64
-          #   artifact: BatteryNotifier-linux-x64
-          # - os: ubuntu-latest
-          #   rid: linux-arm64
-          #   artifact: BatteryNotifier-linux-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+            artifact: BatteryNotifier-linux-x64
+          - os: ubuntu-latest
+            rid: linux-arm64
+            artifact: BatteryNotifier-linux-arm64
 
     runs-on: ${{ matrix.os }}
 
@@ -338,3 +337,39 @@ jobs:
             --title "$TAG" \
             --generate-notes \
             --draft
+
+  # ── Winget: auto-submit package to microsoft/winget-pkgs ──
+  winget:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+
+    steps:
+      - name: Submit to winget
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
+        with:
+          identifier: Sandip124.BatteryNotifier
+          installers-regex: 'Setup-win-x64\.exe$'
+          token: ${{ secrets.WINGET_TOKEN }}
+          release-tag: ${{ github.ref_name }}
+
+  # ── Homebrew: update formula in personal tap ──
+  homebrew:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Update Homebrew formula
+        uses: Justintime50/homebrew-releaser@8723315045b3b879065d4ce3e8ff143e6b958529 # v1
+        with:
+          homebrew_owner: Sandip124
+          homebrew_tap: homebrew-tap
+          formula_folder: Casks
+          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          commit_owner: Sandip Choudhary
+          commit_email: ${{ secrets.GIT_EMAIL }}
+          install: 'prefix.install Dir["*"]'
+          target_darwin_amd64: true
+          target_darwin_arm64: true
+          update_readme_table: true

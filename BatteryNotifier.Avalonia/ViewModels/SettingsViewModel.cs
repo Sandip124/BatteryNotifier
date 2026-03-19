@@ -1,10 +1,11 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
-using Avalonia.Media;
 using Avalonia.Styling;
+using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
 using ReactiveUI;
 
@@ -20,57 +21,36 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private bool _isDarkTheme;
     private bool _launchAtStartup;
     private bool _autoCheckForUpdates;
+    private bool _screenFlashEnabled;
+    private NotificationPosition _notificationPosition;
     private bool _disposed;
+
+    private const int MaxAlerts = 5;
 
     public ReactiveCommand<Unit, Unit> BackCommand { get; }
     public ReactiveCommand<Unit, Unit> SetSystemThemeCommand { get; }
     public ReactiveCommand<Unit, Unit> SetLightThemeCommand { get; }
     public ReactiveCommand<Unit, Unit> SetDarkThemeCommand { get; }
+    public ReactiveCommand<Unit, Unit> AddAlertCommand { get; }
+    public ReactiveCommand<NotificationPosition, Unit> SetPositionCommand { get; }
 
-    public BatteryNotificationSectionViewModel FullBatterySection { get; }
-    public BatteryNotificationSectionViewModel LowBatterySection { get; }
+    public ObservableCollection<AlertRowViewModel> Alerts { get; } = new();
 
     public SettingsViewModel(Action navigateBack)
     {
         BackCommand = ReactiveCommand.Create(navigateBack);
 
         LoadSettings();
+        LoadAlerts();
 
         SetSystemThemeCommand = ReactiveCommand.Create(ApplySystemTheme);
         SetLightThemeCommand = ReactiveCommand.Create(ApplyLightTheme);
         SetDarkThemeCommand = ReactiveCommand.Create(ApplyDarkTheme);
 
-        FullBatterySection = new BatteryNotificationSectionViewModel(
-            title: "Full Battery",
-            iconKey: "Icon.BatteryFullFill", iconColor: Color.FromRgb(44, 162, 60),
-            sliderMin: 0, sliderMax: 100,
-            isEnabled: _settings.FullBatteryNotification,
-            thresholdValue: _settings.FullBatteryNotificationValue,
-            soundSettingsValue: _settings.FullBatteryNotificationMusic,
-            onSettingsChanged: (sound, threshold) =>
-            {
-                _settings.FullBatteryNotification = FullBatterySection?.IsEnabled ?? false;
-                _settings.FullBatteryNotificationValue = threshold;
-                _settings.FullBatteryNotificationMusic = sound;
-                _settings.Save();
-                UpdateThresholds();
-            });
-
-        LowBatterySection = new BatteryNotificationSectionViewModel(
-            title: "Low Battery",
-            iconKey: "Icon.BatteryLowFill", iconColor: Color.FromRgb(225, 168, 32),
-            sliderMin: 0, sliderMax: 100,
-            isEnabled: _settings.LowBatteryNotification,
-            thresholdValue: _settings.LowBatteryNotificationValue,
-            soundSettingsValue: _settings.LowBatteryNotificationMusic,
-            onSettingsChanged: (sound, threshold) =>
-            {
-                _settings.LowBatteryNotification = LowBatterySection?.IsEnabled ?? false;
-                _settings.LowBatteryNotificationValue = threshold;
-                _settings.LowBatteryNotificationMusic = sound;
-                _settings.Save();
-                UpdateThresholds();
-            });
+        var canAddAlert = this.WhenAnyValue(x => x.Alerts.Count)
+            .Select(count => count < MaxAlerts);
+        AddAlertCommand = ReactiveCommand.Create(AddAlert, canAddAlert);
+        SetPositionCommand = ReactiveCommand.Create<NotificationPosition>(pos => NotificationPosition = pos);
 
         this.WhenAnyValue(x => x.LaunchAtStartup)
             .Skip(1)
@@ -91,18 +71,72 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             })
             .DisposeWith(_disposables);
 
+        this.WhenAnyValue(x => x.ScreenFlashEnabled)
+            .Skip(1)
+            .Subscribe(enabled =>
+            {
+                _settings.ScreenFlashEnabled = enabled;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.NotificationPosition)
+            .Skip(1)
+            .Subscribe(pos =>
+            {
+                _settings.NotificationPosition = pos;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
     }
 
-    private void UpdateThresholds()
+    private void LoadAlerts()
     {
-        try
+        foreach (var alert in _settings.Alerts)
         {
-            BatteryMonitorService.Instance.SetThresholds(
-                LowBatterySection.ThresholdValue,
-                FullBatterySection.ThresholdValue);
+            Alerts.Add(CreateAlertRow(alert));
         }
-        catch { }
     }
+
+    private AlertRowViewModel CreateAlertRow(BatteryAlert alert)
+    {
+        return new AlertRowViewModel(alert, SaveAlerts, DeleteAlert);
+    }
+
+    private void AddAlert()
+    {
+        if (Alerts.Count >= MaxAlerts) return;
+
+        var alert = new BatteryAlert
+        {
+            Label = $"Alert {Alerts.Count + 1}",
+            LowerBound = 20,
+            UpperBound = 80,
+            IsEnabled = true,
+            Sound = "builtin:Harp"
+        };
+
+        _settings.Alerts.Add(alert);
+        Alerts.Add(CreateAlertRow(alert));
+        SaveAlerts();
+        this.RaisePropertyChanged(nameof(CanAddAlert));
+    }
+
+    private void DeleteAlert(AlertRowViewModel row)
+    {
+        _settings.Alerts.RemoveAll(a => a.Id == row.Id);
+        Alerts.Remove(row);
+        row.Dispose();
+        SaveAlerts();
+        this.RaisePropertyChanged(nameof(CanAddAlert));
+    }
+
+    private void SaveAlerts()
+    {
+        _settings.Save();
+    }
+
+    public bool CanAddAlert => Alerts.Count < MaxAlerts;
 
     private void LoadSettings()
     {
@@ -111,6 +145,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _isDarkTheme = _settings.ThemeMode == ThemeMode.Dark;
         _launchAtStartup = _settings.LaunchAtStartup;
         _autoCheckForUpdates = _settings.AutoCheckForUpdates;
+        _screenFlashEnabled = _settings.ScreenFlashEnabled;
+        _notificationPosition = _settings.NotificationPosition;
     }
 
     private void ApplySystemTheme()
@@ -176,11 +212,22 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref _autoCheckForUpdates, value);
     }
 
+    public bool ScreenFlashEnabled
+    {
+        get => _screenFlashEnabled;
+        set => this.RaiseAndSetIfChanged(ref _screenFlashEnabled, value);
+    }
+
+    public NotificationPosition NotificationPosition
+    {
+        get => _notificationPosition;
+        set => this.RaiseAndSetIfChanged(ref _notificationPosition, value);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
-        FullBatterySection.Dispose();
-        LowBatterySection.Dispose();
+        foreach (var alert in Alerts) alert.Dispose();
         _disposables.Dispose();
         _disposed = true;
     }

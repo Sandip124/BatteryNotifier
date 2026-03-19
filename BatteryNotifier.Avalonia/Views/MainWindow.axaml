@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:BatteryNotifier.Avalonia.ViewModels"
         xmlns:controls="using:BatteryNotifier.Avalonia.Controls"
+        xmlns:components="clr-namespace:BatteryNotifier.Avalonia.Views.Components"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="510"
@@ -22,6 +23,7 @@
 
     <Border ClipToBounds="True"
             Background="{DynamicResource AppWindowBackground}">
+      <Panel>
       <Border Padding="4">
         <Grid>
 
@@ -74,7 +76,11 @@
                 <Border Margin="8,4,8,8" ClipToBounds="False">
                     <Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="*" ClipToBounds="False">
 
-                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="0" ClipToBounds="False">
+                        <!-- Battery display area — tappable to open health details -->
+                        <StackPanel Grid.Row="0" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Spacing="0" ClipToBounds="False"
+                                    Cursor="Hand"
+                                    PointerPressed="HealthBar_PointerPressed">
                             <controls:BatteryIndicatorControl
                                 Width="200" Height="110"
                                 Percentage="{Binding BatteryPercentage}"
@@ -107,8 +113,26 @@
                             <TextBlock TextAlignment="Center"
                                        Margin="0,6,0,0"
                                        FontSize="14"
-                                       Foreground="{DynamicResource AppSubtleText}"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppForeground}"
                                        Text="{Binding TimeRemaining}" />
+
+                            <!-- Health hint -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                        Margin="0,8,0,0" Spacing="4">
+                                <PathIcon Data="{Binding HealthIcon}"
+                                          Foreground="{Binding HealthAccentColor}"
+                                          Width="11" Height="11" VerticalAlignment="Center" />
+                                <TextBlock FontSize="11"
+                                           Foreground="{Binding HealthAccentColor}"
+                                           VerticalAlignment="Center"
+                                           Text="{Binding HealthSummary}" />
+                                <PathIcon Data="{StaticResource Icon.CaretLeft}"
+                                          Width="8" Height="8"
+                                          Foreground="{DynamicResource AppSubtleText}"
+                                          VerticalAlignment="Center"
+                                          RenderTransform="rotate(270deg)" />
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- DND notice -->
@@ -126,39 +150,47 @@
 
                         <!-- Quick Settings -->
                         <Border Grid.Row="2" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                                Margin="0,6,0,0"
                                 BorderBrush="{DynamicResource AppCardBorder}"
                                 Background="{DynamicResource AppCardBackground}">
-                            <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*">
-                                <TextBlock Grid.Row="0" Padding="12,10,12,4" FontSize="12" FontWeight="Normal"
+                            <StackPanel>
+                                <TextBlock Padding="12,10,12,4" FontSize="12" FontWeight="Normal"
                                            Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
-                                <Grid Margin="12,6,12,10" Grid.Row="1" RowDefinitions="Auto,6,Auto" ColumnDefinitions="*">
 
-                                    <Grid Grid.Row="0" ColumnDefinitions="32,*,42" VerticalAlignment="Center">
-                                        <PathIcon Grid.Column="0" Margin="0,0,8,0"
+                                <!-- Full Battery notification -->
+                                <Border Padding="12,4">
+                                    <Grid ColumnDefinitions="Auto,*,42">
+                                        <PathIcon Grid.Column="0"
                                                   Data="{StaticResource Icon.BatteryFullFill}"
-                                                  Foreground="#2CA23C"
-                                                  Width="26" Height="26" />
+                                                  Foreground="#388E3C"
+                                                  Width="20" Height="20"
+                                                  Margin="0,0,8,0"
+                                                  VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Full Battery Notification</TextBlock>
                                         <ToggleSwitch Grid.Column="2"
-                                                      IsChecked="{Binding FullBatteryNotification}"
+                                                      IsChecked="{Binding FullBatteryAlertEnabled}"
                                                       OnContent="" OffContent=""
                                                       Margin="0" Padding="0" />
                                     </Grid>
+                                </Border>
 
-                                    <Grid Grid.Row="2" ColumnDefinitions="32,*,42" VerticalAlignment="Center">
-                                        <PathIcon Grid.Column="0" Margin="0,0,8,0"
+                                <!-- Low Battery notification -->
+                                <Border Padding="12,4,12,8">
+                                    <Grid ColumnDefinitions="Auto,*,42">
+                                        <PathIcon Grid.Column="0"
                                                   Data="{StaticResource Icon.BatteryLowFill}"
-                                                  Foreground="#E1A820"
-                                                  Width="26" Height="26" />
+                                                  Foreground="#F57A00"
+                                                  Width="20" Height="20"
+                                                  Margin="0,0,8,0"
+                                                  VerticalAlignment="Center" />
                                         <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Low Battery Notification</TextBlock>
                                         <ToggleSwitch Grid.Column="2"
-                                                      IsChecked="{Binding LowBatteryNotification}"
+                                                      IsChecked="{Binding LowBatteryAlertEnabled}"
                                                       OnContent="" OffContent=""
                                                       Margin="0" Padding="0" />
                                     </Grid>
-
-                                </Grid>
-                            </Grid>
+                                </Border>
+                            </StackPanel>
                         </Border>
                     </Grid>
                 </Border>
@@ -168,8 +200,17 @@
         </Grid>
 
         <!-- Settings screen (overlays home when CurrentView is set) -->
-        <ContentControl Content="{Binding CurrentView}"
-                        IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <ContentControl x:Name="SettingsContent"
+                        Content="{Binding CurrentView}"
+                        IsVisible="False"
+                        RenderTransform="translateX(400px)">
+            <ContentControl.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut" />
+                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut" />
+                </Transitions>
+            </ContentControl.Transitions>
+        </ContentControl>
 
         <!-- Inline notification toast -->
         <Border IsVisible="{Binding IsInlineNotificationVisible}"
@@ -213,5 +254,12 @@
 
         </Grid>
       </Border>
+
+      <!-- Health bottom sheet — outside padding, fills full clip area -->
+      <components:HealthBottomSheet
+          x:Name="HealthSheet"
+          IsVisible="False"
+          ZIndex="5" />
+      </Panel>
     </Border>
 </Window>

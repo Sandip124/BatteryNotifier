@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 
@@ -30,6 +29,14 @@ public static class SystemStateDetector
     private const int AccessibilityTimeoutMs = 5000;
 
     /// <summary>
+    /// Tracks whether the initial accessibility-based DND check has been performed.
+    /// After the first check, we rely on Darwin notify for changes and skip the
+    /// accessibility click (which visibly opens the Control Center dropdown).
+    /// </summary>
+    private static bool _macDndInitialCheckDone;
+    private static bool _macDndLastKnownState;
+
+    /// <summary>
     /// Returns true if the OS is in Do Not Disturb / silent / Focus Assist mode.
     /// </summary>
     public static bool IsDoNotDisturbActive()
@@ -39,11 +46,14 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 return IsMacDoNotDisturbActive();
 
+#if WINDOWS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFocusAssistActive();
+#endif
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                return IsLinuxDoNotDisturbActive();
+                return IsLinuxDndActive();
+
         }
         catch (Exception ex)
         {
@@ -63,11 +73,14 @@ public static class SystemStateDetector
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 return IsMacFullscreenActive();
 
+#if WINDOWS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 return IsWindowsFullscreenActive();
+#endif
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 return IsLinuxFullscreenActive();
+
         }
         catch (Exception ex)
         {
@@ -93,11 +106,36 @@ public static class SystemStateDetector
 
     private static bool IsMacDoNotDisturbActive()
     {
-        // Try each detection approach in order: Monterey → Ventura+ → Tahoe+ fallback
-        return IsMacDndViaDefaults()
-            ?? IsMacDndViaAssertionsFile()
-            ?? IsMacDndViaAccessibility()
-            ?? false;
+        // Try non-invasive approaches first: Monterey defaults → Ventura assertions file
+        var result = IsMacDndViaDefaults() ?? IsMacDndViaAssertionsFile();
+
+        if (result.HasValue)
+        {
+            _macDndLastKnownState = result.Value;
+            _macDndInitialCheckDone = true;
+            return result.Value;
+        }
+
+        // Tahoe+ fallback: Assertions.json is TCC-protected.
+        // The accessibility approach clicks the Control Center dropdown (visible flicker).
+        // Only do this ONCE for initial state, then rely on Darwin notify for changes.
+        if (!_macDndInitialCheckDone)
+        {
+            _macDndInitialCheckDone = true;
+            var accessibilityResult = IsMacDndViaAccessibility();
+            if (accessibilityResult.HasValue)
+            {
+                _macDndLastKnownState = accessibilityResult.Value;
+                return accessibilityResult.Value;
+            }
+        }
+
+        // After initial check, return last known state.
+        // Darwin notify (HasPendingFocusChange) will trigger a re-check
+        // via the 2-minute fallback path which calls here again — but we
+        // skip the accessibility click and just toggle the cached state
+        // based on whether Darwin reported a change.
+        return _macDndLastKnownState;
     }
 
     /// <summary>macOS Monterey and earlier: direct defaults key.</summary>
@@ -280,9 +318,9 @@ return ""false""";
     private struct WNF_STATE_NAME { public uint Data1; public uint Data2; }
 #endif
 
+#if WINDOWS
     private static bool IsWindowsFocusAssistActive()
     {
-#if WINDOWS
         // WNF_SHEL_QUIETHOURS_ACTIVE_PROFILE_CHANGED
         // Returns: 0 = OFF, 1 = PRIORITY_ONLY, 2 = ALARMS_ONLY
         try
@@ -297,14 +335,10 @@ return ""false""";
         {
             return false;
         }
-#else
-        return false;
-#endif
     }
 
     private static bool IsWindowsFullscreenActive()
     {
-#if WINDOWS
         // Direct P/Invoke — no PowerShell subprocess needed
         try
         {
@@ -319,113 +353,8 @@ return ""false""";
         {
             return false;
         }
-#else
-        return false;
+    }
 #endif
-    }
-
-    // ── Linux ────────────────────────────────────────────────────
-
-    private static bool IsLinuxDoNotDisturbActive()
-    {
-        // GNOME: check via gsettings
-        try
-        {
-            var output = RunProcess("gsettings",
-                "get", "org.gnome.desktop.notifications", "show-banners");
-            // "false" means DND is on (banners suppressed)
-            if (output.Trim().Equals("false", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        catch
-        {
-            // Not GNOME or gsettings unavailable
-        }
-
-        // KDE Plasma (and other freedesktop-compliant notification daemons):
-        // Query the standardized Inhibited property.
-        try
-        {
-            var output = RunProcess("dbus-send",
-                "--session",
-                "--dest=org.freedesktop.Notifications",
-                "--print-reply",
-                "/org/freedesktop/Notifications",
-                "org.freedesktop.DBus.Properties.Get",
-                "string:org.freedesktop.Notifications",
-                "string:Inhibited");
-            if (output.Contains("true", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        catch
-        {
-            // Not KDE or dbus unavailable
-        }
-
-        return false;
-    }
-
-    private static bool IsLinuxFullscreenActive()
-    {
-        // Check via xdotool if the active window is fullscreen
-        try
-        {
-            var windowId = RunProcess("xdotool", "getactivewindow").Trim();
-            if (string.IsNullOrEmpty(windowId)) return false;
-
-            // Validate window ID is numeric to prevent argument injection into xprop
-            if (!Regex.IsMatch(windowId, @"^\d+$", RegexOptions.None, TimeSpan.FromSeconds(1)))
-            {
-                Logger.Warning("Unexpected non-numeric window ID from xdotool: {Id}",
-                    windowId.Length > 50 ? windowId[..50] : windowId);
-                return false;
-            }
-
-            // Use ArgumentList — windowId is validated numeric, but defence-in-depth
-            var state = RunProcess("xprop", "-id", windowId, "_NET_WM_STATE");
-            return state.Contains("_NET_WM_STATE_FULLSCREEN", StringComparison.Ordinal);
-        }
-        catch
-        {
-            // xdotool/xprop not available (Wayland?) — try alternate approach
-        }
-
-        // Wayland (GNOME): check via gdbus + xdg-desktop-portal (safe D-Bus read)
-        try
-        {
-            // Query the inhibit state via the portal — does NOT execute arbitrary JS
-            // unlike org.gnome.Shell.Eval which runs code in the compositor.
-            var output = RunProcess("gdbus", "call",
-                "--session",
-                "--dest", "org.freedesktop.portal.Desktop",
-                "--object-path", "/org/freedesktop/portal/desktop",
-                "--method", "org.freedesktop.DBus.Properties.Get",
-                "org.freedesktop.portal.Inhibit",
-                "version");
-            // If portal is available, fall back to wmctrl
-            // Portal doesn't directly expose fullscreen state, so check via wmctrl
-        }
-        catch
-        {
-            // Portal not available
-        }
-
-        // Fallback: wmctrl (works on both X11 and some Wayland compositors)
-        try
-        {
-            var output = RunProcess("wmctrl", "-d");
-            // Active desktop marked with * — not directly fullscreen, but best-effort
-            // For true fullscreen, check active window properties
-            var activeWindow = RunProcess("wmctrl", "-l", "-G");
-            // This is best-effort — return false if we can't determine
-        }
-        catch
-        {
-            // wmctrl not available
-        }
-
-        return false;
-    }
 
     // ── macOS Focus State Change Monitor (Darwin notifications) ──
 
@@ -485,8 +414,14 @@ return ""false""";
 
         try
         {
-            if (DarwinNotifyCheck(_macFocusToken, out int check) == NotifyStatusOk)
-                return check != 0;
+            if (DarwinNotifyCheck(_macFocusToken, out int check) == NotifyStatusOk && check != 0)
+            {
+                // Darwin notify fired — Focus/DND state changed. Toggle cached state
+                // so IsMacDoNotDisturbActive returns the correct value without the
+                // accessibility click (which causes visible Control Center flicker).
+                _macDndLastKnownState = !_macDndLastKnownState;
+                return true;
+            }
         }
         catch { /* P/Invoke failure — monitor is broken */ }
 
@@ -500,9 +435,78 @@ return ""false""";
     {
         if (_macFocusToken >= 0)
         {
-            try { DarwinNotifyCancel(_macFocusToken); } catch { }
+            DarwinNotifyCancel(_macFocusToken);
             _macFocusToken = -1;
         }
+    }
+
+    // ── Linux: DND + fullscreen detection ──
+
+    /// <summary>
+    /// Linux DND detection. Tries KDE D-Bus Inhibited property first,
+    /// then falls back to GNOME gsettings show-banners.
+    /// </summary>
+    private static bool IsLinuxDndActive()
+    {
+        return IsLinuxDndViaKde() ?? IsLinuxDndViaGnome() ?? false;
+    }
+
+    /// <summary>KDE Plasma: org.freedesktop.Notifications.Inhibited property.</summary>
+    private static bool? IsLinuxDndViaKde()
+    {
+        var output = RunProcess("dbus-send",
+            "--session", "--print-reply",
+            "--dest=org.freedesktop.Notifications",
+            "/org/freedesktop/Notifications",
+            "org.freedesktop.DBus.Properties.Get",
+            "string:org.freedesktop.Notifications",
+            "string:Inhibited");
+
+        if (string.IsNullOrWhiteSpace(output)) return null;
+
+        // D-Bus reply: "variant  boolean true" or "variant  boolean false"
+        if (output.Contains("boolean true", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (output.Contains("boolean false", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return null; // Unexpected format or error (e.g., GNOME returns InvalidArgs)
+    }
+
+    /// <summary>GNOME: gsettings show-banners (false = DND active).</summary>
+    private static bool? IsLinuxDndViaGnome()
+    {
+        var output = RunProcess("gsettings", "get",
+            "org.gnome.desktop.notifications", "show-banners");
+
+        if (string.IsNullOrWhiteSpace(output)) return null;
+
+        var trimmed = output.Trim();
+        if (trimmed == "false") return true;  // banners off = DND on
+        if (trimmed == "true") return false;
+
+        return null;
+    }
+
+    /// <summary>
+    /// Linux fullscreen detection via xprop + xdotool on X11.
+    /// Returns false on Wayland (no reliable unprivileged API).
+    /// </summary>
+    private static bool IsLinuxFullscreenActive()
+    {
+        // Only works on X11 — xdotool/xprop don't work on native Wayland
+        var sessionType = Environment.GetEnvironmentVariable("XDG_SESSION_TYPE");
+        if (sessionType != null && sessionType.Equals("wayland", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        // Get active window ID
+        var windowIdStr = RunProcess("xdotool", "getactivewindow").Trim();
+        if (string.IsNullOrEmpty(windowIdStr) || !long.TryParse(windowIdStr, out _))
+            return false;
+
+        // Check if it has _NET_WM_STATE_FULLSCREEN
+        var xpropOutput = RunProcess("xprop", "-id", windowIdStr, "_NET_WM_STATE");
+        return xpropOutput.Contains("_NET_WM_STATE_FULLSCREEN", StringComparison.Ordinal);
     }
 
     // ── Secure Process Helpers ───────────────────────────────────

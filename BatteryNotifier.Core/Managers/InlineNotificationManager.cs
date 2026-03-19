@@ -63,19 +63,15 @@ public sealed class InlineNotificationManager : IDisposable
 
     private async Task AutoDismissAsync(int durationMs, CancellationToken ct)
     {
-        try
+        await Task.Delay(durationMs, ct).ConfigureAwait(false);
+
+        lock (_lock)
         {
-            await Task.Delay(durationMs, ct).ConfigureAwait(false);
-
-            lock (_lock)
-            {
-                if (ct.IsCancellationRequested) return;
-                IsVisible = false;
-            }
-
-            StateChanged?.Invoke();
+            if (ct.IsCancellationRequested) return;
+            IsVisible = false;
         }
-        catch (OperationCanceledException) { }
+
+        StateChanged?.Invoke();
     }
 
     public void Dispose()

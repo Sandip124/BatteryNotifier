@@ -14,15 +14,17 @@ using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
 using Serilog;
+using Velopack;
+using Velopack.Sources;
 
 namespace BatteryNotifier.Avalonia.Services;
 
-public sealed class TrayIconService : IDisposable
+internal sealed class TrayIconService : IDisposable
 {
     private readonly ILogger _logger;
     private TrayIcon? _trayIcon;
-    private NativeMenu? _trayMenu;
     private NotificationManager? _notificationManager;
+    private NotificationDisplayService? _displayService;
     private CancellationTokenSource? _tooltipRevertCts;
     private IDisposable? _visibilitySubscription;
     private bool _disposed;
@@ -59,7 +61,7 @@ public sealed class TrayIconService : IDisposable
             UpdateToolTip();
 
             // Create menu
-            _trayMenu = new NativeMenu();
+             var trayMenu = new NativeMenu();
 
             _showHideMenuItem = new NativeMenuItem { Header = "Show Window" };
             _showHideMenuItem.Click += OnShowHideWindow;
@@ -73,14 +75,14 @@ public sealed class TrayIconService : IDisposable
             _exitMenuItem = new NativeMenuItem { Header = "Exit" };
             _exitMenuItem.Click += OnExit;
 
-            _trayMenu.Add(_showHideMenuItem);
-            _trayMenu.Add(new NativeMenuItemSeparator());
-            _trayMenu.Add(_updateMenuItem);
-            _trayMenu.Add(_aboutMenuItem);
-            _trayMenu.Add(new NativeMenuItemSeparator());
-            _trayMenu.Add(_exitMenuItem);
+            trayMenu.Add(_showHideMenuItem);
+            trayMenu.Add(new NativeMenuItemSeparator());
+            trayMenu.Add(_updateMenuItem);
+            trayMenu.Add(_aboutMenuItem);
+            trayMenu.Add(new NativeMenuItemSeparator());
+            trayMenu.Add(_exitMenuItem);
 
-            _trayIcon.Menu = _trayMenu;
+            _trayIcon.Menu = trayMenu;
 
             // Handle click
             _trayIcon.Clicked += OnTrayIconClicked;
@@ -91,6 +93,8 @@ public sealed class TrayIconService : IDisposable
                 BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
                 NotificationService.Instance.NotificationReceived += OnNotificationReceived;
                 _notificationManager = new NotificationManager(new SoundManager());
+                _displayService = new NotificationDisplayService();
+                _displayService.SetNotificationManager(_notificationManager);
             }
             catch (Exception serviceEx)
             {
@@ -99,10 +103,9 @@ public sealed class TrayIconService : IDisposable
 
             // Subscribe to window visibility changes to keep tray menu label in sync.
             // This catches hides from the in-window menu, the X button, tray toggle, etc.
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime dt
-                && dt.MainWindow is { } mainWin)
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } mainWin })
             {
-                _visibilitySubscription = mainWin.GetObservable(Window.IsVisibleProperty)
+                _visibilitySubscription = mainWin.GetObservable(Visual.IsVisibleProperty)
                     .Subscribe(_ => UpdateShowHideMenuLabel());
             }
 
@@ -117,7 +120,6 @@ public sealed class TrayIconService : IDisposable
             {
                 _logger.Warning(updateEx, "Update service could not be initialized");
             }
-
         }
         catch (Exception ex)
         {
@@ -133,6 +135,12 @@ public sealed class TrayIconService : IDisposable
 
     private void UpdateToolTip()
     {
+        if (!global::Avalonia.Threading.Dispatcher.UIThread.CheckAccess())
+        {
+            global::Avalonia.Threading.Dispatcher.UIThread.Post(UpdateToolTip);
+            return;
+        }
+
         if (_trayIcon == null) return;
 
         var batteryPercent = BatteryManagerStore.Instance.BatteryLifePercent;
@@ -145,7 +153,7 @@ public sealed class TrayIconService : IDisposable
         _trayIcon.ToolTipText = $"BatteryNotifier - {batteryPercent:F0}% ({status})";
     }
 
-    private void OnNotificationReceived(object? sender, NotificationMessage notification)
+    private void OnNotificationReceived(object? sender, NotificationMessageEventArgs notification)
     {
         if (notification.Type == NotificationType.Inline) return;
 
@@ -173,9 +181,15 @@ public sealed class TrayIconService : IDisposable
             return;
         }
 
-        // Show native notification
-        _logger.Information("Delivering native notification: {Tag} — {Message}", notification.Tag, notification.Message);
-        ShowNativeNotification(notification);
+        // Temporarily exit efficiency mode for notification delivery
+        EfficiencyModeService.Instance.AcquireNormalMode();
+
+        // Show Avalonia-native notification (screen flash + card)
+        _logger.Information("Delivering notification: {Tag} — {Message}", notification.Tag, notification.Message);
+        var alert = !string.IsNullOrEmpty(notification.Tag)
+            ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
+            : null;
+        _displayService?.ShowNotification(notification, alert);
 
         // Play sound unless DND is active (critical overrides)
         if (!suppression.ShouldSuppressSound || isCritical)
@@ -188,7 +202,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void UpdateToolTipWithNotification(NotificationMessage notification)
+    private void UpdateToolTipWithNotification(NotificationMessageEventArgs notification)
     {
         if (_trayIcon == null) return;
 
@@ -211,57 +225,21 @@ public sealed class TrayIconService : IDisposable
 
     private async Task RevertToolTipAfterDelayAsync(CancellationToken ct)
     {
-        try
-        {
-            await Task.Delay(5000, ct).ConfigureAwait(false);
-            UpdateToolTip();
-        }
-        catch (OperationCanceledException)
-        {
-            // Cancelled by a newer notification or disposal — expected
-        }
+        await Task.Delay(5000, ct).ConfigureAwait(false);
+        UpdateToolTip();
     }
 
-    private void ShowNativeNotification(NotificationMessage notification)
-    {
-        try
-        {
-            if (_trayIcon == null) return;
-
-            string title = notification.Tag switch
-            {
-                Constants.LowBatteryTag => "Low Battery",
-                Constants.FullBatteryTag => "Full Battery",
-                _ => Constants.AppName
-            };
-
-            // Remove emoji from message for cleaner notification
-            var message = notification.Message.Replace("🔋", "").Trim();
-
-            ShowPlatformNotification(title, message);
-        }
-        catch (Exception ex)
-        {
-            _logger.Error(ex, "Failed to show native notification");
-        }
-    }
-
-    private static void ShowPlatformNotification(string title, string message)
-    {
-        NotificationPlatformService.ShowNativeNotification(title, message);
-    }
-
-    private void OnTrayIconClicked(object? sender, EventArgs e)
+    private static void OnTrayIconClicked(object? sender, EventArgs e)
     {
         ToggleMainWindow();
     }
 
-    private void OnShowHideWindow(object? sender, EventArgs e)
+    private static void OnShowHideWindow(object? sender, EventArgs e)
     {
         ToggleMainWindow();
     }
 
-    private void ToggleMainWindow()
+    private static void ToggleMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -294,6 +272,7 @@ public sealed class TrayIconService : IDisposable
 
         desktop.MainWindow?.Hide();
         MacOSDockIconHelper.HideDockIcon();
+        EfficiencyModeService.Instance.EnableEfficiency();
     }
 
     private static void ShowMainWindow()
@@ -303,6 +282,8 @@ public sealed class TrayIconService : IDisposable
 
         if (desktop.MainWindow is not MainWindow mainWindow)
             return;
+
+        EfficiencyModeService.Instance.DisableEfficiency();
 
         // Show dock icon so CMD+Tab works while window is visible
         MacOSDockIconHelper.ShowDockIcon();
@@ -318,7 +299,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void OnOpenAbout(object? sender, EventArgs e)
+    private static void OnOpenAbout(object? sender, EventArgs e)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
@@ -342,15 +323,13 @@ public sealed class TrayIconService : IDisposable
         global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             var safeTag = SanitizeExternalText(e.Release.TagName);
-            ShowPlatformNotification("Update Available",
-                $"BatteryNotifier {safeTag} is available. Use tray menu to download.");
+            _displayService?.ShowSimpleNotification("Update Available",
+                $"BatteryNotifier {safeTag} is available. Click 'Check for Updates' to install.");
         });
     }
 
     /// <summary>
     /// Strip control characters and truncate text from external sources (GitHub API).
-    /// The downstream NotificationPlatformService does platform-specific sanitization,
-    /// but defense-in-depth ensures no unexpected content reaches it.
     /// </summary>
     private static string SanitizeExternalText(string input)
     {
@@ -362,6 +341,7 @@ public sealed class TrayIconService : IDisposable
             if (!char.IsControl(input[i]))
                 chars[j++] = input[i];
         }
+
         return new string(chars, 0, j);
     }
 
@@ -369,42 +349,55 @@ public sealed class TrayIconService : IDisposable
     {
         try
         {
-            // Show "Checking..." tooltip while the request is in flight
             if (_trayIcon != null)
                 _trayIcon.ToolTipText = "BatteryNotifier — Checking for updates...";
 
-            var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
+            var mgr = new UpdateManager(new GithubSource(Constants.SourceRepositoryUrl, null, false));
 
-            switch (result.Status)
+            if (!mgr.IsInstalled)
             {
-                case CheckStatus.UpdateAvailable when result.Release != null:
+                // Portable/dev mode — fall back to opening GitHub
+                var result = await UpdateService.Instance.CheckForUpdateManualAsync();
+                if (result.Status == CheckStatus.UpdateAvailable && result.Release != null)
                     OpenUrl(result.Release.HtmlUrl);
-                    break;
-
-                case CheckStatus.UpToDate:
-                    ShowPlatformNotification("No Updates",
+                else if (result.Status == CheckStatus.UpToDate)
+                    _displayService?.ShowSimpleNotification("No Updates",
                         $"You're running the latest version ({Constants.ApplicationVersion}).");
-                    break;
-
-                case CheckStatus.AlreadyChecking:
-                    // User clicked again while a check is running — do nothing
-                    break;
-
-                case CheckStatus.Failed:
-                    ShowPlatformNotification("Update Check Failed",
+                else if (result.Status == CheckStatus.Failed)
+                    _displayService?.ShowSimpleNotification("Update Check Failed",
                         "Could not reach GitHub. Check your internet connection.");
-                    break;
+                return;
             }
+
+            var updateInfo = await mgr.CheckForUpdatesAsync();
+            if (updateInfo == null)
+            {
+                _displayService?.ShowSimpleNotification("No Updates",
+                    $"You're running the latest version ({Constants.ApplicationVersion}).");
+                return;
+            }
+
+            _displayService?.ShowSimpleNotification("Downloading Update",
+                $"Downloading BatteryNotifier {updateInfo.TargetFullRelease.Version}...");
+
+            await mgr.DownloadUpdatesAsync(updateInfo);
+
+            _displayService?.ShowSimpleNotification("Update Ready",
+                $"BatteryNotifier {updateInfo.TargetFullRelease.Version} downloaded. Restarting...");
+
+            // Brief delay so user can see the notification
+            await Task.Delay(2000);
+
+            mgr.ApplyUpdatesAndRestart(updateInfo.TargetFullRelease);
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Manual update check failed");
-            ShowPlatformNotification("Update Check Failed",
-                "An unexpected error occurred.");
+            _logger.Error(ex, "Update check/download failed");
+            _displayService?.ShowSimpleNotification("Update Check Failed",
+                "An unexpected error occurred. Check your internet connection.");
         }
         finally
         {
-            // Restore normal tooltip
             UpdateToolTip();
         }
     }
@@ -429,7 +422,7 @@ public sealed class TrayIconService : IDisposable
         }
     }
 
-    private void OnExit(object? sender, EventArgs e)
+    private static void OnExit(object? sender, EventArgs e)
     {
         if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
@@ -443,14 +436,11 @@ public sealed class TrayIconService : IDisposable
 
         try
         {
-            try
-            {
-                BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
-                NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
-                UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
-                UpdateService.Instance.Dispose();
-            }
-            catch { }
+            BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
+            NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+            UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
+            UpdateService.Instance.Dispose();
+
 
             _visibilitySubscription?.Dispose();
             _visibilitySubscription = null;
@@ -461,14 +451,34 @@ public sealed class TrayIconService : IDisposable
 
             _notificationManager?.Dispose();
             _notificationManager = null;
+            _displayService?.DismissAll();
+            _displayService = null;
 
             // Unsubscribe menu item Click handlers to prevent event leaks
-            if (_showHideMenuItem != null) { _showHideMenuItem.Click -= OnShowHideWindow; _showHideMenuItem = null; }
-            if (_aboutMenuItem != null) { _aboutMenuItem.Click -= OnOpenAbout; _aboutMenuItem = null; }
-            if (_updateMenuItem != null) { _updateMenuItem.Click -= OnCheckForUpdates; _updateMenuItem = null; }
-            if (_exitMenuItem != null) { _exitMenuItem.Click -= OnExit; _exitMenuItem = null; }
-            _trayMenu = null;
+            if (_showHideMenuItem != null)
+            {
+                _showHideMenuItem.Click -= OnShowHideWindow;
+                _showHideMenuItem = null;
+            }
 
+            if (_aboutMenuItem != null)
+            {
+                _aboutMenuItem.Click -= OnOpenAbout;
+                _aboutMenuItem = null;
+            }
+
+            if (_updateMenuItem != null)
+            {
+                _updateMenuItem.Click -= OnCheckForUpdates;
+                _updateMenuItem = null;
+            }
+
+            if (_exitMenuItem != null)
+            {
+                _exitMenuItem.Click -= OnExit;
+                _exitMenuItem = null;
+            }
+            
             if (_trayIcon != null)
             {
                 _trayIcon.Clicked -= OnTrayIconClicked;
