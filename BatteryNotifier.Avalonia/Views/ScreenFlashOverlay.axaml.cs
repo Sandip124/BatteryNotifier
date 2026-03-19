@@ -26,6 +26,8 @@ public partial class ScreenFlashOverlay : Window
 
     public async Task FlashAsync(Color glowColor, int durationMs = Core.Constants.NotificationDurationMs)
     {
+        _flashCts?.Cancel();
+        _flashCts?.Dispose();
         _flashCts = new CancellationTokenSource();
         var ct = _flashCts.Token;
 
@@ -76,6 +78,8 @@ public partial class ScreenFlashOverlay : Window
     public void StopFlash()
     {
         _flashCts?.Cancel();
+        _flashCts?.Dispose();
+        _flashCts = null;
         Close();
     }
 
