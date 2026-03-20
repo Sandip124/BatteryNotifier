@@ -1,67 +1,92 @@
+using System.Collections.Frozen;
+
 namespace BatteryNotifier.Core.Services;
 
 /// <summary>
-/// Maps known process names to actionable battery-saving tips.
+/// Maps known process names to actionable battery-saving tips,
+/// and identifies system processes that should be excluded from drainer lists.
 /// </summary>
 public static class ProcessTips
 {
+    /// <summary>
+    /// Low-level OS processes that always run and aren't actionable by the user.
+    /// Used by PowerUsageService to filter noise from the process list.
+    /// </summary>
+    public static readonly FrozenSet<string> SystemProcesses = ((string[])
+    [
+        // macOS
+        "kernel_task", "launchd", "WindowServer", "loginwindow",
+        // Windows
+        "svchost", "System Idle Process", "System", "Registry",
+        // Linux
+        "systemd", "idle", "init", "kthreadd",
+    ]).ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+
+    // Shared tip strings to avoid repeated literals
+    private const string CloseTabs = "Close unused tabs to save battery";
+    private const string CloseSpaces = "Close unused spaces or tabs";
+    private const string QuitMessaging = "Quit when not actively messaging";
+    private const string SpotlightIndexing = "Spotlight indexing — will finish soon";
+    private const string PauseContainers = "Pause unused containers or VMs";
+    private const string LowerResolution = "Lower resolution to save battery";
+
+    /// <summary>Exact-match tips (case-insensitive).</summary>
+    private static readonly Dictionary<string, string> ExactTips = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["node"] = "Check for runaway processes",
+        ["nodejs"] = "Check for runaway processes",
+        ["mds"] = SpotlightIndexing,
+        ["mds_stores"] = SpotlightIndexing,
+        ["mdworker"] = SpotlightIndexing,
+        ["mdworker_shared"] = SpotlightIndexing,
+        ["photoanalysisd"] = "Photo analysis — will finish soon",
+        ["backupd"] = "Time Machine backup in progress",
+        ["compilerassetscatalog"] = "Xcode build in progress",
+    };
+
+    /// <summary>Substring-match tips, checked in order. First match wins.</summary>
+    private static readonly (string Pattern, string Tip)[] SubstringTips =
+    [
+        // Browsers
+        ("chrome", CloseTabs),
+        ("chromium", CloseTabs),
+        ("firefox", CloseTabs),
+        ("safari", CloseTabs),
+        ("edge", CloseTabs),
+        ("opera", CloseTabs),
+        ("brave", CloseTabs),
+        ("arc", CloseSpaces),
+        // Communication
+        ("slack", QuitMessaging),
+        ("discord", "Quit when not in a call"),
+        ("teams", "Quit when not in a meeting"),
+        ("zoom", "Quit after your meeting ends"),
+        ("telegram", QuitMessaging),
+        ("whatsapp", QuitMessaging),
+        // Media
+        ("spotify", "Download music instead of streaming"),
+        ("vlc", LowerResolution),
+        ("iina", LowerResolution),
+        // Dev tools & VMs
+        ("docker", PauseContainers),
+        ("hyperkit", PauseContainers),
+        ("qemu", PauseContainers),
+        // System
+        ("softwareupdate", "System update in progress"),
+        ("xcodebuild", "Xcode build in progress"),
+    ];
+
     public static string? GetTip(string processName)
     {
+        if (ExactTips.TryGetValue(processName, out var exact))
+            return exact;
+
         var lower = processName.ToLowerInvariant();
-
-        // Browsers — tabs are the #1 battery drain cause
-        if (lower.Contains("chrome") || lower.Contains("chromium"))
-            return "Close unused tabs to save battery";
-        if (lower.Contains("firefox"))
-            return "Close unused tabs to save battery";
-        if (lower.Contains("safari"))
-            return "Close unused tabs to save battery";
-        if (lower.Contains("edge"))
-            return "Close unused tabs to save battery";
-        if (lower.Contains("opera"))
-            return "Close unused tabs to save battery";
-        if (lower.Contains("brave"))
-            return "Close unused tabs to save battery";
-        if (lower.Contains("arc"))
-            return "Close unused spaces or tabs";
-
-        // Communication — often run in background unnecessarily
-        if (lower.Contains("slack"))
-            return "Quit when not actively messaging";
-        if (lower.Contains("discord"))
-            return "Quit when not in a call";
-        if (lower.Contains("teams"))
-            return "Quit when not in a meeting";
-        if (lower.Contains("zoom"))
-            return "Quit after your meeting ends";
-        if (lower.Contains("telegram"))
-            return "Quit when not actively messaging";
-        if (lower.Contains("whatsapp"))
-            return "Quit when not actively messaging";
-
-        // Media
-        if (lower.Contains("spotify"))
-            return "Download music instead of streaming";
-        if (lower.Contains("vlc") || lower.Contains("iina"))
-            return "Lower resolution to save battery";
-
-        // Dev tools & VMs
-        if (lower.Contains("docker") || lower.Contains("hyperkit") || lower.Contains("qemu"))
-            return "Pause unused containers or VMs";
-        if (lower is "node" or "nodejs")
-            return "Check for runaway processes";
-
-        // macOS system processes
-        if (lower is "mds_stores" or "mdworker" or "mds" or "mdworker_shared")
-            return "Spotlight indexing — will finish soon";
-        if (lower == "photoanalysisd")
-            return "Photo analysis — will finish soon";
-        if (lower == "backupd")
-            return "Time Machine backup in progress";
-        if (lower.Contains("softwareupdate"))
-            return "System update in progress";
-        if (lower == "compilerassetscatalog" || lower.Contains("xcodebuild"))
-            return "Xcode build in progress";
+        foreach (var (pattern, tip) in SubstringTips)
+        {
+            if (lower.Contains(pattern, StringComparison.Ordinal))
+                return tip;
+        }
 
         return null;
     }

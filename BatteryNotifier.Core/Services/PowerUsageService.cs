@@ -23,13 +23,6 @@ public sealed class PowerUsageService : IDisposable
     private static readonly TimeSpan BackgroundInterval = TimeSpan.FromMinutes(2);
     private static readonly TimeSpan ActiveInterval = TimeSpan.FromSeconds(15);
 
-    private static readonly HashSet<string> SystemProcesses = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "kernel_task", "launchd", "svchost", "systemd", "idle",
-        "WindowServer", "loginwindow", "init", "kthreadd",
-        "System Idle Process", "System", "Registry"
-    };
-
     public IReadOnlyList<ProcessPowerInfo>? LatestProcesses { get; private set; }
     public event EventHandler<IReadOnlyList<ProcessPowerInfo>>? ProcessesUpdated;
 
@@ -114,42 +107,43 @@ public sealed class PowerUsageService : IDisposable
             var line = lineEnd >= 0 ? lines[..lineEnd] : lines;
             lines = lineEnd >= 0 ? lines[(lineEnd + 1)..] : default;
 
-            line = line.Trim();
-            if (line.IsEmpty) continue;
-
-            // Parse: PID  %CPU  COMM
-            // PID field
-            var rest = line;
-            var spaceIdx = rest.IndexOf(' ');
-            if (spaceIdx < 0) continue;
-
-            var pidSpan = rest[..spaceIdx];
-            if (!int.TryParse(pidSpan, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pid))
-                continue;
-
-            // Skip whitespace to %CPU
-            rest = rest[(spaceIdx + 1)..].TrimStart();
-            spaceIdx = rest.IndexOf(' ');
-            if (spaceIdx < 0) continue;
-
-            var cpuSpan = rest[..spaceIdx];
-            if (!double.TryParse(cpuSpan, NumberStyles.Float, CultureInfo.InvariantCulture, out var cpu))
-                continue;
-
-            // Rest is command path
-            var comm = rest[(spaceIdx + 1)..].TrimStart();
-            if (comm.IsEmpty) continue;
-
-            // Extract just the process name from the full path
-            var lastSlash = comm.LastIndexOf('/');
-            var name = lastSlash >= 0 ? comm[(lastSlash + 1)..] : comm;
-
-            if (name.IsEmpty) continue;
-
-            results.Add(new ProcessPowerInfo(name.ToString(), cpu, pid));
+            if (TryParsePsLine(line.Trim(), out var entry))
+                results.Add(entry);
         }
 
         return results;
+    }
+
+    /// <summary>Parses a single "PID %CPU COMMAND" line into a ProcessPowerInfo.</summary>
+    private static bool TryParsePsLine(ReadOnlySpan<char> line, out ProcessPowerInfo result)
+    {
+        result = default;
+        if (line.IsEmpty) return false;
+
+        // PID field
+        var rest = line;
+        var space = rest.IndexOf(' ');
+        if (space < 0) return false;
+        if (!int.TryParse(rest[..space], NumberStyles.Integer, CultureInfo.InvariantCulture, out var pid))
+            return false;
+
+        // %CPU field
+        rest = rest[(space + 1)..].TrimStart();
+        space = rest.IndexOf(' ');
+        if (space < 0) return false;
+        if (!double.TryParse(rest[..space], NumberStyles.Float, CultureInfo.InvariantCulture, out var cpu))
+            return false;
+
+        // COMMAND — extract process name from full path
+        var comm = rest[(space + 1)..].TrimStart();
+        if (comm.IsEmpty) return false;
+
+        var lastSlash = comm.LastIndexOf('/');
+        var name = lastSlash >= 0 ? comm[(lastSlash + 1)..] : comm;
+        if (name.IsEmpty) return false;
+
+        result = new ProcessPowerInfo(name.ToString(), cpu, pid);
+        return true;
     }
 
 #if WINDOWS
@@ -207,7 +201,7 @@ public sealed class PowerUsageService : IDisposable
         return processes
             .Where(p => p.Pid != selfPid
                      && p.CpuPercent >= 1.0
-                     && !SystemProcesses.Contains(p.Name))
+                     && !ProcessTips.SystemProcesses.Contains(p.Name))
             .OrderByDescending(p => p.CpuPercent)
             .Take(5)
             .ToList();
