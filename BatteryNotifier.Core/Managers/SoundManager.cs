@@ -290,20 +290,6 @@ namespace BatteryNotifier.Core.Managers
 
         private void PlayOnLinux(string source, bool loop, int durationMs, CancellationToken token)
         {
-            // Try SoundFlow (MiniAudio) first — best quality, supports looping
-            if (!_sfFailed)
-            {
-                try
-                {
-                    PlayWithSoundFlow(source, loop, durationMs, token);
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    _logger.Warning(ex, "SoundFlow failed on Linux, falling back to subprocess");
-                }
-            }
-
             var (command, extraArgs) = FindLinuxAudioCommand(source);
             if (command != null)
                 PlayWithSubprocess(command, extraArgs, source, loop, durationMs, token);
