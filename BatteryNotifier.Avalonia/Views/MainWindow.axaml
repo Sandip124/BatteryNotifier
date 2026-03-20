@@ -21,7 +21,7 @@
         Icon="/Assets/battery-notifier-logo.ico"
         Title="BatteryNotifier">
 
-    <Border ClipToBounds="True"
+    <Border ClipToBounds="True" CornerRadius="12"
             Background="{DynamicResource AppWindowBackground}">
       <Panel>
       <Border Padding="4">

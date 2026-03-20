@@ -28,13 +28,17 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
+        InitializeComponent();
+
         // Linux WMs (GNOME, KDE) ignore ExtendClientAreaToDecorationsHint and draw
         // their own title bar with min/max/close buttons. Remove decorations entirely
         // on Linux so the app renders the same chromeless look as Windows/macOS.
+        // X11 does not support AcrylicBlur — use Transparent so rounded corners show.
         if (OperatingSystem.IsLinux())
+        {
             SystemDecorations = SystemDecorations.None;
-
-        InitializeComponent();
+            TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
+        }
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
