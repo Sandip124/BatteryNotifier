@@ -116,7 +116,28 @@ public class RangeSlider : Control
     {
         var isDark = ActualThemeVariant == ThemeVariant.Dark ||
                      (ActualThemeVariant == ThemeVariant.Default && Application.Current?.ActualThemeVariant == ThemeVariant.Dark);
-        _palette = isDark ? DarkPalette : LightPalette;
+        var basePalette = isDark ? DarkPalette : LightPalette;
+
+        // Use the OS system accent color (follows live changes on all platforms)
+        if (this.TryFindResource(isDark ? "SystemAccentColorLight1" : "SystemAccentColorDark1", ActualThemeVariant, out var colorRes) &&
+            colorRes is Color accent)
+        {
+            var accentDarker = Color.FromArgb(255,
+                (byte)Math.Max(accent.R - 30, 0),
+                (byte)Math.Max(accent.G - 30, 0),
+                (byte)Math.Max(accent.B - 30, 0));
+            _palette = basePalette with
+            {
+                ActiveTrack = accent,
+                Thumb = accent,
+                TickDotActive = accentDarker
+            };
+        }
+        else
+        {
+            _palette = basePalette;
+        }
+
         InvalidateVisual();
     }
 
