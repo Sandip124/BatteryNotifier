@@ -16,6 +16,7 @@
     <Border x:Name="CardBorder"
             CornerRadius="16"
             Background="{DynamicResource AppWindowBackground}"
+            BorderBrush="{DynamicResource AppCardBorder}" BorderThickness="1"
             Margin="8"
             ClipToBounds="True"
             Opacity="0"
