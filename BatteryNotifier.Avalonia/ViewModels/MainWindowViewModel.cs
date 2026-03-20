@@ -72,6 +72,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         // Subscribe to health updates for the compact bar
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
 
+        // Start recording battery history (charge sparkline + wear trend)
+        _ = BatteryHistoryService.Instance;
+
         // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
     }

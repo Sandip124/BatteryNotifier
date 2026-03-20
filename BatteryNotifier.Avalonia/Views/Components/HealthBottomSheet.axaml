@@ -3,6 +3,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
              mc:Ignorable="d"
              x:Class="BatteryNotifier.Avalonia.Views.Components.HealthBottomSheet"
              x:DataType="vm:MainWindowViewModel">
@@ -18,23 +19,23 @@
         <Border Background="#80000000"
                 PointerPressed="Backdrop_PointerPressed" />
 
-        <!-- Sheet panel -->
+        <!-- Sheet panel — 75% of 510px window height -->
         <Border x:Name="SheetPanel"
                 VerticalAlignment="Bottom"
-                MaxHeight="480"
+                MaxHeight="383"
                 CornerRadius="16,16,0,0"
                 Background="{DynamicResource AppWindowBackground}"
                 Padding="0"
-                RenderTransform="translateY(480px)">
+                RenderTransform="translateY(383px)">
             <Border.Transitions>
                 <Transitions>
                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut" />
                 </Transitions>
             </Border.Transitions>
 
-            <ScrollViewer>
-                <StackPanel Margin="16,8,16,16" Spacing="10">
-
+            <DockPanel>
+                <!-- Fixed header -->
+                <StackPanel DockPanel.Dock="Top" Margin="16,8,16,0" Spacing="10">
                     <!-- Handle bar -->
                     <Border HorizontalAlignment="Center"
                             Width="40" Height="4"
@@ -44,8 +45,8 @@
                             Margin="0,4,0,4" />
 
                     <!-- Header + refresh -->
-                    <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock Grid.Column="0" FontSize="16" FontWeight="SemiBold">Battery Health</TextBlock>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                        <TextBlock Grid.Column="0" FontSize="16" FontWeight="SemiBold">Battery Details</TextBlock>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                             <TextBlock VerticalAlignment="Center" FontSize="10"
                                        Foreground="{DynamicResource AppSubtleText}"
@@ -57,10 +58,35 @@
                             </Button>
                         </StackPanel>
                     </Grid>
+                </StackPanel>
+
+                <!-- Scrollable cards -->
+                <ScrollViewer>
+                <StackPanel Margin="16,0,16,16" Spacing="10">
+
+                    <!-- Charge History (24h sparkline) -->
+                    <Border CornerRadius="10" Padding="10,8"
+                            Background="{DynamicResource AppCardBackground}"
+                            IsVisible="{Binding HealthDashboard.HasChargeHistory}">
+                        <Grid>
+                            <StackPanel Spacing="4">
+                                <TextBlock FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AppSubtleText}">Charge History (24h)</TextBlock>
+                                <controls:SparklineControl Height="120"
+                                    DataPoints="{Binding HealthDashboard.ChargeHistory}" />
+                            </StackPanel>
+                            <PathIcon Data="{StaticResource Icon.Info}" Width="10" Height="10"
+                                      Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
+                                      HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <ToolTip.Tip>Your battery level over the last 24 hours. Blue = charging, green = on battery.</ToolTip.Tip>
+                            </PathIcon>
+                        </Grid>
+                    </Border>
 
                     <!-- Battery Health — 2x2 stat grid -->
                     <Border CornerRadius="10" Padding="14,12"
                             Background="{DynamicResource AppCardBackground}">
+                        <Grid>
                         <StackPanel Spacing="10">
                             <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,10,Auto">
                                 <StackPanel Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center">
@@ -68,6 +94,10 @@
                                     <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
                                                Foreground="{Binding HealthDashboard.HealthColor}"
                                                Text="{Binding HealthDashboard.CapacityDisplay}" />
+                                    <TextBlock FontSize="9" TextAlignment="Center"
+                                               Foreground="{DynamicResource AppSubtleText}"
+                                               Text="{Binding HealthDashboard.WearSummaryText}"
+                                               IsVisible="{Binding HealthDashboard.WearSummaryText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                                 </StackPanel>
 
                                 <StackPanel Grid.Row="0" Grid.Column="1" HorizontalAlignment="Center">
@@ -94,6 +124,12 @@
                                 </StackPanel>
                             </Grid>
                         </StackPanel>
+                        <PathIcon Data="{StaticResource Icon.Info}" Width="10" Height="10"
+                                  Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
+                                  HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <ToolTip.Tip>Capacity: max charge vs. new. Cycles: full charge-discharge count (most last 500-1000). Wear trend shown below capacity.</ToolTip.Tip>
+                        </PathIcon>
+                        </Grid>
                     </Border>
 
                     <!-- Temperature + Power — combined row -->
@@ -101,41 +137,55 @@
                         <!-- Temperature -->
                         <Border Grid.Column="0" CornerRadius="10" Padding="12,10"
                                 Background="{DynamicResource AppCardBackground}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <PathIcon Data="{StaticResource Icon.Thermometer}"
-                                          Foreground="{Binding HealthDashboard.TemperatureColor}"
-                                          Width="16" Height="16" HorizontalAlignment="Center" />
-                                <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Temperature</TextBlock>
-                                <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
-                                           Foreground="{Binding HealthDashboard.TemperatureColor}"
-                                           Text="{Binding HealthDashboard.TemperatureDisplay}" />
-                                <TextBlock FontSize="10" FontWeight="SemiBold" TextAlignment="Center"
-                                           Foreground="{Binding HealthDashboard.TemperatureColor}"
-                                           Text="{Binding HealthDashboard.TemperatureStatusText}" />
-                            </StackPanel>
+                            <Grid>
+                                <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                    <PathIcon Data="{StaticResource Icon.Thermometer}"
+                                              Foreground="{Binding HealthDashboard.TemperatureColor}"
+                                              Width="16" Height="16" HorizontalAlignment="Center" />
+                                    <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Temperature</TextBlock>
+                                    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
+                                               Foreground="{Binding HealthDashboard.TemperatureColor}"
+                                               Text="{Binding HealthDashboard.TemperatureDisplay}" />
+                                    <TextBlock FontSize="10" FontWeight="SemiBold" TextAlignment="Center"
+                                               Foreground="{Binding HealthDashboard.TemperatureColor}"
+                                               Text="{Binding HealthDashboard.TemperatureStatusText}" />
+                                </StackPanel>
+                                <PathIcon Data="{StaticResource Icon.Info}" Width="9" Height="9"
+                                          Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
+                                          HorizontalAlignment="Right" VerticalAlignment="Top">
+                                    <ToolTip.Tip>Battery temperature. Below 35°C is normal. High temps accelerate wear.</ToolTip.Tip>
+                                </PathIcon>
+                            </Grid>
                         </Border>
 
                         <!-- Power -->
                         <Border Grid.Column="2" CornerRadius="10" Padding="12,10"
                                 Background="{DynamicResource AppCardBackground}">
-                            <StackPanel HorizontalAlignment="Center" Spacing="4">
-                                <PathIcon Data="{StaticResource Icon.LightningFill}"
-                                          Foreground="#FB8C00"
-                                          Width="16" Height="16" HorizontalAlignment="Center" />
-                                <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Power</TextBlock>
-                                <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
-                                           Foreground="#FB8C00"
-                                           Text="{Binding HealthDashboard.PowerRateDisplay}" />
-                                <Grid ColumnDefinitions="*,Auto,*" Margin="0,2,0,0">
-                                    <TextBlock Grid.Column="0" FontSize="10" TextAlignment="Center"
-                                               Foreground="{DynamicResource AppSubtleText}"
-                                               Text="{Binding HealthDashboard.VoltageDisplay}" />
-                                    <TextBlock Grid.Column="1" FontSize="10" Foreground="{DynamicResource AppSubtleText}" Margin="4,0"> · </TextBlock>
-                                    <TextBlock Grid.Column="2" FontSize="10" TextAlignment="Center"
-                                               Foreground="{DynamicResource AppSubtleText}"
-                                               Text="{Binding HealthDashboard.CurrentDisplay}" />
-                                </Grid>
-                            </StackPanel>
+                            <Grid>
+                                <StackPanel HorizontalAlignment="Center" Spacing="4">
+                                    <PathIcon Data="{StaticResource Icon.LightningFill}"
+                                              Foreground="#FB8C00"
+                                              Width="16" Height="16" HorizontalAlignment="Center" />
+                                    <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Power</TextBlock>
+                                    <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
+                                               Foreground="#FB8C00"
+                                               Text="{Binding HealthDashboard.PowerRateDisplay}" />
+                                    <Grid ColumnDefinitions="*,Auto,*" Margin="0,2,0,0">
+                                        <TextBlock Grid.Column="0" FontSize="10" TextAlignment="Center"
+                                                   Foreground="{DynamicResource AppSubtleText}"
+                                                   Text="{Binding HealthDashboard.VoltageDisplay}" />
+                                        <TextBlock Grid.Column="1" FontSize="10" Foreground="{DynamicResource AppSubtleText}" Margin="4,0"> · </TextBlock>
+                                        <TextBlock Grid.Column="2" FontSize="10" TextAlignment="Center"
+                                                   Foreground="{DynamicResource AppSubtleText}"
+                                                   Text="{Binding HealthDashboard.CurrentDisplay}" />
+                                    </Grid>
+                                </StackPanel>
+                                <PathIcon Data="{StaticResource Icon.Info}" Width="9" Height="9"
+                                          Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
+                                          HorizontalAlignment="Right" VerticalAlignment="Top">
+                                    <ToolTip.Tip>Current power draw in watts. Shows how fast your battery is charging or draining.</ToolTip.Tip>
+                                </PathIcon>
+                            </Grid>
                         </Border>
                     </Grid>
 
@@ -154,7 +204,8 @@
                     </Border>
 
                 </StackPanel>
-            </ScrollViewer>
+                </ScrollViewer>
+            </DockPanel>
         </Border>
     </Grid>
 

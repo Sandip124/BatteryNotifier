@@ -11,7 +11,7 @@ namespace BatteryNotifier.Avalonia.Views.Components;
 
 public partial class HealthBottomSheet : UserControl
 {
-    private static readonly TransformOperations OffScreen = TransformOperations.Parse("translateY(430px)");
+    private static readonly TransformOperations OffScreen = TransformOperations.Parse("translateY(383px)");
     private static readonly TransformOperations OnScreen = TransformOperations.Parse("translateY(0px)");
     private static readonly TimeSpan AnimationDuration = TimeSpan.FromMilliseconds(300);
 

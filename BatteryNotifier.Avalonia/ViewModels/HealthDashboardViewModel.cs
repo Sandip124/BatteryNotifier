@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reactive;
 using System.Threading;
 using Avalonia.Threading;
@@ -25,6 +26,11 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
 
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
         UpdateFromHealth(BatteryHealthService.Instance.LatestHealth);
+
+        // Subscribe to history updates
+        BatteryHistoryService.Instance.ChargeHistoryUpdated += OnChargeHistoryUpdated;
+        BatteryHistoryService.Instance.WearHistoryUpdated += OnWearHistoryUpdated;
+        RefreshHistoryData();
 
         _displayTimer = new Timer(_ =>
         {
@@ -352,6 +358,58 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         }
     }
 
+    // ── Battery History ─────────────────────────────────────────
+
+    public IReadOnlyList<ChargeHistoryEntry>? ChargeHistory
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public IReadOnlyList<WearHistoryEntry>? WearHistory
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public string WearSummaryText
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
+
+    public bool HasChargeHistory => ChargeHistory is { Count: >= 2 };
+    public bool HasWearHistory => WearHistory is { Count: >= 2 };
+
+    private void OnChargeHistoryUpdated()
+    {
+        Dispatcher.UIThread.Post(RefreshChargeHistory);
+    }
+
+    private void OnWearHistoryUpdated()
+    {
+        Dispatcher.UIThread.Post(RefreshWearHistory);
+    }
+
+    private void RefreshHistoryData()
+    {
+        RefreshChargeHistory();
+        RefreshWearHistory();
+    }
+
+    private void RefreshChargeHistory()
+    {
+        ChargeHistory = BatteryHistoryService.Instance.GetChargeHistory();
+        this.RaisePropertyChanged(nameof(HasChargeHistory));
+    }
+
+    private void RefreshWearHistory()
+    {
+        WearHistory = BatteryHistoryService.Instance.GetWearHistory();
+        WearSummaryText = BatteryHistoryService.Instance.GetWearSummary() ?? string.Empty;
+        this.RaisePropertyChanged(nameof(HasWearHistory));
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
@@ -359,5 +417,7 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         _displayTimer?.Dispose();
         _displayTimer = null;
         BatteryHealthService.Instance.HealthUpdated -= OnHealthUpdated;
+        BatteryHistoryService.Instance.ChargeHistoryUpdated -= OnChargeHistoryUpdated;
+        BatteryHistoryService.Instance.WearHistoryUpdated -= OnWearHistoryUpdated;
     }
 }
