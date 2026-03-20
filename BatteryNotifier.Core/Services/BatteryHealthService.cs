@@ -384,6 +384,9 @@ public sealed class BatteryHealthService : IDisposable
                 out _, IntPtr.Zero))
             return;
 
+        Logger.Debug("IOCTL BatteryInformation: DesignCap={Design}, FullCap={Full}, Cycles={Cycles}",
+            batInfo.DesignedCapacity, batInfo.FullChargedCapacity, batInfo.CycleCount);
+
         if (batInfo.DesignedCapacity > 0 && batInfo.FullChargedCapacity > 0)
             info.HealthPercent = Math.Round((double)batInfo.FullChargedCapacity / batInfo.DesignedCapacity * 100, 1);
 
@@ -400,6 +403,9 @@ public sealed class BatteryHealthService : IDisposable
                 out BATTERY_STATUS status, (uint)Marshal.SizeOf<BATTERY_STATUS>(),
                 out _, IntPtr.Zero))
             return;
+
+        Logger.Debug("IOCTL BatteryStatus: Voltage={Voltage}mV, Rate={Rate}mW, Capacity={Cap}mWh",
+            status.Voltage, status.Rate, status.Capacity);
 
         if (status.Voltage > 0)
             info.VoltageVolts = status.Voltage / 1000.0;
@@ -437,9 +443,9 @@ public sealed class BatteryHealthService : IDisposable
         var detailDataPtr = Marshal.AllocHGlobal((int)requiredSize);
         try
         {
-            // First field is cbSize — must be set to 5 on x86, 8 on x64
-            // (sizeof(uint) + offset of DevicePath, accounting for packing)
-            Marshal.WriteInt32(detailDataPtr, IntPtr.Size == 8 ? 8 : 6);
+            // cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA) which is
+            // sizeof(DWORD) + sizeof(TCHAR) = 5 on x86, 8 on x64 (struct packing)
+            Marshal.WriteInt32(detailDataPtr, IntPtr.Size == 8 ? 8 : 5);
 
             if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ref diData, detailDataPtr,
                     requiredSize, out _, IntPtr.Zero))

@@ -10,16 +10,13 @@
         Topmost="True"
         ShowInTaskbar="False"
         CanResize="False"
-        Width="340" Height="88"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="0"
+        Width="356" Height="104"
         ShowActivated="False">
 
     <Border x:Name="CardBorder"
             CornerRadius="16"
             Background="{DynamicResource AppWindowBackground}"
-            Margin="0"
+            Margin="8"
             ClipToBounds="True"
             Opacity="0"
             RenderTransformOrigin="0.5,0"

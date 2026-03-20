@@ -23,6 +23,7 @@ public partial class MainWindow : Window
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
     private IDisposable? _aboutInteractionHandler;
+    private INotifyPropertyChanged? _subscribedViewModel;
     private bool _isSettingsAnimating;
 
     public MainWindow()
@@ -53,8 +54,18 @@ public partial class MainWindow : Window
         _aboutInteractionHandler?.Dispose();
         _aboutInteractionHandler = null;
 
+        // Unsubscribe from previous DataContext to prevent leak
+        if (_subscribedViewModel != null)
+        {
+            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel = null;
+        }
+
         if (DataContext is INotifyPropertyChanged npc)
+        {
             npc.PropertyChanged += OnViewModelPropertyChanged;
+            _subscribedViewModel = npc;
+        }
 
         if (DataContext is MainWindowViewModel vm)
         {
