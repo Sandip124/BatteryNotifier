@@ -44,6 +44,15 @@ sealed class Program
 
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
+            // Avalonia on Linux tries to connect to com.canonical.AppMenu.Registrar
+            // (Unity global menu) which doesn't exist on modern GNOME — harmless, suppress it.
+            if (e.Exception.InnerException is Tmds.DBus.Protocol.DBusException dbus
+                && dbus.ErrorName == "org.freedesktop.DBus.Error.ServiceUnknown")
+            {
+                e.SetObserved();
+                return;
+            }
+
             BatteryNotifierAppLogger.Error(e.Exception, "Unobserved task exception");
             e.SetObserved(); // Prevent process termination
         };
