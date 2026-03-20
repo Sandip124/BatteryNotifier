@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Core.Services;
@@ -84,7 +85,7 @@ public sealed class PowerUsageService : IDisposable
             ? new[] { "-eo", "pid,%cpu,comm", "-r" }
             : new[] { "-eo", "pid,%cpu,comm", "--sort=-%cpu" };
 
-        var output = RunProcess("ps", args);
+        var output = ProcessRunner.Run("ps", args);
         if (string.IsNullOrWhiteSpace(output))
             return [];
 
@@ -205,37 +206,6 @@ public sealed class PowerUsageService : IDisposable
             .OrderByDescending(p => p.CpuPercent)
             .Take(5)
             .ToList();
-    }
-
-    private static string RunProcess(string command, params string[] args)
-    {
-        try
-        {
-            using var process = new Process();
-            var psi = new ProcessStartInfo
-            {
-                FileName = Constants.ResolveCommand(command),
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            foreach (var arg in args)
-                psi.ArgumentList.Add(arg);
-            process.StartInfo = psi;
-            process.Start();
-
-            var output = process.StandardOutput.ReadToEnd();
-            if (output.Length > Constants.MaxProcessOutputLength)
-                output = output[..Constants.MaxProcessOutputLength];
-
-            if (!process.WaitForExit(Constants.ProcessTimeoutMs) && !process.HasExited)
-                process.Kill();
-            return output;
-        }
-        catch
-        {
-            return string.Empty;
-        }
     }
 
     public void Dispose()

@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Core.Services;
@@ -129,7 +130,7 @@ public sealed class BatteryHealthService : IDisposable
 
         try
         {
-            var output = RunProcess("ioreg", "-r", "-c", "AppleSmartBattery");
+            var output = ProcessRunner.Run("ioreg", "-r", "-c", "AppleSmartBattery");
             if (string.IsNullOrWhiteSpace(output)) return info;
 
             info.CycleCount = ParseInt(output, "\"CycleCount\"\\s*=\\s*(\\d+)");
@@ -627,37 +628,6 @@ public sealed class BatteryHealthService : IDisposable
     {
         var m = Regex.Match(text, pattern, RegexOptions.None, TimeSpan.FromSeconds(1));
         return m.Success && ulong.TryParse(m.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : null;
-    }
-
-    private static string RunProcess(string command, params string[] args)
-    {
-        try
-        {
-            using var process = new Process();
-            var psi = new ProcessStartInfo
-            {
-                FileName = Constants.ResolveCommand(command),
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            foreach (var arg in args)
-                psi.ArgumentList.Add(arg);
-            process.StartInfo = psi;
-            process.Start();
-
-            var output = process.StandardOutput.ReadToEnd();
-            if (output.Length > Constants.MaxProcessOutputLength)
-                output = output[..Constants.MaxProcessOutputLength];
-
-            if (!process.WaitForExit(Constants.ProcessTimeoutMs) && !process.HasExited)
-                process.Kill();
-            return output;
-        }
-        catch
-        {
-            return string.Empty;
-        }
     }
 
     public void Dispose()
