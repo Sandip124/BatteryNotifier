@@ -71,6 +71,7 @@ public sealed class BatteryHealthService : IDisposable
     private void FetchAndPublish()
     {
         var info = FetchHealthInfo();
+        DetectCannotSustainLoad(info);
         LatestHealth = info;
         HealthUpdated?.Invoke(this, info);
     }
@@ -78,9 +79,35 @@ public sealed class BatteryHealthService : IDisposable
     public BatteryHealthInfo Refresh()
     {
         var info = FetchHealthInfo();
+        DetectCannotSustainLoad(info);
         LatestHealth = info;
         HealthUpdated?.Invoke(this, info);
         return info;
+    }
+
+    /// <summary>
+    /// Detects if the battery cannot sustain the device without charger.
+    /// Signals: OS reports 0 seconds remaining while battery is present,
+    /// or discharge rate is extremely high relative to capacity.
+    /// </summary>
+    private static void DetectCannotSustainLoad(BatteryHealthInfo info)
+    {
+        var store = Store.BatteryManagerStore.Instance;
+        if (store.HasNoBattery || store.IsUnknown) return;
+
+        // If plugged in and OS reports 0 seconds battery life — battery can't sustain on its own
+        if (store.IsPluggedIn && store.BatteryLifeRemaining == 0 && store.BatteryLifePercent > 0)
+        {
+            info.CannotSustainLoad = true;
+            return;
+        }
+
+        // If not plugged in and battery percentage is > 0 but time remaining is 0
+        // (OS knows the battery drains instantly)
+        if (!store.IsPluggedIn && store.BatteryLifePercent > 10 && store.BatteryLifeRemaining == 0)
+        {
+            info.CannotSustainLoad = true;
+        }
     }
 
     private static BatteryHealthInfo FetchHealthInfo()

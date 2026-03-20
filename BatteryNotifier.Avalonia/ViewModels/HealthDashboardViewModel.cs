@@ -302,9 +302,9 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
 
     public string TemperatureColor => TemperatureStatus switch
     {
-        MetricStatus.Good => "#388E3C",
-        MetricStatus.Fair => "#F57A00",
-        MetricStatus.Poor => "#D32F2F",
+        MetricStatus.Good => "#0288D1",  // cool blue
+        MetricStatus.Fair => "#F57A00",  // warm amber
+        MetricStatus.Poor => "#D32F2F",  // hot red
         _ => "#8A8A8A"
     };
 
@@ -313,7 +313,7 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         MetricStatus.Good => "Normal",
         MetricStatus.Fair => "Warm",
         MetricStatus.Poor => "Too Hot",
-        _ => "--"
+        _ => "Not supported"
     };
 
 
