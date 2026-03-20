@@ -24,7 +24,7 @@ namespace BatteryNotifier.Core.Managers
         private const int DefaultPlayDurationMs = 30000;
 
         private readonly ILogger _logger;
-        private readonly object _playLock = new();
+        private readonly Lock _playLock = new();
         private CancellationTokenSource? _cancellationTokenSource;
         private Process? _currentProcess;
         private bool _isPlaying;
@@ -132,7 +132,7 @@ namespace BatteryNotifier.Core.Managers
         private void PlaySound(string source, bool loop, int durationMs, CancellationToken token)
         {
             if (OperatingSystem.IsMacOS())
-                PlayWithSubprocess("afplay", source, loop, durationMs, token);
+                PlayWithSubprocess("afplay", null, source, loop, durationMs, token);
 #if WINDOWS
             else if (OperatingSystem.IsWindows())
                 PlayWithNAudio(source, loop, durationMs, token);
@@ -144,10 +144,10 @@ namespace BatteryNotifier.Core.Managers
                 _logger.Warning("Unsupported platform for sound playback");
         }
 
-        // ── macOS: subprocess playback ──────────────────────
+        // ── Subprocess playback (macOS + Linux) ──────────────────────
 
-        private void PlayWithSubprocess(string command, string source, bool loop,
-            int durationMs, CancellationToken token)
+        private void PlayWithSubprocess(string command, string[]? extraArgs, string source,
+            bool loop, int durationMs, CancellationToken token)
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
 
@@ -155,46 +155,63 @@ namespace BatteryNotifier.Core.Managers
             {
                 token.ThrowIfCancellationRequested();
 
-                var psi = new ProcessStartInfo
-                {
-                    FileName = Constants.ResolveCommand(command),
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                };
-                // Use ArgumentList for safe argument passing (no shell injection)
-                psi.ArgumentList.Add(source);
+                if (!RunSubprocessOnce(command, extraArgs, source, deadline, token))
+                    return; // Process failed — don't retry
 
-                using var process = new Process { StartInfo = psi };
-                _currentProcess = process;
-
-                try
-                {
-                    process.Start();
-
-
-                    // Wait for process to exit or timeout/cancellation
-                    while (!process.WaitForExit(200))
-                    {
-                        if (token.IsCancellationRequested || DateTime.UtcNow >= deadline)
-                        {
-                            KillProcess(process);
-                            return;
-                        }
-                    }
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    _logger.Warning(ex, "Subprocess sound playback failed ({Command})", command);
-                    return;
-                }
-                finally
-                {
-                    _currentProcess = null;
-                }
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
+        }
+
+        /// <summary>Runs one playback subprocess. Returns true if it completed normally.</summary>
+        private bool RunSubprocessOnce(string command, string[]? extraArgs, string source,
+            DateTime deadline, CancellationToken token)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = Constants.ResolveCommand(command),
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+
+            if (extraArgs != null)
+            {
+                foreach (var arg in extraArgs)
+                    psi.ArgumentList.Add(arg);
+            }
+            psi.ArgumentList.Add(source);
+
+            using var process = new Process { StartInfo = psi };
+            _currentProcess = process;
+
+            try
+            {
+                process.Start();
+                return WaitForProcessOrCancel(process, deadline, token);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.Warning(ex, "Subprocess sound playback failed ({Command})", command);
+                return false;
+            }
+            finally
+            {
+                _currentProcess = null;
+            }
+        }
+
+        private static bool WaitForProcessOrCancel(Process process, DateTime deadline, CancellationToken token)
+        {
+            while (!process.WaitForExit(200))
+            {
+                if (token.IsCancellationRequested || DateTime.UtcNow >= deadline)
+                {
+                    KillProcess(process);
+                    return false;
+                }
+            }
+            return true;
         }
 
 #if WINDOWS
@@ -289,7 +306,7 @@ namespace BatteryNotifier.Core.Managers
 
             var (command, extraArgs) = FindLinuxAudioCommand(source);
             if (command != null)
-                PlayWithLinuxSubprocess(command, extraArgs, source, loop, durationMs, token);
+                PlayWithSubprocess(command, extraArgs, source, loop, durationMs, token);
             else
                 _logger.Warning("No audio playback command found on Linux (tried paplay, pw-play, aplay, mpv, ffplay)");
         }
@@ -307,9 +324,6 @@ namespace BatteryNotifier.Core.Managers
             var ext = Path.GetExtension(source).ToLowerInvariant();
             var needsDecoder = ext is ".mp3" or ".m4a" or ".aac" or ".ogg" or ".flac" or ".wma";
 
-            // For compressed formats, prefer a universal player (mpv/ffplay).
-            // For WAV, prefer lightweight native tools (paplay/pw-play/aplay).
-            // Fall back across categories if the preferred isn't available.
             if (needsDecoder)
                 return _linuxCompressedPlayer ?? _linuxWavPlayer ?? (null, null);
 
@@ -320,94 +334,24 @@ namespace BatteryNotifier.Core.Managers
         {
             _linuxAudioScanned = true;
 
-            // WAV-capable (lightweight, pre-installed on most desktops)
-            (string cmd, string[]? args)[] wavCandidates =
-            [
-                ("paplay", null),
-                ("pw-play", null),
-                ("aplay", ["-q"]),
-            ];
+            _linuxWavPlayer = FindFirstAvailable(
+                ("paplay", null), ("pw-play", null), ("aplay", new[] { "-q" }));
 
-            foreach (var entry in wavCandidates)
-            {
-                if (Path.IsPathRooted(Constants.ResolveCommand(entry.cmd)))
-                {
-                    _linuxWavPlayer = entry;
-                    Log.Debug("Linux WAV player: {Command}", entry.cmd);
-                    break;
-                }
-            }
-
-            // Universal (handles MP3, M4A, OGG, FLAC, WAV — everything)
-            (string cmd, string[]? args)[] universalCandidates =
-            [
-                ("mpv", ["--no-video", "--really-quiet"]),
-                ("ffplay", ["-nodisp", "-autoexit", "-loglevel", "quiet"]),
-            ];
-
-            foreach (var entry in universalCandidates)
-            {
-                if (Path.IsPathRooted(Constants.ResolveCommand(entry.cmd)))
-                {
-                    _linuxCompressedPlayer = entry;
-                    Log.Debug("Linux universal player: {Command}", entry.cmd);
-                    break;
-                }
-            }
+            _linuxCompressedPlayer = FindFirstAvailable(
+                ("mpv", new[] { "--no-video", "--really-quiet" }),
+                ("ffplay", new[] { "-nodisp", "-autoexit", "-loglevel", "quiet" }));
         }
 
-        private void PlayWithLinuxSubprocess(string command, string[]? extraArgs, string source,
-            bool loop, int durationMs, CancellationToken token)
+        private static (string cmd, string[]? args)? FindFirstAvailable(
+            params (string cmd, string[]? args)[] candidates)
         {
-            var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
-
-            do
+            foreach (var entry in candidates)
             {
-                token.ThrowIfCancellationRequested();
-
-                var psi = new ProcessStartInfo
-                {
-                    FileName = Constants.ResolveCommand(command),
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                };
-
-                if (extraArgs != null)
-                {
-                    foreach (var arg in extraArgs)
-                        psi.ArgumentList.Add(arg);
-                }
-                psi.ArgumentList.Add(source);
-
-                using var process = new Process { StartInfo = psi };
-                _currentProcess = process;
-
-                try
-                {
-                    process.Start();
-
-                    while (!process.WaitForExit(200))
-                    {
-                        if (token.IsCancellationRequested || DateTime.UtcNow >= deadline)
-                        {
-                            KillProcess(process);
-                            return;
-                        }
-                    }
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    _logger.Warning(ex, "Linux subprocess sound playback failed ({Command})", command);
-                    return;
-                }
-                finally
-                {
-                    _currentProcess = null;
-                }
-            } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
+                if (!Path.IsPathRooted(Constants.ResolveCommand(entry.cmd))) continue;
+                Log.Debug("Linux audio: found {Command}", entry.cmd);
+                return entry;
+            }
+            return null;
         }
 
         // ── Non-Windows: SoundFlow (MiniAudio) ──────────────────────────
@@ -505,9 +449,10 @@ namespace BatteryNotifier.Core.Managers
 
         private static void KillProcess(Process? process)
         {
+            if (process == null) return;
             try
             {
-                if (process != null && !process.HasExited)
+                if (!process.HasExited)
                     process.Kill();
             }
             catch { /* best effort */ }
@@ -531,6 +476,21 @@ namespace BatteryNotifier.Core.Managers
                 _cancellationTokenSource?.Dispose();
                 _cancellationTokenSource = null;
             }
+
+            // Dispose process handle if still held
+            try { _currentProcess?.Dispose(); } catch { /* best effort */ }
+            _currentProcess = null;
+
+#if WINDOWS
+            // NAudio device and reader are normally disposed by PlayWithNAudio's using blocks,
+            // but if Dispose() is called while playback is active, they may still be held.
+            try { _naudioDevice?.Dispose(); } catch { /* best effort */ }
+            try { _naudioReader?.Dispose(); } catch { /* best effort */ }
+            _naudioDevice = null;
+            _naudioReader = null;
+#else
+            _sfCurrentPlayer = null; // SoundPlayer is disposed by PlayWithSoundFlow's using block
+#endif
         }
     }
 }
