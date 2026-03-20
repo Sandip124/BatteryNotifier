@@ -8,13 +8,16 @@
         Width="280" Height="260"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Background="{DynamicResource AppWindowBackground}"
         SystemDecorations="Full"
         ShowInTaskbar="False"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
-        ExtendClientAreaTitleBarHeightHint="0">
+        ExtendClientAreaTitleBarHeightHint="0"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent">
 
+    <Border ClipToBounds="True" CornerRadius="12"
+            Background="{DynamicResource AppWindowBackground}">
     <Grid RowDefinitions="Auto,*">
 
         <!-- Close button (no background, no title) -->
@@ -83,4 +86,5 @@
             </Button>
         </StackPanel>
     </Grid>
+    </Border>
 </Window>

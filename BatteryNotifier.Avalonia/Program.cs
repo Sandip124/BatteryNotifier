@@ -44,6 +44,15 @@ sealed class Program
 
         TaskScheduler.UnobservedTaskException += (_, e) =>
         {
+            // Avalonia on Linux tries to connect to com.canonical.AppMenu.Registrar
+            // (Unity global menu) which doesn't exist on modern GNOME — harmless, suppress it.
+            if (e.Exception.InnerException is Tmds.DBus.Protocol.DBusException dbus
+                && dbus.ErrorName == "org.freedesktop.DBus.Error.ServiceUnknown")
+            {
+                e.SetObserved();
+                return;
+            }
+
             BatteryNotifierAppLogger.Error(e.Exception, "Unobserved task exception");
             e.SetObserved(); // Prevent process termination
         };
@@ -73,9 +82,20 @@ sealed class Program
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+    {
+        // On Wayland, GNOME's Mutter adds server-side decorations to XWayland windows
+        // and ignores _MOTIF_WM_HINTS, so SystemDecorations.None has no effect.
+        // Force pure X11 to ensure decoration removal works as expected.
+        if (OperatingSystem.IsLinux() &&
+            !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("WAYLAND_DISPLAY")))
+        {
+            Environment.SetEnvironmentVariable("WAYLAND_DISPLAY", null);
+        }
+
+        return AppBuilder.Configure<App>()
             .WithInterFont()
             .UsePlatformDetect()
             .LogToTrace()
             .UseReactiveUI();
+    }
 }

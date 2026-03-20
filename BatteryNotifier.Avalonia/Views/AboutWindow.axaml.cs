@@ -17,6 +17,12 @@ public partial class AboutWindow : Window
     public AboutWindow()
     {
         InitializeComponent();
+
+        if (OperatingSystem.IsLinux())
+        {
+            SystemDecorations = SystemDecorations.None;
+            TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
+        }
         Deactivated += OnWindowDeactivated;
 
         VersionText.Text = $"v{Constants.ApplicationVersion}";
