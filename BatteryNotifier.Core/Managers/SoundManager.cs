@@ -3,12 +3,6 @@ using BatteryNotifier.Core.Logger;
 using Serilog;
 #if WINDOWS
 using NAudio.Wave;
-#else
-using SoundFlow.Abstracts.Devices;
-using SoundFlow.Backends.MiniAudio;
-using SoundFlow.Components;
-using SoundFlow.Providers;
-using SoundFlow.Structs;
 #endif
 
 namespace BatteryNotifier.Core.Managers
@@ -340,77 +334,6 @@ namespace BatteryNotifier.Core.Managers
             return null;
         }
 
-        // ── Non-Windows: SoundFlow (MiniAudio) ──────────────────────────
-
-        private static MiniAudioEngine? _sfEngine;
-        private static AudioPlaybackDevice? _sfDevice;
-        private static readonly object _sfLock = new();
-        private static bool _sfFailed;
-        private SoundPlayer? _sfCurrentPlayer;
-
-        private void PlayWithSoundFlow(string source, bool loop, int durationMs, CancellationToken token)
-        {
-            var device = EnsureSoundFlowEngine();
-            if (device == null)
-            {
-                _logger.Warning("SoundFlow audio engine initialization failed — cannot play sound.");
-                return;
-            }
-
-            using var stream = File.OpenRead(source);
-            using var provider = new StreamDataProvider(_sfEngine!, stream);
-            using var player = new SoundPlayer(_sfEngine!, device.Format, provider) { IsLooping = loop };
-            using var playbackDone = new ManualResetEventSlim(false);
-
-            EventHandler<EventArgs> onPlaybackEnded = (_, _) =>
-            {
-                playbackDone.Set(); 
-            };
-            player.PlaybackEnded += onPlaybackEnded;
-
-            _sfCurrentPlayer = player;
-            device.MasterMixer.AddComponent(player);
-            player.Play();
-
-            try
-            {
-                playbackDone.Wait(durationMs, token);
-            }
-            finally
-            {
-                player.Stop();
-                player.PlaybackEnded -= onPlaybackEnded;
-                device.MasterMixer.RemoveComponent(player);
-                _sfCurrentPlayer = null;
-            }
-        }
-
-        private static AudioPlaybackDevice? EnsureSoundFlowEngine()
-        {
-            if (_sfFailed) return null;
-            if (_sfDevice != null) return _sfDevice;
-
-            lock (_sfLock)
-            {
-                if (_sfDevice != null) return _sfDevice;
-                if (_sfFailed) return null;
-
-                try
-                {
-                    var engine = new MiniAudioEngine();
-                    var device = engine.InitializePlaybackDevice(null, AudioFormat.Cd);
-                    _sfEngine = engine;
-                    _sfDevice = device;
-                    return device;
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "SoundManager: SoundFlow audio engine initialization failed");
-                    _sfFailed = true;
-                    return null;
-                }
-            }
-        }
 #endif
 
         // ── Stop / Dispose ──────────────────────────────────────────
@@ -423,8 +346,6 @@ namespace BatteryNotifier.Core.Managers
                 KillProcess(_currentProcess);
 #if WINDOWS
                 _naudioDevice?.Stop();
-#else
-                _sfCurrentPlayer?.Stop();
 #endif
             }
             catch (Exception ex)
@@ -474,8 +395,6 @@ namespace BatteryNotifier.Core.Managers
             try { _naudioReader?.Dispose(); } catch { /* best effort */ }
             _naudioDevice = null;
             _naudioReader = null;
-#else
-            _sfCurrentPlayer = null; // SoundPlayer is disposed by PlayWithSoundFlow's using block
 #endif
         }
     }

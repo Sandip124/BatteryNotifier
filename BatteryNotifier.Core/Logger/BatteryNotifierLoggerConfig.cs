@@ -18,7 +18,6 @@ public static class BatteryNotifierLoggerConfig
             .MinimumLevel.Override("System", LogEventLevel.Warning)
             .Enrich.FromLogContext()
             .Enrich.WithThreadId()
-            .Enrich.WithProcessId()
             .Enrich.WithProperty("Application", Constants.AppName)
             .Enrich.WithProperty("Version", Constants.ApplicationVersion)
             .Enrich.WithProperty("MachineName", Environment.MachineName)
