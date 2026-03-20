@@ -11,6 +11,7 @@ namespace BatteryNotifier.Avalonia.Views;
 public partial class SettingsView : UserControl
 {
     private Dictionary<NotificationPosition, Button>? _positionButtons;
+    private INotifyPropertyChanged? _subscribedViewModel;
 
     public SettingsView()
     {
@@ -20,8 +21,18 @@ public partial class SettingsView : UserControl
 
     private void OnDataContextChanged(object? sender, EventArgs e)
     {
+        // Unsubscribe from previous DataContext to prevent leak
+        if (_subscribedViewModel != null)
+        {
+            _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            _subscribedViewModel = null;
+        }
+
         if (DataContext is INotifyPropertyChanged npc)
+        {
             npc.PropertyChanged += OnViewModelPropertyChanged;
+            _subscribedViewModel = npc;
+        }
 
         BuildPositionMap();
         if (DataContext is SettingsViewModel vm)

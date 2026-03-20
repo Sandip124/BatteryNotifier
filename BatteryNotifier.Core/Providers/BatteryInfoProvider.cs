@@ -188,6 +188,9 @@ public sealed class BatteryInfoProvider
         return null;
     }
 
+    private static readonly Regex BatteryPercentRegex = new(@"(\d+)%", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+    private static readonly Regex TimeRemainingRegex = new(@"(\d+):(\d+) remaining", RegexOptions.Compiled, TimeSpan.FromSeconds(1));
+
     private static void ParseBatteryLine(string line, BatteryInfo info)
     {
         ParseBatteryPercent(line, info);
@@ -197,7 +200,7 @@ public sealed class BatteryInfoProvider
 
     private static void ParseBatteryPercent(string line, BatteryInfo info)
     {
-        var match = Regex.Match(line, @"(\d+)%", RegexOptions.None, TimeSpan.FromSeconds(1));
+        var match = BatteryPercentRegex.Match(line);
         if (!match.Success || !int.TryParse(match.Groups[1].Value, out int percent))
             return;
 
@@ -222,7 +225,7 @@ public sealed class BatteryInfoProvider
 
     private static void ParseTimeRemaining(string line, BatteryInfo info)
     {
-        var match = Regex.Match(line, @"(\d+):(\d+) remaining", RegexOptions.None, TimeSpan.FromSeconds(1));
+        var match = TimeRemainingRegex.Match(line);
         if (match.Success &&
             int.TryParse(match.Groups[1].Value, out int hours) &&
             int.TryParse(match.Groups[2].Value, out int minutes))

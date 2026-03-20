@@ -16,6 +16,8 @@ public partial class SoundPickerWindow : Window
     private IDisposable? _selectSub;
     private IDisposable? _cancelSub;
     private IDisposable? _browseSub;
+    private Action? _filterChangedHandler;
+    private SoundPickerViewModel? _subscribedFilterVm;
 
     private bool _closingFromBrowse;
     private TaskCompletionSource<SoundPickerItem?>? _tcs;
@@ -85,6 +87,14 @@ public partial class SoundPickerWindow : Window
         _cancelSub?.Dispose();
         _browseSub?.Dispose();
 
+        // Unsubscribe previous FilterChanged handler to prevent leak
+        if (_subscribedFilterVm != null && _filterChangedHandler != null)
+        {
+            _subscribedFilterVm.FilterChanged -= _filterChangedHandler;
+            _subscribedFilterVm = null;
+            _filterChangedHandler = null;
+        }
+
         if (DataContext is SoundPickerViewModel vm)
         {
             _selectSub = vm.SelectCommand.Subscribe(item =>
@@ -111,8 +121,10 @@ public partial class SoundPickerWindow : Window
                 }
             });
 
-            vm.FilterChanged += () =>
+            _filterChangedHandler = () =>
                 Dispatcher.UIThread.Post(() => UpdateCheckIcons(vm), DispatcherPriority.Render);
+            vm.FilterChanged += _filterChangedHandler;
+            _subscribedFilterVm = vm;
         }
     }
 

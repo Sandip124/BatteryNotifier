@@ -221,13 +221,16 @@ public sealed class NotificationService : IDisposable
         {
             if (_pendingNotifications.Count == 0) return;
 
-            var highestPriorityNotification = _pendingNotifications.Values
-                .OrderByDescending(n => n.Priority)
-                .FirstOrDefault();
-
-            if (highestPriorityNotification != null)
+            NotificationMessageEventArgs? highest = null;
+            foreach (var n in _pendingNotifications.Values)
             {
-                EnqueueAndEmit(highestPriorityNotification);
+                if (highest == null || n.Priority > highest.Priority)
+                    highest = n;
+            }
+
+            if (highest != null)
+            {
+                EnqueueAndEmit(highest);
             }
 
             _pendingNotifications.Clear();
