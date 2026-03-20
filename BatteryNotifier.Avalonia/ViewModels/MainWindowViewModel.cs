@@ -72,6 +72,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         // Subscribe to health updates for the compact bar
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
 
+        // Start recording battery history (charge sparkline + wear trend)
+        _ = BatteryHistoryService.Instance;
+
+        // Start power usage monitoring (top CPU consumers)
+        _ = PowerUsageService.Instance;
+
         // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
     }
@@ -268,6 +274,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             _ = TypewritePhrase(PickBatteryPhrase());
         }
 
+        StatusLine = BuildStatusLine(store);
+
         var assetName = store.BatteryState switch
         {
             BatteryState.Full => "FullBattery.png",
@@ -279,6 +287,49 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         };
 
         BatteryImage = LoadAsset(assetName);
+    }
+
+    /// <summary>
+    /// Builds a single contextual line combining status, time, and charge tip.
+    /// Examples: "Charging · 1h 23m to full" / "2h 15m remaining" / "Unplug — 80% reached"
+    /// </summary>
+    private static string BuildStatusLine(BatteryManagerStore store)
+    {
+        if (store.HasNoBattery || store.IsUnknown) return string.Empty;
+
+        var pct = (int)store.BatteryLifePercent;
+        var time = FormatTimeShort(store);
+
+        return (store.IsCharging || store.IsPluggedIn)
+            ? ChargingStatusLine(pct, time)
+            : DischargingStatusLine(pct, time);
+    }
+
+    private static string ChargingStatusLine(int pct, string? time)
+    {
+        if (pct >= 80) return "Unplug now — extend battery lifespan";
+        if (pct >= 70) return WithTime(time, "to full · Unplug at 80%", "Unplug at 80% for longevity");
+        if (pct >= 50) return WithTime(time, "to full", "Optimal range is 20–80%");
+        return WithTime(time, "to full", "Charging — avoid draining below 20%");
+    }
+
+    private static string DischargingStatusLine(int pct, string? time)
+    {
+        if (pct <= 5) return WithTime(time, "left · Plug in now", "Critical — plug in now");
+        if (pct <= 20) return WithTime(time, "left · Plug in soon", "Low — plug in soon");
+        if (pct <= 50) return WithTime(time, "remaining", "Keep above 20% for battery health");
+        return WithTime(time, "remaining", "Battery in good shape");
+    }
+
+    private static string WithTime(string? time, string suffix, string fallback) =>
+        time != null ? $"{time} {suffix}" : fallback;
+
+    private static string? FormatTimeShort(BatteryManagerStore store)
+    {
+        if (store.BatteryLifeRemaining <= 0) return null;
+        var ts = store.BatteryLifeRemainingInSeconds;
+        var h = (int)ts.TotalHours;
+        return h > 0 ? $"{h}h {ts.Minutes}m" : $"{ts.Minutes}m";
     }
 
     private static string FormatTimeRemaining(BatteryManagerStore store)
@@ -328,6 +379,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     public string BatteryStatus
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
+
+    public string StatusLine
     {
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);

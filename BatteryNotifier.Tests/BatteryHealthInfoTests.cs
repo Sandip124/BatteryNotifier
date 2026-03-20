@@ -53,14 +53,31 @@ public class BatteryHealthInfoTests
     public void Recommendation_PoorHealth_SuggestsReplacement()
     {
         var info = new BatteryHealthInfo { HealthPercent = 50 };
-        Assert.Contains("replacing", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("replacement", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Recommendation_GoodHealth_PositiveMessage()
+    public void Recommendation_GoodHealth_PersonalizedMessage()
     {
         var info = new BatteryHealthInfo { HealthPercent = 95, CycleCount = 100, TemperatureCelsius = 25 };
-        Assert.Contains("good condition", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("95%", info.RecommendationMessage);
+        Assert.Contains("100 cycles", info.RecommendationMessage);
+    }
+
+    [Fact]
+    public void Recommendation_CannotSustainLoad_OverridesHealth()
+    {
+        var info = new BatteryHealthInfo { HealthPercent = 85, CycleCount = 50, CannotSustainLoad = true };
+        Assert.Contains("cannot sustain", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Recommendation_WithCyclesAndHealth_ShowsWearEstimate()
+    {
+        var info = new BatteryHealthInfo { HealthPercent = 82, CycleCount = 400 };
+        // Should include actual numbers and mention cycles remaining
+        Assert.Contains("400 cycles", info.RecommendationMessage);
+        Assert.Contains("18%", info.RecommendationMessage); // wear %
     }
 
     [Fact]
