@@ -166,8 +166,10 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         CurrentDisplay = cached is { VoltageVolts: > 0, PowerRateWatts: not null }
             ? $"{cached.PowerRateWatts.Value / cached.VoltageVolts.Value * 1000:F0} mA" : "--";
         CapacityDisplay = cached.HealthPercent.HasValue ? $"{cached.HealthPercent:F1}%" : "--";
-        IsCharging = Core.Store.BatteryManagerStore.Instance.IsPluggedIn;
+        var store = Core.Store.BatteryManagerStore.Instance;
+        IsCharging = store.IsPluggedIn;
         ChargingStatusDisplay = IsCharging ? "Charging" : "Discharging";
+        ChargeTimeEstimate = ComputeChargeTimeEstimate(store, cached);
         RecommendationMessage = cached.RecommendationMessage;
     }
 
@@ -184,6 +186,50 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         return cached.DesignCycleCount.HasValue
             ? $"{cached.CycleCount} / {cached.DesignCycleCount}"
             : cached.CycleCount.ToString()!;
+    }
+
+    private static string ComputeChargeTimeEstimate(
+        Core.Store.BatteryManagerStore store, BatteryHealthInfo health)
+    {
+        if (store.HasNoBattery || store.IsUnknown) return string.Empty;
+
+        var result = FormatOsReportedTime(store) ?? EstimateTimeFromRate(store, health);
+        if (result is not { } timeStr) return string.Empty;
+
+        return store.IsCharging ? timeStr.charging : timeStr.discharging;
+    }
+
+    private static (string charging, string discharging)? FormatOsReportedTime(
+        Core.Store.BatteryManagerStore store)
+    {
+        if (store.BatteryLifeRemaining <= 0) return null;
+
+        var ts = store.BatteryLifeRemainingInSeconds;
+        var h = (int)ts.TotalHours;
+        var formatted = h > 0 ? $"{h}h {ts.Minutes}m" : $"{ts.Minutes}m";
+
+        return ($"Full in ~{formatted}", $"~{formatted} remaining");
+    }
+
+    private static (string charging, string discharging)? EstimateTimeFromRate(
+        Core.Store.BatteryManagerStore store, BatteryHealthInfo health)
+    {
+        if (health.PowerRateWatts is not > 0 || !health.HealthPercent.HasValue)
+            return null;
+
+        var pct = store.BatteryLifePercent;
+        var remainPct = store.IsCharging ? (100 - pct) : pct;
+        if (remainPct <= 0) return null;
+
+        // Rough estimate: assume 50Wh typical battery, linear rate
+        var estimatedHours = remainPct / 100.0 * (health.HealthPercent.Value / 100.0)
+            * 50.0 / health.PowerRateWatts.Value;
+        if (estimatedHours is < 0.01 or > 48) return null;
+
+        var totalMin = (int)(estimatedHours * 60);
+        var formatted = totalMin >= 60 ? $"{totalMin / 60}h {totalMin % 60}m" : $"{totalMin}m";
+
+        return ($"~{formatted} to 80% (estimated)", $"~{formatted} remaining (estimated)");
     }
 
     public double HealthPercent
@@ -239,6 +285,12 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "...";
+
+    public string ChargeTimeEstimate
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
 
     public string HealthColor => HealthStatus switch
     {

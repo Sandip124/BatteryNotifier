@@ -91,6 +91,11 @@
                                                TextAlignment="Right"
                                                Foreground="{DynamicResource AppSubtleText}"
                                                Text="{Binding HealthDashboard.ChargingStatusDisplay}" />
+                                    <TextBlock FontSize="10"
+                                               TextAlignment="Right"
+                                               Foreground="{DynamicResource AppAccentForeground}"
+                                               IsVisible="{Binding HealthDashboard.ChargeTimeEstimate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                               Text="{Binding HealthDashboard.ChargeTimeEstimate}" />
                                 </StackPanel>
                             </StackPanel>
                         </Grid>

@@ -63,13 +63,13 @@ public sealed class BatteryHealthInfo
             if (TemperatureStatus == MetricStatus.Poor)
                 return "Battery temperature is high. Avoid charging in hot environments.";
             if (CycleStatus == MetricStatus.Poor)
-                return "High cycle count. Battery capacity may be reduced.";
+                return "High cycle count. Battery capacity may be reduced. Keep charges between 20–80%.";
             if (HealthStatus == MetricStatus.Fair || CycleStatus == MetricStatus.Fair)
-                return "Battery is aging normally. Monitor for changes.";
+                return "Battery is aging normally. Charge between 20–80% to slow wear.";
             if (TemperatureStatus == MetricStatus.Fair)
                 return "Temperature slightly elevated. Ensure good ventilation.";
             if (HealthStatus == MetricStatus.Good)
-                return "Battery is in good condition.";
+                return "Battery is healthy. Maintain 20–80% charge range for maximum lifespan.";
 
             // Some metrics available but health itself unknown
             return "Limited battery data available. Some metrics could not be read.";

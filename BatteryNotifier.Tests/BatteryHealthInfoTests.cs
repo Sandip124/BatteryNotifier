@@ -60,7 +60,7 @@ public class BatteryHealthInfoTests
     public void Recommendation_GoodHealth_PositiveMessage()
     {
         var info = new BatteryHealthInfo { HealthPercent = 95, CycleCount = 100, TemperatureCelsius = 25 };
-        Assert.Contains("good condition", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("healthy", info.RecommendationMessage, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
