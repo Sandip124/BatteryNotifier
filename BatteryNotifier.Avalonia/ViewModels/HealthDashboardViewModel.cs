@@ -173,12 +173,12 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
     {
         HealthPercent = cached.HealthPercent ?? -1;
         CycleCountDisplay = FormatCycleCount(cached);
-        TemperatureDisplay = cached.TemperatureCelsius.HasValue ? $"{cached.TemperatureCelsius:F1}°C" : "--";
-        VoltageDisplay = cached.VoltageVolts.HasValue ? $"{cached.VoltageVolts:F2} V" : "--";
-        PowerRateDisplay = cached.PowerRateWatts.HasValue ? $"{cached.PowerRateWatts:F1} W" : "--";
+        TemperatureDisplay = cached.TemperatureCelsius.HasValue ? $"{cached.TemperatureCelsius:F1}°C" : "N/A";
+        VoltageDisplay = cached.VoltageVolts.HasValue ? $"{cached.VoltageVolts:F2} V" : "N/A";
+        PowerRateDisplay = cached.PowerRateWatts.HasValue ? $"{cached.PowerRateWatts:F1} W" : "N/A";
         CurrentDisplay = cached is { VoltageVolts: > 0, PowerRateWatts: not null }
-            ? $"{cached.PowerRateWatts.Value / cached.VoltageVolts.Value * 1000:F0} mA" : "--";
-        CapacityDisplay = cached.HealthPercent.HasValue ? $"{cached.HealthPercent:F1}%" : "--";
+            ? $"{cached.PowerRateWatts.Value / cached.VoltageVolts.Value * 1000:F0} mA" : "N/A";
+        CapacityDisplay = cached.HealthPercent.HasValue ? $"{cached.HealthPercent:F1}%" : "N/A";
         var store = Core.Store.BatteryManagerStore.Instance;
         IsCharging = store.IsPluggedIn;
         ChargingStatusDisplay = IsCharging ? "Charging" : "Discharging";
