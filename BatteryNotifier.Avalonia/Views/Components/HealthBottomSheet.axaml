@@ -83,6 +83,69 @@
                         </Grid>
                     </Border>
 
+                    <!-- Top Battery Drainers (hidden when plugged in or no data) -->
+                    <Border CornerRadius="10" Padding="10,8"
+                            Background="{DynamicResource AppCardBackground}"
+                            IsVisible="{Binding HealthDashboard.HasTopProcesses}">
+                        <Grid>
+                            <StackPanel Spacing="6">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <PathIcon Data="{StaticResource Icon.Fire}"
+                                              Foreground="#F4511E"
+                                              Width="12" Height="12" VerticalAlignment="Center" />
+                                    <TextBlock FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AppSubtleText}">Top Battery Drainers</TextBlock>
+                                </StackPanel>
+
+                                <ItemsControl ItemsSource="{Binding HealthDashboard.TopProcesses}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:ProcessDisplayItem">
+                                            <Grid ColumnDefinitions="90,*,Auto" Margin="0,2"
+                                                  ToolTip.Tip="{Binding Tip}">
+                                                <!-- Process name -->
+                                                <TextBlock Grid.Column="0" FontSize="11"
+                                                           Text="{Binding Name}"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" />
+
+                                                <!-- CPU bar -->
+                                                <Border Grid.Column="1" Height="6" CornerRadius="3"
+                                                        Background="{DynamicResource AppSubtleText}" Opacity="0.15"
+                                                        Margin="6,0" VerticalAlignment="Center">
+                                                    <Border CornerRadius="3" HorizontalAlignment="Left"
+                                                            Width="{Binding CpuPercent, Converter={x:Static vm:CpuBarWidthConverter.Instance}}"
+                                                            Background="{Binding CpuPercent, Converter={x:Static vm:CpuBarColorConverter.Instance}}" />
+                                                </Border>
+
+                                                <!-- Battery impact: time / watts / CPU% -->
+                                                <TextBlock Grid.Column="2" FontSize="10" MinWidth="48" TextAlignment="Right"
+                                                           Foreground="{DynamicResource AppSubtleText}"
+                                                           VerticalAlignment="Center"
+                                                           Text="{Binding DisplayValue}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Summary with colored left border matching severity -->
+                                <Border BorderThickness="2,0,0,0" CornerRadius="1"
+                                        Padding="8,4,0,4" Margin="0,4,0,0"
+                                        BorderBrush="{Binding HealthDashboard.DrainersAccentColor}"
+                                        IsVisible="{Binding HealthDashboard.HasDrainersSummary}">
+                                    <TextBlock Text="{Binding HealthDashboard.DrainersSummary}"
+                                               FontSize="10" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource AppSubtleText}" />
+                                </Border>
+                            </StackPanel>
+
+                            <PathIcon Data="{StaticResource Icon.Info}" Width="9" Height="9"
+                                      Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
+                                      HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <ToolTip.Tip>Apps draining the most battery right now. Shows estimated time you'd gain by closing each app.</ToolTip.Tip>
+                            </PathIcon>
+                        </Grid>
+                    </Border>
+
                     <!-- Battery Health — 2x2 stat grid -->
                     <Border CornerRadius="10" Padding="14,12"
                             Background="{DynamicResource AppCardBackground}">

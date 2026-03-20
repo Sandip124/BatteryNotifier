@@ -75,6 +75,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         // Start recording battery history (charge sparkline + wear trend)
         _ = BatteryHistoryService.Instance;
 
+        // Start power usage monitoring (top CPU consumers)
+        _ = PowerUsageService.Instance;
+
         // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
     }

@@ -45,6 +45,7 @@ public partial class HealthBottomSheet : UserControl
         if (_isAnimating) return;
 
         BatteryHealthService.Instance.SetActivePolling(true);
+        PowerUsageService.Instance.SetActivePolling(true);
 
         // Reset to off-screen, make visible
         RootGrid.Opacity = 0;
@@ -65,6 +66,7 @@ public partial class HealthBottomSheet : UserControl
         _isAnimating = true;
 
         BatteryHealthService.Instance.SetActivePolling(false);
+        PowerUsageService.Instance.SetActivePolling(false);
 
         // Animate out
         RootGrid.Opacity = 0;

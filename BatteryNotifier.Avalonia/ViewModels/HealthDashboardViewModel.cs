@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive;
 using System.Threading;
 using Avalonia.Threading;
 using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
+using BatteryNotifier.Core.Store;
 using ReactiveUI;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
@@ -31,6 +33,10 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         BatteryHistoryService.Instance.ChargeHistoryUpdated += OnChargeHistoryUpdated;
         BatteryHistoryService.Instance.WearHistoryUpdated += OnWearHistoryUpdated;
         RefreshHistoryData();
+
+        // Subscribe to power usage updates
+        PowerUsageService.Instance.ProcessesUpdated += OnProcessesUpdated;
+        UpdateTopProcesses(PowerUsageService.Instance.LatestProcesses);
 
         _displayTimer = new Timer(_ =>
         {
@@ -84,6 +90,7 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         this.RaisePropertyChanged(nameof(TemperatureColor));
         this.RaisePropertyChanged(nameof(TemperatureStatusText));
         this.RaisePropertyChanged(nameof(LastUpdatedDisplay));
+        this.RaisePropertyChanged(nameof(HasTopProcesses));
     }
 
     private void SetLoadingState()
@@ -381,6 +388,146 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
     public bool HasChargeHistory => ChargeHistory is { Count: >= 2 };
     public bool HasWearHistory => WearHistory is { Count: >= 2 };
 
+    // ── Top Battery Drainers ────────────────────────────────────
+
+    public IReadOnlyList<ProcessDisplayItem>? TopProcesses
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public string DrainersSummary
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = string.Empty;
+
+    /// <summary>Left border color for the summary — matches severity of the top drainer.</summary>
+    public string DrainersAccentColor
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    } = "#FFAB00";
+
+    /// <summary>
+    /// Card is only shown when: on battery, has process data, AND has real battery metrics
+    /// (power draw or time remaining). Raw CPU% alone isn't useful in a battery app.
+    /// </summary>
+    public bool HasTopProcesses =>
+        TopProcesses is { Count: >= 1 }
+        && !BatteryManagerStore.Instance.IsPluggedIn
+        && HasBatteryMetrics;
+    public bool HasDrainersSummary => !string.IsNullOrEmpty(DrainersSummary);
+
+    private static bool HasBatteryMetrics
+    {
+        get
+        {
+            var store = BatteryManagerStore.Instance;
+            var power = BatteryHealthService.Instance.LatestHealth?.PowerRateWatts;
+            return power is > 0 || (store.BatteryLifeRemaining > 0 && !store.IsPluggedIn);
+        }
+    }
+
+    private void OnProcessesUpdated(object? sender, IReadOnlyList<ProcessPowerInfo> e)
+    {
+        Dispatcher.UIThread.Post(() => UpdateTopProcesses(e));
+    }
+
+    private void UpdateTopProcesses(IReadOnlyList<ProcessPowerInfo>? processes)
+    {
+        if (processes is { Count: > 0 } && HasBatteryMetrics)
+            BuildDrainersDisplay(processes);
+        else
+            ClearDrainersDisplay();
+
+        this.RaisePropertyChanged(nameof(HasTopProcesses));
+        this.RaisePropertyChanged(nameof(HasDrainersSummary));
+    }
+
+    private void BuildDrainersDisplay(IReadOnlyList<ProcessPowerInfo> processes)
+    {
+        var systemPower = BatteryHealthService.Instance.LatestHealth?.PowerRateWatts;
+        var store = BatteryManagerStore.Instance;
+
+        TopProcesses = processes.Select(p => new ProcessDisplayItem
+        {
+            Name = p.Name,
+            CpuPercent = p.CpuPercent,
+            Pid = p.Pid,
+            PowerDisplay = FormatBatteryImpact(p.CpuPercent, systemPower, store),
+            Tip = ProcessTips.GetTip(p.Name),
+        }).ToList();
+
+        DrainersSummary = ComputeDrainersSummary(processes[0], systemPower, store);
+        DrainersAccentColor = processes[0].CpuPercent switch
+        {
+            > 50 => "#FF1744",
+            > 20 => "#FFAB00",
+            _ => "#00E676"
+        };
+    }
+
+    private void ClearDrainersDisplay()
+    {
+        TopProcesses = null;
+        DrainersSummary = string.Empty;
+    }
+
+    private static string? FormatBatteryImpact(
+        double cpuPercent, double? systemPower, BatteryManagerStore store)
+    {
+        return FormatTimeCost(cpuPercent, store)
+            ?? (systemPower is > 0 ? $"~{systemPower.Value * cpuPercent / 100:F1}W" : null);
+    }
+
+    /// <summary>
+    /// Formats the battery time cost of a process, e.g. "~25min" or "~1h 25m".
+    /// Returns null if impact is negligible (&lt;1 min) or data unavailable.
+    /// </summary>
+    private static string? FormatTimeCost(double cpuPercent, BatteryManagerStore store)
+    {
+        if (store.BatteryLifeRemaining <= 0 || store.IsPluggedIn)
+            return null;
+
+        var fraction = Math.Min(cpuPercent / 100.0, 0.8);
+        var costSeconds = store.BatteryLifeRemaining * fraction / (1 - fraction);
+        var costMinutes = (int)(costSeconds / 60);
+
+        if (costMinutes < 1) return null;
+
+        // Round: >=10 min to nearest 5, otherwise show exact
+        if (costMinutes >= 10)
+            costMinutes = costMinutes / 5 * 5;
+
+        return costMinutes >= 60
+            ? $"~{costMinutes / 60}h {costMinutes % 60}m"
+            : $"~{costMinutes}min";
+    }
+
+    private static string ComputeDrainersSummary(
+        ProcessPowerInfo top, double? systemPower, BatteryManagerStore store)
+    {
+        var topTip = ProcessTips.GetTip(top.Name);
+        var action = topTip != null ? $" {topTip}." : string.Empty;
+
+        // Best: time-based — "Chrome is costing you ~25min of battery. Close unused tabs."
+        var timeCost = FormatTimeCost(top.CpuPercent, store);
+        if (timeCost != null)
+        {
+            return $"{top.Name} is costing you {timeCost} of battery life.{action}";
+        }
+
+        // Watts — "Chrome is draining ~6.3W from your battery. Close unused tabs."
+        if (systemPower is > 0)
+        {
+            var watts = systemPower.Value * top.CpuPercent / 100;
+            return $"{top.Name} is draining ~{watts:F1}W from your battery.{action}";
+        }
+
+        return string.Empty;
+    }
+
     private void OnChargeHistoryUpdated()
     {
         Dispatcher.UIThread.Post(RefreshChargeHistory);
@@ -419,5 +566,6 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         BatteryHealthService.Instance.HealthUpdated -= OnHealthUpdated;
         BatteryHistoryService.Instance.ChargeHistoryUpdated -= OnChargeHistoryUpdated;
         BatteryHistoryService.Instance.WearHistoryUpdated -= OnWearHistoryUpdated;
+        PowerUsageService.Instance.ProcessesUpdated -= OnProcessesUpdated;
     }
 }
