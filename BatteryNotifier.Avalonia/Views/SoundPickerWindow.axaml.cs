@@ -23,6 +23,12 @@ public partial class SoundPickerWindow : Window
     public SoundPickerWindow()
     {
         InitializeComponent();
+
+        if (OperatingSystem.IsLinux())
+        {
+            SystemDecorations = SystemDecorations.None;
+            TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
+        }
         Deactivated += OnWindowDeactivated;
     }
 
