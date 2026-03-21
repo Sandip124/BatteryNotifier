@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
@@ -22,7 +21,6 @@ public partial class MainWindow : Window
 
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
-    private IDisposable? _aboutInteractionHandler;
     private INotifyPropertyChanged? _subscribedViewModel;
     private bool _isSettingsAnimating;
 
@@ -55,9 +53,6 @@ public partial class MainWindow : Window
     {
         base.OnDataContextChanged(e);
 
-        _aboutInteractionHandler?.Dispose();
-        _aboutInteractionHandler = null;
-
         // Unsubscribe from previous DataContext to prevent leak
         if (_subscribedViewModel != null)
         {
@@ -69,50 +64,6 @@ public partial class MainWindow : Window
         {
             npc.PropertyChanged += OnViewModelPropertyChanged;
             _subscribedViewModel = npc;
-        }
-
-        if (DataContext is MainWindowViewModel vm)
-        {
-            _aboutInteractionHandler = vm.OpenAboutInteraction.RegisterHandler(async ctx =>
-            {
-                // Add backdrop overlay
-                Panel? overlayHost = null;
-                Control? existingContent = null;
-                var backdrop = new Border
-                {
-                    Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
-                    IsHitTestVisible = false
-                };
-
-                if (Content is Control content)
-                {
-                    existingContent = content;
-                    overlayHost = new Panel();
-                    Content = null;
-                    overlayHost.Children.Add(existingContent);
-                    overlayHost.Children.Add(backdrop);
-                    Content = overlayHost;
-                }
-
-                try
-                {
-                    var aboutWindow = new AboutWindow();
-                    await aboutWindow.ShowLightDismiss(this);
-                }
-                finally
-                {
-                    if (overlayHost != null && existingContent != null)
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            overlayHost.Children.Clear();
-                            Content = existingContent;
-                        });
-                    }
-                }
-
-                ctx.SetOutput(System.Reactive.Unit.Default);
-            });
         }
     }
 
@@ -244,7 +195,6 @@ public partial class MainWindow : Window
     {
         PositionChanged -= OnPositionChanged;
         _positionSaveDebouncer.Dispose();
-        _aboutInteractionHandler?.Dispose();
         base.OnClosed(e);
     }
 }

@@ -301,20 +301,8 @@ internal sealed class TrayIconService : IDisposable
 
     private static void OnOpenAbout(object? sender, EventArgs e)
     {
-        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
-            return;
-
-        // Ensure main window is visible so the About dialog has an owner
-        if (desktop.MainWindow is not MainWindow mainWindow)
-            return;
-
-        if (!mainWindow.IsVisible)
-            ShowMainWindow();
-
-        if (mainWindow.DataContext is ViewModels.MainWindowViewModel vm)
-        {
-            vm.OpenAboutCommand.Execute().Subscribe();
-        }
+        var aboutWindow = new AboutWindow();
+        aboutWindow.ShowStandalone();
     }
 
     private void OnUpdateAvailable(object? sender, UpdateAvailableEventArgs e)

@@ -5,9 +5,9 @@
         mc:Ignorable="d"
         x:Class="BatteryNotifier.Avalonia.Views.AboutWindow"
         Title="About BatteryNotifier"
-        Width="280" Height="260"
+        Width="280" Height="280"
         CanResize="False"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="CenterScreen"
         SystemDecorations="Full"
         ShowInTaskbar="False"
         ExtendClientAreaToDecorationsHint="True"
@@ -17,7 +17,8 @@
         Background="Transparent">
 
     <Border ClipToBounds="True" CornerRadius="12"
-            Background="{DynamicResource AppWindowBackground}">
+            Background="{DynamicResource AppWindowBackground}"
+            PointerPressed="DragHandle_PointerPressed">
     <Grid RowDefinitions="Auto,*">
 
         <!-- Close button (no background, no title) -->
@@ -55,6 +56,11 @@
                            FontSize="12"
                            TextAlignment="Center"
                            Foreground="{DynamicResource AppSubtleText}" />
+                <TextBlock x:Name="UpdateStatusText"
+                           FontSize="11"
+                           TextAlignment="Center"
+                           Foreground="{DynamicResource AppSubtleText}"
+                           IsVisible="False" />
             </StackPanel>
 
             <!-- Description -->

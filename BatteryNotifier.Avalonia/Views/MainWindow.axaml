@@ -36,7 +36,7 @@
                     ZIndex="1"
                     Background="{DynamicResource AppHeaderBackground}"
                     PointerPressed="TitleBar_PointerPressed">
-                <Grid ColumnDefinitions="32,*,Auto,4,Auto" VerticalAlignment="Center">
+                <Grid ColumnDefinitions="32,*,Auto" VerticalAlignment="Center">
                     <Image Grid.Column="0" Margin="0,0,10,0" Width="28" Height="28"
                            Source="/Assets/BatteryNotifierLogo.png"
                            RenderOptions.BitmapInterpolationMode="MediumQuality" />
@@ -47,24 +47,7 @@
                                    Foreground="{DynamicResource AppSubtleText}"
                                    Text="{Binding Version, StringFormat='v{0}'}" />
                     </StackPanel>
-                    <Button Grid.Column="2"
-                            Theme="{StaticResource PrimaryButton}">
-                        <PathIcon Data="{StaticResource Icon.DotsThreeVertical}" Width="16" Height="16" />
-                        <Button.Flyout>
-                            <MenuFlyout Placement="BottomEdgeAlignedRight">
-                                <MenuItem Header="Hide Window" Command="{Binding HideWindowCommand}">
-                                 </MenuItem>
-                                <MenuItem Header="Check for Updates..." Command="{Binding CheckForUpdatesCommand}">
-                                 </MenuItem>
-                                <MenuItem Header="About" Command="{Binding OpenAboutCommand}">
-                                </MenuItem>
-                                <Separator />
-                                <MenuItem Header="Exit" Command="{Binding ExitCommand}">
-                                   </MenuItem>
-                            </MenuFlyout>
-                        </Button.Flyout>
-                    </Button>
-                    <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="4"
+                    <Button Command="{Binding NavigateToSettingsCommand}" Grid.Column="2"
                             Theme="{StaticResource PrimaryButton}">
                         <PathIcon Data="{StaticResource Icon.GearSix}" Width="16" Height="16" />
                     </Button>
