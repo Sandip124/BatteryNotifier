@@ -92,10 +92,17 @@ public class App : Application
             // Start in efficiency mode since window is hidden
             EfficiencyModeService.Instance.EnableEfficiency();
 
-            // Hide to tray on window close (not actually close)
+            // Hide to tray on window close (not actually close).
+            // Skip if a child dialog (About, Sound Picker) is open — closing the dialog
+            // can propagate a Closing event to the owner on Windows, which would
+            // unexpectedly hide the main window while the user is still in Settings.
             desktop.MainWindow.Closing += (_, args) =>
             {
                 args.Cancel = true;
+
+                if (desktop.MainWindow.OwnedWindows.Count > 0)
+                    return;
+
                 desktop.MainWindow.Hide();
                 MacOSDockIconHelper.HideDockIcon();
                 EfficiencyModeService.Instance.EnableEfficiency();
