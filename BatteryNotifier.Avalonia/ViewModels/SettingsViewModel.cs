@@ -5,14 +5,17 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Styling;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
 using ReactiveUI;
+using Serilog;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
 public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("SettingsViewModel");
     private readonly AppSettings _settings = AppSettings.Instance;
     private readonly CompositeDisposable _disposables = new();
 
@@ -118,7 +121,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 
         _settings.Alerts.Add(alert);
         Alerts.Add(CreateAlertRow(alert));
-        SaveAlerts();
+        SaveAlerts(rangeChanged: true);
         this.RaisePropertyChanged(nameof(CanAddAlert));
     }
 
@@ -127,13 +130,23 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _settings.Alerts.RemoveAll(a => a.Id == row.Id);
         Alerts.Remove(row);
         row.Dispose();
-        SaveAlerts();
+        SaveAlerts(rangeChanged: true);
         this.RaisePropertyChanged(nameof(CanAddAlert));
     }
 
-    private void SaveAlerts()
+    private void SaveAlerts(bool rangeChanged = false)
     {
         _settings.Save();
+
+        if (rangeChanged)
+        {
+            Logger.Information("Alert range changed — resetting notification trackers and forcing re-check");
+            NotificationService.Instance.ResetAllTrackers();
+            AlertEvaluationService.Instance.ResetAll();
+
+            try { BatteryMonitorService.Instance.ForceCheck(); }
+            catch (InvalidOperationException ex) { Logger.Debug(ex, "Battery monitoring unavailable — skipping re-check"); }
+        }
     }
 
     public bool CanAddAlert => Alerts.Count < MaxAlerts;
