@@ -25,15 +25,11 @@ public static class SystemStateDetector
     /// <summary>Max time to wait for any subprocess.</summary>
     private const int ProcessTimeoutMs = 3000;
 
-    /// <summary>Extended timeout for accessibility-based checks that involve UI interaction.</summary>
-    private const int AccessibilityTimeoutMs = 5000;
-
     /// <summary>
     /// Tracks whether the initial accessibility-based DND check has been performed.
     /// After the first check, we rely on Darwin notify for changes and skip the
     /// accessibility click (which visibly opens the Control Center dropdown).
     /// </summary>
-    private static bool _macDndInitialCheckDone;
     private static bool _macDndLastKnownState;
 
     /// <summary>
@@ -106,35 +102,20 @@ public static class SystemStateDetector
 
     private static bool IsMacDoNotDisturbActive()
     {
-        // Try non-invasive approaches first: Monterey defaults → Ventura assertions file
-        var result = IsMacDndViaDefaults() ?? IsMacDndViaAssertionsFile();
+        // Try non-invasive approaches in order of reliability:
+        // 1. Monterey defaults key (pre-Ventura only)
+        // 2. Ventura assertions file (pre-Tahoe, or if TCC grants access)
+        // 3. Tahoe+: check if "Focus" menu bar item exists (read-only, no click)
+        var result = IsMacDndViaDefaults()
+                  ?? IsMacDndViaAssertionsFile()
+                  ?? IsMacDndViaMenuBarItem();
 
         if (result.HasValue)
         {
             _macDndLastKnownState = result.Value;
-            _macDndInitialCheckDone = true;
             return result.Value;
         }
 
-        // Tahoe+ fallback: Assertions.json is TCC-protected.
-        // The accessibility approach clicks the Control Center dropdown (visible flicker).
-        // Only do this ONCE for initial state, then rely on Darwin notify for changes.
-        if (!_macDndInitialCheckDone)
-        {
-            _macDndInitialCheckDone = true;
-            var accessibilityResult = IsMacDndViaAccessibility();
-            if (accessibilityResult.HasValue)
-            {
-                _macDndLastKnownState = accessibilityResult.Value;
-                return accessibilityResult.Value;
-            }
-        }
-
-        // After initial check, return last known state.
-        // Darwin notify (HasPendingFocusChange) will trigger a re-check
-        // via the 2-minute fallback path which calls here again — but we
-        // skip the accessibility click and just toggle the cached state
-        // based on whether Darwin reported a change.
         return _macDndLastKnownState;
     }
 
@@ -193,46 +174,32 @@ public static class SystemStateDetector
     }
 
     /// <summary>
-    /// macOS Tahoe+ fallback: Assertions.json is TCC-protected.
-    /// Briefly opens Control Center Focus dropdown to check for "On" text.
-    /// Requires Accessibility permission. Script is a hardcoded literal.
+    /// macOS Tahoe+: checks if a "Focus" menu bar item exists in ControlCenter.
+    /// This is a read-only accessibility query — no clicking, no dropdown, no flicker.
+    /// When Focus is active, macOS adds a "Focus" item to the menu bar.
+    /// Requires Accessibility permission for reading menu bar item descriptions.
     /// </summary>
-    private static bool? IsMacDndViaAccessibility()
+    private static bool? IsMacDndViaMenuBarItem()
     {
         try
         {
             var script = @"
 tell application ""System Events""
     tell process ""ControlCenter""
-        try
-            set focusItem to (first menu bar item of menu bar 1 whose description contains ""Focus"")
-        on error
-            return ""false""
-        end try
-        click focusItem
-        delay 0.4
-        try
-            tell group 1 of window ""Control Center""
-                set allTexts to value of every static text
-                repeat with t in allTexts
-                    if t as text is ""On"" then
-                        click focusItem
-                        return ""true""
-                    end if
-                end repeat
-            end tell
-        end try
-        click focusItem
+        set allDescs to description of every menu bar item of menu bar 1
+        repeat with d in allDescs
+            if d as text is ""Focus"" then return ""true""
+        end repeat
         return ""false""
     end tell
 end tell";
-            var output = RunProcessWithStdin("osascript", script, AccessibilityTimeoutMs);
-            if (output.Trim().Equals("true", StringComparison.OrdinalIgnoreCase))
-                return true;
+            var output = RunProcessWithStdin("osascript", script);
+            return output.Trim().Equals("true", StringComparison.OrdinalIgnoreCase);
         }
-        catch { /* Accessibility not granted — fail open */ }
-
-        return null;
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -356,6 +323,50 @@ return ""false""";
     }
 #endif
 
+    // ── macOS Accessibility Permission ──
+
+    [DllImport("/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices")]
+    [return: MarshalAs(UnmanagedType.U1)]
+    private static extern bool AXIsProcessTrusted();
+
+    /// <summary>
+    /// Returns true if the app has macOS Accessibility permission.
+    /// Returns true on non-macOS platforms (not applicable).
+    /// </summary>
+    public static bool HasAccessibilityPermission()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return true;
+
+        try { return AXIsProcessTrusted(); }
+        catch { return false; }
+    }
+
+    /// <summary>
+    /// Opens System Settings → Privacy → Accessibility so the user can grant permission.
+    /// No-op on non-macOS platforms.
+    /// </summary>
+    public static void OpenAccessibilitySettings()
+    {
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            return;
+
+        try
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = Constants.ResolveCommand("open"),
+                UseShellExecute = false
+            };
+            psi.ArgumentList.Add("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility");
+            using var p = Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Failed to open Accessibility settings");
+        }
+    }
+
     // ── macOS Focus State Change Monitor (Darwin notifications) ──
 
     /// <summary>Darwin notification token for Focus/DND state changes. -1 = not initialized.</summary>
@@ -416,10 +427,8 @@ return ""false""";
         {
             if (DarwinNotifyCheck(_macFocusToken, out int check) == NotifyStatusOk && check != 0)
             {
-                // Darwin notify fired — Focus/DND state changed. Toggle cached state
-                // so IsMacDoNotDisturbActive returns the correct value without the
-                // accessibility click (which causes visible Control Center flicker).
-                _macDndLastKnownState = !_macDndLastKnownState;
+                // Darwin notify fired — Focus/DND state changed.
+                // Signal the caller to do a full re-check via IsMacDoNotDisturbActive().
                 return true;
             }
         }

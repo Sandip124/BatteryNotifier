@@ -36,6 +36,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Timer for cycling funny phrases — only runs while window is visible.</summary>
     private CancellationTokenSource? _phraseCts;
 
+    /// <summary>Whether we've already checked for Accessibility permission on macOS.</summary>
+    private bool _accessibilityChecked;
+
     /// <summary>Timer for polling DND state changes — only runs while window is visible.</summary>
     private CancellationTokenSource? _dndCts;
 
@@ -107,6 +110,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             // Check DND state and start monitoring for changes
             RefreshDndStatus();
             StartDndMonitor();
+
+            // One-time check: prompt for Accessibility on macOS if needed for DND detection
+            CheckAccessibilityPermission();
 
             // Show greeting and start phrase cycling
             StatusMessage = PickStatusMessage(
@@ -577,6 +583,21 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         });
     }
 
+    private void CheckAccessibilityPermission()
+    {
+        if (_accessibilityChecked || !OperatingSystem.IsMacOS())
+            return;
+        _accessibilityChecked = true;
+
+        if (!SystemStateDetector.HasAccessibilityPermission())
+        {
+            ShowInlineNotification(
+                "Accessibility permission needed for Do Not Disturb detection. Opening Settings...",
+                InlineNotificationLevel.Warning, durationMs: 6000);
+            SystemStateDetector.OpenAccessibilitySettings();
+        }
+    }
+
     private void StartDndMonitor()
     {
         StopDndMonitor();
@@ -592,30 +613,31 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Polls for Focus/DND state changes every 5 seconds via Darwin notifications
-    /// (a trivial in-process memory check — zero cost). When a change is detected,
-    /// triggers a full DND state refresh. Also does a periodic full check every 2 minutes
-    /// as a fallback in case Darwin notifications don't fire on this macOS version.
+    /// Monitors DND state changes while the window is visible.
+    /// Checks Darwin notify every 1s (free memory read) — triggers instant refresh on
+    /// older macOS where the notification fires. Every 5s, does a full refresh regardless
+    /// as a fallback for Tahoe+ where Darwin notify for DND was removed.
     /// </summary>
     private async Task RunDndMonitorAsync(CancellationToken ct)
     {
         try
         {
             var tickCount = 0;
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
             {
                 tickCount++;
-                var shouldCheck = SystemStateDetector.HasPendingFocusChange();
 
-                // Fallback: full check every 2 minutes (24 ticks × 5s) regardless
-                if (!shouldCheck && tickCount >= 24)
+                // Fast path: Darwin notify fires instantly on pre-Tahoe macOS
+                if (SystemStateDetector.HasPendingFocusChange())
                 {
-                    shouldCheck = true;
+                    Dispatcher.UIThread.Post(RefreshDndStatus);
                     tickCount = 0;
+                    continue;
                 }
 
-                if (shouldCheck)
+                // Slow path: direct poll every 5s for Tahoe+ and non-macOS
+                if (tickCount >= 5)
                 {
                     Dispatcher.UIThread.Post(RefreshDndStatus);
                     tickCount = 0;
