@@ -40,6 +40,7 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
 
         _displayTimer = new Timer(_ =>
         {
+            if (_disposed) return;
             Dispatcher.UIThread.Post(() => this.RaisePropertyChanged(nameof(LastUpdatedDisplay)));
         }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
 

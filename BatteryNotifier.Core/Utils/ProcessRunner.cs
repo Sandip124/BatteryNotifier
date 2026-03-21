@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using BatteryNotifier.Core.Logger;
+using Serilog;
 
 namespace BatteryNotifier.Core.Utils;
 
@@ -7,6 +9,8 @@ namespace BatteryNotifier.Core.Utils;
 /// </summary>
 internal static class ProcessRunner
 {
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("ProcessRunner");
+
     internal static string Run(string command, params string[] args)
     {
         try
@@ -32,8 +36,9 @@ internal static class ProcessRunner
                 process.Kill();
             return output;
         }
-        catch
+        catch (Exception ex)
         {
+            Logger.Debug(ex, "Subprocess failed: {Command}", command);
             return string.Empty;
         }
     }

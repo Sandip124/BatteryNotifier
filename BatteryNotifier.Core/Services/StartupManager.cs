@@ -170,29 +170,9 @@ public static class StartupManager
 
     private static string GetUid()
     {
-        try
-        {
-            using var process = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = Constants.ResolveCommand("id"),
-                    ArgumentList = { "-u" },
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    CreateNoWindow = true
-                }
-            };
-            process.Start();
-            var uid = process.StandardOutput.ReadToEnd().Trim();
-            if (!process.WaitForExit(Constants.ProcessTimeoutShortMs) && !process.HasExited)
-                process.Kill();
-            return uid;
-        }
-        catch
-        {
-            return Environment.GetEnvironmentVariable("UID") ?? "501";
-        }
+        var output = Utils.ProcessRunner.Run("id", "-u").Trim();
+        return !string.IsNullOrEmpty(output) ? output
+            : Environment.GetEnvironmentVariable("UID") ?? "501";
     }
 
     public static bool IsStartupEnabled()

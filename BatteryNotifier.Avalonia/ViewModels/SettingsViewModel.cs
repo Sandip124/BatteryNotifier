@@ -227,8 +227,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         if (_disposed) return;
-        foreach (var alert in Alerts) alert.Dispose();
-        _disposables.Dispose();
         _disposed = true;
+        foreach (var alert in Alerts)
+        {
+            try { alert.Dispose(); }
+            catch { /* ensure remaining alerts are still disposed */ }
+        }
+        _disposables.Dispose();
     }
 }

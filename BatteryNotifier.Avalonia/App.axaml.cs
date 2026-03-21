@@ -103,6 +103,7 @@ public class App : Application
 
             desktop.Exit += (_, _) =>
             {
+                (desktop.MainWindow?.DataContext as IDisposable)?.Dispose();
                 _trayIconService?.Dispose();
                 EfficiencyModeService.Instance.Dispose();
                 settings.Save();
