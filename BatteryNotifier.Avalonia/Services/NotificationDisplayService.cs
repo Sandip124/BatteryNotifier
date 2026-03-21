@@ -42,6 +42,48 @@ public sealed class NotificationDisplayService
         Current = this;
     }
 
+    /// <summary>
+    /// Full notification delivery pipeline: checks DND/fullscreen suppression,
+    /// manages efficiency mode, shows visual notification, and plays sound.
+    /// Call this instead of ShowNotification for battery alert notifications.
+    /// </summary>
+    public void DeliverNotification(NotificationMessageEventArgs notification)
+    {
+        if (notification.Type == NotificationType.Inline) return;
+
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => DeliverNotification(notification));
+            return;
+        }
+
+        var suppression = SystemStateDetector.GetSuppressionState();
+        var isCritical = notification.Priority >= NotificationPriority.Critical;
+
+        Logger.Information("Notification received: tag={Tag} DND={DND} fullscreen={Fullscreen} critical={Critical}",
+            notification.Tag, suppression.IsDoNotDisturb, suppression.IsFullscreen, isCritical);
+
+        if (suppression.ShouldSuppressToast && !isCritical)
+        {
+            Logger.Information("Notification suppressed (DND={DND}, fullscreen={Fullscreen})",
+                suppression.IsDoNotDisturb, suppression.IsFullscreen);
+            return;
+        }
+
+        EfficiencyModeService.Instance.AcquireNormalMode();
+
+        var alert = !string.IsNullOrEmpty(notification.Tag)
+            ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
+            : null;
+
+        ShowNotification(notification, alert);
+
+        if (!suppression.ShouldSuppressSound || isCritical)
+            _ = _notificationManager?.EmitGlobalNotification(notification);
+        else
+            Logger.Information("Sound suppressed by DND");
+    }
+
     public void ShowNotification(NotificationMessageEventArgs notification, BatteryAlert? alert,
         bool playSound = false)
     {

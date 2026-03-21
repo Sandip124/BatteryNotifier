@@ -8,17 +8,20 @@ using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Media;
 using BatteryNotifier.Avalonia.Services;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Models;
 using ReactiveUI;
+using Serilog;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
 public sealed class AlertRowViewModel : ViewModelBase, IDisposable
 {
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("AlertRowViewModel");
     private readonly CompositeDisposable _disposables = new();
     private readonly BatteryAlert _alert;
-    private readonly Action _onChanged;
+    private readonly Action<bool> _onChanged;
     private bool _disposed;
 
     private string _label;
@@ -46,7 +49,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<Unit, Unit> PreviewCommand { get; }
     public ReactiveCommand<Unit, Unit> DeleteCommand { get; }
 
-    public AlertRowViewModel(BatteryAlert alert, Action onChanged, Action<AlertRowViewModel> onDelete)
+    public AlertRowViewModel(BatteryAlert alert, Action<bool> onChanged, Action<AlertRowViewModel> onDelete)
     {
         _alert = alert;
         _onChanged = onChanged;
@@ -65,7 +68,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             {
                 _alert.Sound = result.SettingsValue;
                 UpdateSoundDisplayName();
-                _onChanged();
+                _onChanged(false);
             }
         });
 
@@ -100,12 +103,19 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
 
     private void SyncAndSave()
     {
+        var rangeChanged = _alert.LowerBound != _lowerBound || _alert.UpperBound != _upperBound;
+
         _alert.Label = _label;
         _alert.LowerBound = _lowerBound;
         _alert.UpperBound = _upperBound;
         _alert.IsEnabled = _isEnabled;
         _alert.FlashColor = _flashColor;
-        _onChanged();
+
+        if (rangeChanged)
+            Logger.Information("Alert '{Label}' ({Id}) range changed to {Lower}%–{Upper}%",
+                _label, _alert.Id, _lowerBound, _upperBound);
+
+        _onChanged(rangeChanged);
     }
 
     public string Label

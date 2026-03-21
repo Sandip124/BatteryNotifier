@@ -3,9 +3,10 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
@@ -18,12 +19,19 @@ public partial class MainWindow : Window
 {
     private static readonly TransformOperations SettingsOffScreen = TransformOperations.Parse("translateX(400px)");
     private static readonly TransformOperations SettingsOnScreen = TransformOperations.Parse("translateX(0px)");
-    private static readonly TimeSpan SettingsAnimDuration = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan SettingsAnimDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan SettingsOpacityDuration = TimeSpan.FromMilliseconds(150);
+
+    private static Transitions MakeSettingsTransitions(Easing easing) => new()
+    {
+        new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = SettingsAnimDuration, Easing = easing },
+        new DoubleTransition { Property = Visual.OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
+    };
 
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
-    private IDisposable? _aboutInteractionHandler;
     private INotifyPropertyChanged? _subscribedViewModel;
+    private MainWindowViewModel? _subscribedMainVm;
     private bool _isSettingsAnimating;
 
     public MainWindow()
@@ -55,14 +63,16 @@ public partial class MainWindow : Window
     {
         base.OnDataContextChanged(e);
 
-        _aboutInteractionHandler?.Dispose();
-        _aboutInteractionHandler = null;
-
         // Unsubscribe from previous DataContext to prevent leak
         if (_subscribedViewModel != null)
         {
             _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _subscribedViewModel = null;
+        }
+        if (_subscribedMainVm != null)
+        {
+            _subscribedMainVm.SettingsCloseRequested -= AnimateSettingsClose;
+            _subscribedMainVm = null;
         }
 
         if (DataContext is INotifyPropertyChanged npc)
@@ -73,46 +83,8 @@ public partial class MainWindow : Window
 
         if (DataContext is MainWindowViewModel vm)
         {
-            _aboutInteractionHandler = vm.OpenAboutInteraction.RegisterHandler(async ctx =>
-            {
-                // Add backdrop overlay
-                Panel? overlayHost = null;
-                Control? existingContent = null;
-                var backdrop = new Border
-                {
-                    Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
-                    IsHitTestVisible = false
-                };
-
-                if (Content is Control content)
-                {
-                    existingContent = content;
-                    overlayHost = new Panel();
-                    Content = null;
-                    overlayHost.Children.Add(existingContent);
-                    overlayHost.Children.Add(backdrop);
-                    Content = overlayHost;
-                }
-
-                try
-                {
-                    var aboutWindow = new AboutWindow();
-                    await aboutWindow.ShowLightDismiss(this);
-                }
-                finally
-                {
-                    if (overlayHost != null && existingContent != null)
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            overlayHost.Children.Clear();
-                            Content = existingContent;
-                        });
-                    }
-                }
-
-                ctx.SetOutput(System.Reactive.Unit.Default);
-            });
+            vm.SettingsCloseRequested += AnimateSettingsClose;
+            _subscribedMainVm = vm;
         }
     }
 
@@ -204,16 +176,18 @@ public partial class MainWindow : Window
         if (e.PropertyName != nameof(MainWindowViewModel.CurrentView)) return;
         if (sender is not MainWindowViewModel vm) return;
 
+        // Only handle open — close is driven by SettingsCloseRequested event
+        // so the content stays visible during the slide-out animation
         if (vm.CurrentView != null)
             AnimateSettingsOpen();
-        else
-            AnimateSettingsClose();
     }
 
     private void AnimateSettingsOpen()
     {
         if (_isSettingsAnimating) return;
+        _isSettingsAnimating = true;
 
+        SettingsContent.Transitions = MakeSettingsTransitions(new CubicEaseOut());
         SettingsContent.Opacity = 0;
         SettingsContent.RenderTransform = SettingsOffScreen;
         SettingsContent.IsVisible = true;
@@ -223,6 +197,8 @@ public partial class MainWindow : Window
             SettingsContent.Opacity = 1;
             SettingsContent.RenderTransform = SettingsOnScreen;
         }, TimeSpan.FromMilliseconds(16));
+
+        DispatcherTimer.RunOnce(() => _isSettingsAnimating = false, SettingsAnimDuration);
     }
 
     private void AnimateSettingsClose()
@@ -230,6 +206,7 @@ public partial class MainWindow : Window
         if (_isSettingsAnimating) return;
         _isSettingsAnimating = true;
 
+        SettingsContent.Transitions = MakeSettingsTransitions(new CubicEaseIn());
         SettingsContent.Opacity = 0;
         SettingsContent.RenderTransform = SettingsOffScreen;
 
@@ -244,7 +221,6 @@ public partial class MainWindow : Window
     {
         PositionChanged -= OnPositionChanged;
         _positionSaveDebouncer.Dispose();
-        _aboutInteractionHandler?.Dispose();
         base.OnClosed(e);
     }
 }

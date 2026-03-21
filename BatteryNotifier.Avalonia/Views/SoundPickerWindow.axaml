@@ -19,7 +19,7 @@
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent">
 
-    <Border ClipToBounds="True" CornerRadius="12"
+    <Border ClipToBounds="True" CornerRadius="10"
             Background="{DynamicResource AppWindowBackground}">
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 

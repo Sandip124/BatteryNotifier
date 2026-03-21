@@ -9,7 +9,7 @@ namespace BatteryNotifier.Core.Services;
 
 public sealed class AppSettings
 {
-    private static readonly Lazy<AppSettings> _instance = new(() => new AppSettings(load: true));
+    private static readonly Lazy<AppSettings> _instance = new(CreateAndLoad);
     public static AppSettings Instance => _instance.Value;
 
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("AppSettings");
@@ -53,14 +53,15 @@ public sealed class AppSettings
     // App Identity
     public string AppId { get; set; } = Guid.NewGuid().ToString();
 
-    /// <summary>Used by the JSON deserializer — does NOT call Load().</summary>
+    /// <summary>Used by the JSON deserializer — must NOT call Load() to avoid infinite recursion.</summary>
     [JsonConstructor]
     internal AppSettings() { }
 
-    /// <summary>Singleton constructor — loads settings from disk.</summary>
-    private AppSettings(bool load)
+    private static AppSettings CreateAndLoad()
     {
-        Load();
+        var settings = new AppSettings();
+        settings.Load();
+        return settings;
     }
 
     private static string GetSettingsDirectory()
@@ -174,9 +175,9 @@ public sealed class AppSettings
                 File.WriteAllBytes(tmpPath, encrypted);
                 File.Move(tmpPath, SettingsFilePath, overwrite: true);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Fail silently — settings won't persist
+                Logger.Warning(ex, "Failed to save settings — changes won't persist");
             }
         }
     }

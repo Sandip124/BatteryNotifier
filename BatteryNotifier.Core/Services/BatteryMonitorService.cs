@@ -245,15 +245,33 @@ public sealed class BatteryMonitorService : IDisposable
         var triggered = AlertEvaluationService.Instance.EvaluateAlerts(
             alerts, currentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
 
-        foreach (var alert in triggered)
+        if (triggered.Count == 0) return;
+
+        // When multiple overlapping alerts trigger, only publish the narrowest one
+        // to avoid spamming the user with duplicate notifications for the same event.
+        var alert = triggered.Count == 1
+            ? triggered[0]
+            : triggered.MinBy(a => a.UpperBound - a.LowerBound)!;
+
+        var escalation = NotificationService.Instance.GetEscalationCount(alert.Id);
+        var message = NotificationTemplates.GetAlertMessage(alert, currentLevel, escalation);
+        _logger.Information("Publishing alert '{Label}' ({Id}) at {Level}%: {Message}",
+            alert.Label, alert.Id, currentLevel, message);
+
+        // Critical priority for battery ≤10% while discharging — bypasses backoff and silencing
+        var priority = currentLevel <= 10
+            && currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging
+            ? NotificationPriority.Critical
+            : NotificationPriority.Normal;
+
+        NotificationService.Instance.PublishNotification(new NotificationMessageEventArgs
         {
-            var escalation = NotificationService.Instance.GetEscalationCount(alert.Id);
-            var message = NotificationTemplates.GetAlertMessage(alert, currentLevel, escalation);
-            _logger.Information("Publishing alert '{Label}' ({Id}) at {Level}%: {Message}",
-                alert.Label, alert.Id, currentLevel, message);
-            NotificationService.Instance.PublishNotification(
-                message, NotificationType.Global, Constants.DefaultNotificationTimeout, alert.Id);
-        }
+            Message = message,
+            Type = NotificationType.Global,
+            Duration = Constants.DefaultNotificationTimeout,
+            Tag = alert.Id,
+            Priority = priority
+        });
     }
 
     private static void UpdateBatteryManagerStore(BatteryInfo currentStatus, int currentLevel)

@@ -36,6 +36,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Timer for cycling funny phrases — only runs while window is visible.</summary>
     private CancellationTokenSource? _phraseCts;
 
+    /// <summary>Whether we've already checked for Accessibility permission on macOS.</summary>
+    private bool _accessibilityChecked;
+
     /// <summary>Timer for polling DND state changes — only runs while window is visible.</summary>
     private CancellationTokenSource? _dndCts;
 
@@ -46,10 +49,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         NavigateToSettingsCommand = ReactiveCommand.Create(NavigateToSettings);
         HideWindowCommand = ReactiveCommand.Create(HideWindow);
-        OpenAboutCommand = ReactiveCommand.CreateFromTask(async () =>
-        {
-            await OpenAboutInteraction.Handle(Unit.Default);
-        });
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
         ExitCommand = ReactiveCommand.Create(ExitApplication);
         DismissInlineNotificationCommand = ReactiveCommand.Create(DismissInlineNotification);
@@ -71,6 +70,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         // Subscribe to health updates for the compact bar
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
+
+        // Instant UI update when notifications are paused/resumed from tray
+        NotificationService.Instance.PausedChanged += OnPausedChanged;
 
         // Start recording battery history (charge sparkline + wear trend)
         _ = BatteryHistoryService.Instance;
@@ -108,6 +110,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             // Check DND state and start monitoring for changes
             RefreshDndStatus();
             StartDndMonitor();
+
+            // One-time check: prompt for Accessibility on macOS if needed for DND detection
+            CheckAccessibilityPermission();
 
             // Show greeting and start phrase cycling
             StatusMessage = PickStatusMessage(
@@ -529,8 +534,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public ReactiveCommand<Unit, Unit> NavigateToSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> HideWindowCommand { get; }
-    public ReactiveCommand<Unit, Unit> OpenAboutCommand { get; }
-    public Interaction<Unit, Unit> OpenAboutInteraction { get; } = new();
     public ReactiveCommand<Unit, Unit> CheckForUpdatesCommand { get; }
     public ReactiveCommand<Unit, Unit> ExitCommand { get; }
     public ReactiveCommand<Unit, Unit> DismissInlineNotificationCommand { get; }
@@ -559,6 +562,42 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
 
+    public bool IsNotificationsPaused
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Show pause banner only when paused AND DND is not active (DND already covers it).</summary>
+    public bool ShowPausedBanner => IsNotificationsPaused && !IsDndActive;
+
+    public ReactiveCommand<Unit, Unit> ResumeNotificationsCommand { get; } =
+        ReactiveCommand.Create(() => NotificationService.Instance.ResumeNotifications());
+
+    private void OnPausedChanged(bool paused)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            IsNotificationsPaused = paused;
+            this.RaisePropertyChanged(nameof(ShowPausedBanner));
+        });
+    }
+
+    private void CheckAccessibilityPermission()
+    {
+        if (_accessibilityChecked || !OperatingSystem.IsMacOS())
+            return;
+        _accessibilityChecked = true;
+
+        if (!SystemStateDetector.HasAccessibilityPermission())
+        {
+            ShowInlineNotification(
+                "Accessibility permission needed for Do Not Disturb detection. Opening Settings...",
+                InlineNotificationLevel.Warning, durationMs: 6000);
+            SystemStateDetector.OpenAccessibilitySettings();
+        }
+    }
+
     private void StartDndMonitor()
     {
         StopDndMonitor();
@@ -574,30 +613,31 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Polls for Focus/DND state changes every 5 seconds via Darwin notifications
-    /// (a trivial in-process memory check — zero cost). When a change is detected,
-    /// triggers a full DND state refresh. Also does a periodic full check every 2 minutes
-    /// as a fallback in case Darwin notifications don't fire on this macOS version.
+    /// Monitors DND state changes while the window is visible.
+    /// Checks Darwin notify every 1s (free memory read) — triggers instant refresh on
+    /// older macOS where the notification fires. Every 5s, does a full refresh regardless
+    /// as a fallback for Tahoe+ where Darwin notify for DND was removed.
     /// </summary>
     private async Task RunDndMonitorAsync(CancellationToken ct)
     {
         try
         {
             var tickCount = 0;
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
             {
                 tickCount++;
-                var shouldCheck = SystemStateDetector.HasPendingFocusChange();
 
-                // Fallback: full check every 2 minutes (24 ticks × 5s) regardless
-                if (!shouldCheck && tickCount >= 24)
+                // Fast path: Darwin notify fires instantly on pre-Tahoe macOS
+                if (SystemStateDetector.HasPendingFocusChange())
                 {
-                    shouldCheck = true;
+                    Dispatcher.UIThread.Post(RefreshDndStatus);
                     tickCount = 0;
+                    continue;
                 }
 
-                if (shouldCheck)
+                // Slow path: direct poll every 5s for Tahoe+ and non-macOS
+                if (tickCount >= 5)
                 {
                     Dispatcher.UIThread.Post(RefreshDndStatus);
                     tickCount = 0;
@@ -623,6 +663,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 DndMessage = active
                     ? DndMessages[Random.Shared.Next(DndMessages.Length)]
                     : string.Empty;
+                this.RaisePropertyChanged(nameof(ShowPausedBanner));
             }
         }
         catch
@@ -630,6 +671,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             IsDndActive = false;
             DndMessage = string.Empty;
         }
+
     }
 
     public string StatusMessage
@@ -793,7 +835,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 switch (result.Status)
                 {
                     case CheckStatus.UpdateAvailable when result.Release != null:
-                        OpenUrlInBrowser(result.Release.HtmlUrl);
+                        Services.PlatformHelper.OpenUrl(result.Release.HtmlUrl);
                         break;
 
                     case CheckStatus.UpToDate:
@@ -819,39 +861,34 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private static void OpenUrlInBrowser(string url)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var psi = new ProcessStartInfo(Constants.ResolveCommand("open")) { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        else
-        {
-            var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-    }
+
 
     private void NavigateToSettings()
     {
         CurrentView = new SettingsViewModel(NavigateToMain);
     }
 
-    private void NavigateToMain()
+    /// <summary>Raised to request settings close animation before CurrentView is cleared.</summary>
+    public event Action? SettingsCloseRequested;
+
+    private async void NavigateToMain()
     {
         var old = CurrentView;
-        CurrentView = null;
-        old?.Dispose();
-        this.RaisePropertyChanged(nameof(AlertsSummary));
-        this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
-        this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
+        if (old == null) return;
+
+        // Trigger close animation while content is still visible
+        SettingsCloseRequested?.Invoke();
+
+        // Wait for animation to finish, then clear content and dispose
+        await Task.Delay(250).ConfigureAwait(false);
+        Dispatcher.UIThread.Post(() =>
+        {
+            CurrentView = null;
+            old.Dispose();
+            this.RaisePropertyChanged(nameof(AlertsSummary));
+            this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
+            this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
+        });
     }
 
     public void Dispose()
@@ -865,6 +902,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
         BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
         BatteryHealthService.Instance.HealthUpdated -= OnHealthUpdated;
+        NotificationService.Instance.PausedChanged -= OnPausedChanged;
         _inlineNotifications.StateChanged -= OnInlineNotificationStateChanged;
         SystemStateDetector.CleanupFocusMonitor();
         _disposed = true;
