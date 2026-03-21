@@ -26,13 +26,16 @@ BatteryNotifier/
 │   │   ├── BatteryMonitorService.cs # 1s polling + WMI/Darwin events
 │   │   ├── NotificationService.cs   # Priority queue, escalating backoff, throttling
 │   │   ├── NotificationTemplates.cs # Level-aware + escalation-aware message templates
+│   │   ├── PowerUsageService.cs     # Top CPU consumers → battery drain detection
+│   │   ├── ProcessTips.cs           # Known app tips + system process exclusion list
 │   │   ├── SettingsEncryption.cs    # AES-GCM encrypt/decrypt for settings at rest
 │   │   ├── StartupManager.cs        # Cross-platform launch at startup
 │   │   └── SystemStateDetector.cs   # DND / fullscreen detection (all platforms)
 │   ├── Store/
 │   │   └── BatteryManagerStore.cs   # Shared battery state (singleton)
 │   └── Utils/
-│       └── Debouncer.cs
+│       ├── Debouncer.cs
+│       └── ProcessRunner.cs         # Shared subprocess runner (ArgumentList, timeout, bounded output)
 │
 ├── BatteryNotifier.Avalonia/      # Avalonia UI app (net10.0)
 │   ├── Assets/
@@ -45,6 +48,9 @@ BatteryNotifier/
 │   ├── ViewModels/
 │   │   ├── ViewModelBase.cs
 │   │   ├── MainWindowViewModel.cs   # Hosts CurrentView, battery data, navigation, DND monitor
+│   │   ├── HealthDashboardViewModel.cs  # Battery health + drainers for bottom sheet
+│   │   ├── ProcessDisplayItem.cs    # Display model: battery impact, watts, tips per process
+│   │   ├── CpuBarConverters.cs      # IValueConverters for drain bar width + color
 │   │   ├── SettingsViewModel.cs     # All settings with auto-save + SoundOption model
 │   │   ├── SoundPickerViewModel.cs  # Sound picker with built-in, bundled, and custom groups
 │   │   └── BatteryNotificationSectionViewModel.cs  # Reusable notification config section
@@ -64,7 +70,9 @@ BatteryNotifier/
     ├── DebouncerTests.cs
     ├── NotificationMessageTests.cs
     ├── NotificationServiceTests.cs
-    └── NotificationTemplatesTests.cs
+    ├── NotificationTemplatesTests.cs
+    ├── PowerUsageServiceTests.cs    # ps output parsing tests
+    └── ProcessTipsTests.cs          # Known app tip resolution tests
 ```
 
 ---
@@ -137,6 +145,37 @@ BatteryMonitorService
         ├── NotificationPlatformService (native OS toast)
         └── NotificationManager → SoundManager (audio playback)
 ```
+
+### Power-Hungry App Detection (Battery Drainers)
+
+```
+PowerUsageService (15s active / 2min background polling)
+  ├── macOS/Linux: ps -eo pid,%cpu,comm → ParsePsOutput() → TryParsePsLine()
+  └── Windows: Process.GetProcesses() → two-snapshot CPU delta
+      ↓ FilterAndSort(): exclude self, system noise, <1% CPU → top 5
+  ProcessesUpdated event
+      ↓
+  HealthDashboardViewModel.OnProcessesUpdated()
+      ↓ Dispatcher.UIThread.Post()
+  BuildDrainersDisplay():
+      ↓ FormatBatteryImpact(): time cost > watts > hidden
+      ↓ ProcessTips.GetTip(): actionable tip for known apps
+      ↓ ComputeDrainersSummary(): battery-centric summary
+  TopProcesses → AXAML ItemsControl in HealthBottomSheet
+  (visible only when: on battery + has data + has battery metrics)
+```
+
+**Display priority** — the card only shows when real battery data exists (power draw or time remaining). Raw CPU% is never shown to users.
+
+| Data Available | Per-Process Display | Summary |
+|---|---|---|
+| Time remaining + power | `~25min` | "Chrome is costing you ~25min of battery life." |
+| Power only | `~6.3W` | "Chrome is draining ~6.3W from your battery." |
+| Neither | Card hidden | — |
+
+**Known app tips** (`ProcessTips`): data-driven lookup (exact match dictionary + substring match array) for browsers, communication apps, media, dev tools, and system processes. Tips are actionable: "Close unused tabs", "Quit when not in a call", "Spotlight indexing — will finish soon".
+
+**System process filtering** (`ProcessTips.SystemProcesses`): `FrozenSet<string>` of low-level OS processes (kernel_task, svchost, systemd, etc.) excluded from the drainer list.
 
 ### Notification Trigger Rules
 
@@ -254,7 +293,7 @@ User picks file (StorageProvider / Import Sound)
 - `CryptographicException` on tamper → reset to defaults
 - Atomic write via `.tmp` + `File.Move(overwrite: true)`
 
-### Subprocess Security (SystemStateDetector, SoundManager, NotificationPlatformService)
+### Subprocess Security (ProcessRunner, SystemStateDetector, SoundManager, NotificationPlatformService)
 
 - **ArgumentList** (not Arguments string) for all subprocess calls — prevents argument injection
 - **Bounded output** — max 8 KB read from stdout to prevent OOM

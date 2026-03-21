@@ -12,6 +12,8 @@ Screenshot:
 
 - **Battery notifications** — alerts when battery is full (while charging) or low (while discharging)
 - **Customizable thresholds** — set your own full/low battery percentage triggers
+- **Battery drainer detection** — shows which apps are draining your battery the most, with estimated time impact and actionable tips
+- **Battery health dashboard** — capacity, cycle count, temperature, power draw, charge history sparkline, and wear trend
 - **Sound library** — built-in synthesized tones, bundled Editor's Choice sounds, or import your own
 - **System tray** — runs quietly in the background, click to show/hide
 - **DND-aware** — respects Do Not Disturb / Focus mode on all platforms
