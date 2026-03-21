@@ -43,8 +43,10 @@ BatteryNotifier/
 │   │   └── Sounds/                # Bundled "Editor's Choice" sound files
 │   ├── Services/
 │   │   ├── BundledSounds.cs         # Editor's Choice sounds from Assets/Sounds/
+│   │   ├── NotificationDisplayService.cs   # Full notification pipeline (DND, display, sound)
 │   │   ├── NotificationPlatformService.cs  # Native OS toast (osascript/powershell/notify-send)
-│   │   └── TrayIconService.cs       # System tray icon + menu + suppression logic
+│   │   ├── PlatformHelper.cs        # Cross-platform URL opening + text sanitization
+│   │   └── TrayIconService.cs       # System tray icon + menu + window management
 │   ├── ViewModels/
 │   │   ├── ViewModelBase.cs
 │   │   ├── MainWindowViewModel.cs   # Hosts CurrentView, battery data, navigation, DND monitor
@@ -57,6 +59,7 @@ BatteryNotifier/
 │   ├── Views/
 │   │   ├── MainWindow.axaml/.cs
 │   │   ├── SettingsView.axaml/.cs
+│   │   ├── AboutWindow.axaml/.cs    # Standalone about window (auto update check)
 │   │   ├── SoundPickerWindow.axaml/.cs  # Sound selection modal
 │   │   └── Components/
 │   │       └── BatteryNotificationSection.axaml/.cs  # Reusable notification UI component
@@ -122,7 +125,7 @@ MainWindowViewModel.CurrentView
   → SettingsViewModel   (on gear icon click)
 ```
 
-Back navigation uses a callback `Action` passed into `SettingsViewModel`. Old `SettingsViewModel` is disposed on navigate-back.
+Back navigation uses a callback `Action` passed into `SettingsViewModel`. Settings slides in from the right with `CubicEaseOut`, slides out with `CubicEaseIn` (200ms). ViewModel disposal is deferred 250ms so content stays visible during the close animation. Home screen is always rendered underneath (no `IsVisible` binding) — settings overlays on top with a solid background.
 
 ### Battery Monitoring Pipeline
 
@@ -133,16 +136,14 @@ BatteryMonitorService
   ↓ BatteryStatusChanged / PowerLineStatusChanged events
   ├── BatteryManagerStore  (shared in-memory state)
   ├── MainWindowViewModel  (updates UI on Dispatcher.UIThread)
-  └── TrayIconService
-        ↓
-      NotificationService.PublishNotification()
-        ↓ (escalating backoff + throttle)
+  └── NotificationService.PublishNotification()
+        ↓ (escalating backoff + throttle + pause check + critical bypass)
       NotificationService.NotificationReceived event
         ↓
-      TrayIconService.OnNotificationReceived()
+      NotificationDisplayService.DeliverNotification()
         ↓ SystemStateDetector.GetSuppressionState()
         ├── [DND/Fullscreen?] → suppress toast + sound (Critical overrides)
-        ├── NotificationPlatformService (native OS toast)
+        ├── Screen flash + notification card (Avalonia-native)
         └── NotificationManager → SoundManager (audio playback)
 ```
 
@@ -231,14 +232,17 @@ public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> Open
 
 | Platform | DND Detection | Fullscreen Detection |
 |---|---|---|
-| macOS (pre-Tahoe) | `defaults read` + `Assertions.json` (plutil) | AppleScript window size vs screen |
-| macOS (Tahoe+) | Control Center accessibility click fallback | AppleScript window size vs screen |
+| macOS (Monterey) | `defaults read` doNotDisturb key | AppleScript window size vs screen |
+| macOS (Ventura/Sonoma) | `Assertions.json` via plutil | AppleScript window size vs screen |
+| macOS (Tahoe+) | Menu bar item description check (read-only, no click) | AppleScript window size vs screen |
 | Windows | WNF `NtQueryWnfStateData` (Focus Assist) | P/Invoke `GetForegroundWindow` + `GetWindowRect` |
 | Linux | `gsettings` (GNOME) / `dbus-send` (KDE) | `xprop _NET_WM_STATE_FULLSCREEN` / `wmctrl` |
 
-DND monitoring: Darwin notification polling every 5s (`notify_check` — zero-cost memory read) with 2-minute accessibility fallback on macOS Tahoe.
+DND monitoring: Darwin `notify_check` every 1s (zero-cost memory read) for instant detection on pre-Tahoe macOS. 5s direct poll fallback for Tahoe+ where Darwin notify for DND was removed. Only runs while window is visible.
 
-Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority always passes through.
+macOS Tahoe detection: reads `description of every menu bar item` from ControlCenter process. When Focus is active, macOS shows a "Focus" item. No clicking, no dropdown, no flicker. Requires Accessibility permission — app prompts on first launch via `AXIsProcessTrusted()` check and opens System Settings directly.
+
+Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority (battery ≤10% while discharging) bypasses everything including backoff, silencing, throttle, and pause.
 
 ---
 
@@ -355,7 +359,10 @@ Dispatcher.UIThread.Post(RefreshBatteryStatus);
 - **Auto-recovery**: silenced tags auto-reset after 2 hours
 - **Throttle interval**: 2 s — rapid notifications held in `_pendingNotifications`, flushed by one-shot timer
 - **Power state change**: resets all trackers via `ResetAllTrackers()`
-- **Critical priority**: bypasses throttle
+- **Alert range change**: resets trackers + forces immediate re-check so new thresholds trigger instantly
+- **Overlapping alerts**: when multiple alerts trigger simultaneously, only the narrowest range fires
+- **Critical priority** (battery ≤10% discharging): bypasses backoff, silencing, throttle, and pause
+- **Pause/Resume**: user can pause all non-critical notifications for 2 hours (auto-resumes via `AutoResumeIfExpired()`). Toggled from tray menu or main window banner. `PausedChanged` event syncs UI instantly
 
 ---
 
@@ -376,6 +383,53 @@ Messages vary by **battery level tier** and **escalation count**:
 | Above Threshold | threshold–96% | Informational — "good to go" |
 
 Each tier has multiple escalation stages with randomized variants per stage.
+
+---
+
+## Tray Icon Behavior
+
+```
+Tray Menu:
+  Show Window / Hide Window    (label syncs with window visibility + focus state)
+  Pause Notifications (2h)     (toggles to "Resume Notifications" when paused)
+  ─────────────
+  Check for Updates...
+  About
+  ─────────────
+  Exit
+```
+
+| Platform | Left-click tray | Right-click tray |
+|---|---|---|
+| Windows/Linux | Show/hide/activate via `Clicked` handler | Context menu |
+| macOS | Context menu (OS enforced — NSStatusItem always shows menu) | Context menu |
+
+**Window show/hide logic** (`OnTrayIconClicked`):
+- Hidden → `ShowMainWindow()` (show + activate)
+- Visible but behind other apps (`IsActive: false`) → `Activate()` only (no dock icon change)
+- Visible and focused (`IsActive: true`) → `HideMainWindow()`
+
+**macOS menu workaround**: opening the tray menu deactivates the window, making `IsActive` unreliable at menu-click time. `_wasVisibleBeforeMenu` captures `IsVisible` state when the label updates (on `IsActive` change), so `OnShowHideWindow` reads the snapshot.
+
+**Main window close button**: cancels close and hides to tray. Skips hide if child dialogs (About, Sound Picker) are open to prevent accidental hide during settings.
+
+---
+
+## About Window
+
+Standalone window (no owner) — can be opened from the tray without the main window visible. Centers on screen. Draggable via entire surface (`PointerPressed` → `BeginMoveDrag`).
+
+Auto-checks for updates on open (Chrome-style): shows "Checking for updates..." → "You're on the latest version" or "Update available: vX.Y.Z" (clickable, opens release page in browser).
+
+---
+
+## Notification Pause
+
+- **Tray menu**: "Pause Notifications (2h)" / "Resume Notifications"
+- **Main window banner**: amber banner with bell-slash icon + "Resume" button (instant via `PausedChanged` event)
+- **Auto-resume**: after 2 hours, `AutoResumeIfExpired()` runs on next `PublishNotification()` call
+- **DND interaction**: pause banner hidden when DND is active (`ShowPausedBanner => IsPaused && !IsDndActive`) — DND already suppresses
+- **Critical override**: battery ≤10% bypasses pause
 
 ---
 
@@ -436,6 +490,8 @@ Main branch: `master`
 ## Known Limitations / Future Work
 
 - `BatteryInfoProvider` uses WMI — **Windows only**. macOS/Linux battery info needs a cross-platform provider.
-- macOS Tahoe DND detection uses Control Center accessibility click (briefly opens dropdown) — requires Accessibility permission.
+- macOS Tahoe DND detection requires Accessibility permission (app prompts on first launch). Without it, DND state is not detected.
+- macOS tray icon: left-click always opens context menu (OS limitation). "Show Window" is the first menu item as a workaround.
 - macOS external display detection suppresses notifications when charger must stay connected.
+- Linux GNOME: no system tray by default (needs AppIndicator extension). Left-click behavior depends on SNI implementation.
 - Linux CI builds are currently disabled in the GitHub Actions workflow.
