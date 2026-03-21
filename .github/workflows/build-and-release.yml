@@ -237,6 +237,46 @@ jobs:
             --mainExe "BatteryNotifier" \
             --outputDir "./installers/${{ matrix.artifact }}"
 
+      # ── Linux: Build AppImage ──
+      - name: Build AppImage
+        if: contains(matrix.rid, 'linux-')
+        shell: bash
+        run: |
+          # Determine architecture for appimagetool
+          case "${{ matrix.rid }}" in
+            linux-x64)   ARCH=x86_64 ;;
+            linux-arm64) ARCH=aarch64 ;;
+          esac
+
+          # Install appimagetool
+          curl -sL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o appimagetool
+          chmod +x appimagetool
+
+          # Assemble AppDir
+          APPDIR="${{ env.APP_NAME }}.AppDir"
+          mkdir -p "$APPDIR/usr/bin"
+
+          # Copy published output
+          cp -r ./publish/${{ matrix.artifact }}/* "$APPDIR/usr/bin/"
+
+          # Desktop file and icon at AppDir root (required by appimagetool)
+          cp BatteryNotifier.Avalonia/Assets/BatteryNotifier.desktop "$APPDIR/"
+          cp BatteryNotifier.Avalonia/Assets/BatteryNotifierLogo.png "$APPDIR/BatteryNotifier.png"
+
+          # AppRun entry point
+          cat > "$APPDIR/AppRun" << 'APPRUN'
+          #!/bin/bash
+          SELF=$(readlink -f "$0")
+          HERE=${SELF%/*}
+          exec "$HERE/usr/bin/BatteryNotifier" "$@"
+          APPRUN
+          sed -i 's/^          //' "$APPDIR/AppRun"
+          chmod +x "$APPDIR/AppRun"
+
+          # Build AppImage (--appimage-extract-and-run avoids FUSE requirement in CI)
+          ARCH=$ARCH ./appimagetool --appimage-extract-and-run "$APPDIR" \
+            "./installers/${{ matrix.artifact }}/${{ env.APP_NAME }}-${{ matrix.rid }}.AppImage"
+
       # ── Upload portable artifact (zip/tarball) ──
       - name: Create Windows ZIP
         if: startsWith(matrix.rid, 'win-')
@@ -321,7 +361,7 @@ jobs:
           FILES=()
           while IFS= read -r f; do
             FILES+=("$f")
-          done < <(find artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.pkg" -o -name "*.nupkg" -o -name "checksums-sha256.txt" \))
+          done < <(find artifacts -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.pkg" -o -name "*.AppImage" -o -name "*.nupkg" -o -name "checksums-sha256.txt" \))
 
           echo "Found ${#FILES[@]} release assets:"
           if [ ${#FILES[@]} -gt 0 ]; then

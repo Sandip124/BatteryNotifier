@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=BatteryNotifier
+Exec=BatteryNotifier
+Icon=BatteryNotifier
+Type=Application
+Categories=Utility;System;Monitor;
+Comment=Cross-platform battery monitoring and notification app
+Terminal=false
+StartupWMClass=BatteryNotifier
