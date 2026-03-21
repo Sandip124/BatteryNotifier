@@ -30,6 +30,7 @@ internal sealed class TrayIconService : IDisposable
     private bool _disposed;
 
     // Store menu items for clean unsubscription in Dispose
+    private NativeMenuItem? _pauseNotificationsMenuItem;
     private NativeMenuItem? _showHideMenuItem;
     private NativeMenuItem? _aboutMenuItem;
     private NativeMenuItem? _updateMenuItem;
@@ -66,6 +67,9 @@ internal sealed class TrayIconService : IDisposable
             _showHideMenuItem = new NativeMenuItem { Header = "Show Window" };
             _showHideMenuItem.Click += OnShowHideWindow;
 
+            _pauseNotificationsMenuItem = new NativeMenuItem { Header = "Pause Notifications (2h)" };
+            _pauseNotificationsMenuItem.Click += OnTogglePauseNotifications;
+
             _aboutMenuItem = new NativeMenuItem { Header = "About" };
             _aboutMenuItem.Click += OnOpenAbout;
 
@@ -76,6 +80,7 @@ internal sealed class TrayIconService : IDisposable
             _exitMenuItem.Click += OnExit;
 
             trayMenu.Add(_showHideMenuItem);
+            trayMenu.Add(_pauseNotificationsMenuItem);
             trayMenu.Add(new NativeMenuItemSeparator());
             trayMenu.Add(_updateMenuItem);
             trayMenu.Add(_aboutMenuItem);
@@ -83,6 +88,9 @@ internal sealed class TrayIconService : IDisposable
             trayMenu.Add(_exitMenuItem);
 
             _trayIcon.Menu = trayMenu;
+
+            // Sync pause menu label from any source (tray toggle, main window Resume, auto-resume)
+            NotificationService.Instance.PausedChanged += OnPausedStateChanged;
 
             // Handle click
             _trayIcon.Clicked += OnTrayIconClicked;
@@ -143,14 +151,48 @@ internal sealed class TrayIconService : IDisposable
 
         if (_trayIcon == null) return;
 
-        var batteryPercent = BatteryManagerStore.Instance.BatteryLifePercent;
+        _trayIcon.ToolTipText = $"BatteryNotifier - {FormatBatteryStatus()}";
+    }
+
+    private static string FormatBatteryStatus()
+    {
         var store = BatteryManagerStore.Instance;
+        var pct = $"{store.BatteryLifePercent:F0}%";
+
         string status;
         if (store.IsCharging) status = "Charging";
         else if (store.IsPluggedIn) status = "Plugged In";
-        else status = "Discharging";
+        else status = "On Battery";
 
-        _trayIcon.ToolTipText = $"BatteryNotifier - {batteryPercent:F0}% ({status})";
+        var time = FormatTimeRemaining(store);
+        return time != null ? $"{pct} · {status} · {time}" : $"{pct} · {status}";
+    }
+
+    private static string? FormatTimeRemaining(BatteryManagerStore store)
+    {
+        if (store.BatteryLifeRemaining <= 0) return null;
+        var ts = store.BatteryLifeRemainingInSeconds;
+        var h = (int)ts.TotalHours;
+        return h > 0 ? $"~{h}h {ts.Minutes}m" : $"~{ts.Minutes}m";
+    }
+
+    private static void OnTogglePauseNotifications(object? sender, EventArgs e)
+    {
+        if (NotificationService.Instance.IsPaused)
+            NotificationService.Instance.ResumeNotifications();
+        else
+            NotificationService.Instance.PauseNotifications();
+    }
+
+    private void OnPausedStateChanged(bool paused)
+    {
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_pauseNotificationsMenuItem != null)
+                _pauseNotificationsMenuItem.Header = paused
+                    ? "Resume Notifications"
+                    : "Pause Notifications (2h)";
+        });
     }
 
     private void OnNotificationReceived(object? sender, NotificationMessageEventArgs notification)
@@ -442,7 +484,15 @@ internal sealed class TrayIconService : IDisposable
             _displayService?.DismissAll();
             _displayService = null;
 
+            NotificationService.Instance.PausedChanged -= OnPausedStateChanged;
+
             // Unsubscribe menu item Click handlers to prevent event leaks
+            if (_pauseNotificationsMenuItem != null)
+            {
+                _pauseNotificationsMenuItem.Click -= OnTogglePauseNotifications;
+                _pauseNotificationsMenuItem = null;
+            }
+
             if (_showHideMenuItem != null)
             {
                 _showHideMenuItem.Click -= OnShowHideWindow;

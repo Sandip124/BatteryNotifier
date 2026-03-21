@@ -128,11 +128,47 @@
                                 CornerRadius="8" Padding="10,7"
                                 Margin="0,0,0,6"
                                 Background="#2E1976D2">
-                            <TextBlock Text="{Binding DndMessage}"
-                                       FontSize="11.5"
-                                       Foreground="{DynamicResource AppAccentForeground}"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center" />
+                            <Grid ColumnDefinitions="Auto,8,*">
+                                <PathIcon Grid.Column="0"
+                                          Data="{StaticResource Icon.BellSlash}"
+                                          Width="14" Height="14"
+                                          Foreground="{DynamicResource AppAccentForeground}"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding DndMessage}"
+                                           FontSize="11.5"
+                                           Foreground="{DynamicResource AppAccentForeground}"
+                                           TextWrapping="Wrap"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Notifications paused notice (hidden when DND is active — DND already suppresses) -->
+                        <Border Grid.Row="1"
+                                IsVisible="{Binding ShowPausedBanner}"
+                                CornerRadius="8" Padding="10,7"
+                                Margin="0,0,0,6"
+                                Background="#2EFF9800">
+                            <Grid ColumnDefinitions="Auto,8,*,8,Auto">
+                                <PathIcon Grid.Column="0"
+                                          Data="{StaticResource Icon.BellSlash}"
+                                          Width="14" Height="14"
+                                          Foreground="#FF9800"
+                                          VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2"
+                                           Text="Notifications paused · auto-resumes in 2h"
+                                           FontSize="11.5"
+                                           Foreground="#FF9800"
+                                           VerticalAlignment="Center" />
+                                <Button Grid.Column="4"
+                                        Command="{Binding ResumeNotificationsCommand}"
+                                        Theme="{StaticResource PrimaryButton}"
+                                        Padding="8,3" FontSize="10"
+                                        VerticalAlignment="Center"
+                                        ToolTip.Tip="Resume notifications">
+                                    <TextBlock Text="Resume" Foreground="#FF9800" FontWeight="SemiBold" />
+                                </Button>
+                            </Grid>
                         </Border>
 
                         <!-- Quick Settings -->

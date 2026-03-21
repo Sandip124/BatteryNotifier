@@ -32,6 +32,7 @@ public sealed class NotificationService : IDisposable
     private DateTime _lastNotificationTime = DateTime.MinValue;
 
     private bool _disposed;
+    private volatile bool _paused;
 
     private static readonly TimeSpan[] BackoffIntervals =
     [
@@ -57,6 +58,39 @@ public sealed class NotificationService : IDisposable
         _notificationQueue = new PriorityQueue<NotificationMessageEventArgs, int>();
     }
 
+    // ── Pause / Resume ────────────────────────────────────────
+
+    private static readonly TimeSpan PauseAutoResumeAfter = TimeSpan.FromHours(2);
+    private DateTime _pausedAt;
+
+    public event Action<bool>? PausedChanged;
+
+    public void PauseNotifications()
+    {
+        _paused = true;
+        _pausedAt = DateTime.UtcNow;
+        PausedChanged?.Invoke(true);
+    }
+
+    public void ResumeNotifications()
+    {
+        _paused = false;
+        PausedChanged?.Invoke(false);
+    }
+
+    public bool IsPaused => _paused;
+
+    private void AutoResumeIfExpired()
+    {
+        if (_paused && (DateTime.UtcNow - _pausedAt) >= PauseAutoResumeAfter)
+        {
+            Logger.Information("Auto-resuming notifications after {Duration}", PauseAutoResumeAfter);
+            ResumeNotifications();
+        }
+    }
+
+    // ── Publish ─────────────────────────────────────────────
+
     public void PublishNotification(string message, NotificationType type = NotificationType.Global, int duration = 3000, string? tag = null)
     {
         var notification = new NotificationMessageEventArgs
@@ -72,10 +106,19 @@ public sealed class NotificationService : IDisposable
 
     public void PublishNotification(NotificationMessageEventArgs notification)
     {
+        AutoResumeIfExpired();
+
         // Inline notifications bypass backoff — they're in-app only
         if (notification.Type == NotificationType.Inline)
         {
             EnqueueAndEmit(notification);
+            return;
+        }
+
+        // User-paused notifications are dropped (critical still goes through)
+        if (_paused && notification.Priority < NotificationPriority.Critical)
+        {
+            Logger.Debug("Notification dropped — notifications paused by user (tag={Tag})", notification.Tag);
             return;
         }
 

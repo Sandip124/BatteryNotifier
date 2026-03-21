@@ -68,6 +68,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         // Subscribe to health updates for the compact bar
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
 
+        // Instant UI update when notifications are paused/resumed from tray
+        NotificationService.Instance.PausedChanged += OnPausedChanged;
+
         // Start recording battery history (charge sparkline + wear trend)
         _ = BatteryHistoryService.Instance;
 
@@ -553,6 +556,27 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
 
+    public bool IsNotificationsPaused
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Show pause banner only when paused AND DND is not active (DND already covers it).</summary>
+    public bool ShowPausedBanner => IsNotificationsPaused && !IsDndActive;
+
+    public ReactiveCommand<Unit, Unit> ResumeNotificationsCommand { get; } =
+        ReactiveCommand.Create(() => NotificationService.Instance.ResumeNotifications());
+
+    private void OnPausedChanged(bool paused)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            IsNotificationsPaused = paused;
+            this.RaisePropertyChanged(nameof(ShowPausedBanner));
+        });
+    }
+
     private void StartDndMonitor()
     {
         StopDndMonitor();
@@ -617,6 +641,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 DndMessage = active
                     ? DndMessages[Random.Shared.Next(DndMessages.Length)]
                     : string.Empty;
+                this.RaisePropertyChanged(nameof(ShowPausedBanner));
             }
         }
         catch
@@ -624,6 +649,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             IsDndActive = false;
             DndMessage = string.Empty;
         }
+
     }
 
     public string StatusMessage
@@ -859,6 +885,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;
         BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
         BatteryHealthService.Instance.HealthUpdated -= OnHealthUpdated;
+        NotificationService.Instance.PausedChanged -= OnPausedChanged;
         _inlineNotifications.StateChanged -= OnInlineNotificationStateChanged;
         SystemStateDetector.CleanupFocusMonitor();
         _disposed = true;
