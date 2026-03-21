@@ -886,14 +886,27 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         CurrentView = new SettingsViewModel(NavigateToMain);
     }
 
-    private void NavigateToMain()
+    /// <summary>Raised to request settings close animation before CurrentView is cleared.</summary>
+    public event Action? SettingsCloseRequested;
+
+    private async void NavigateToMain()
     {
         var old = CurrentView;
-        CurrentView = null;
-        old?.Dispose();
-        this.RaisePropertyChanged(nameof(AlertsSummary));
-        this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
-        this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
+        if (old == null) return;
+
+        // Trigger close animation while content is still visible
+        SettingsCloseRequested?.Invoke();
+
+        // Wait for animation to finish, then clear content and dispose
+        await Task.Delay(250).ConfigureAwait(false);
+        Dispatcher.UIThread.Post(() =>
+        {
+            CurrentView = null;
+            old.Dispose();
+            this.RaisePropertyChanged(nameof(AlertsSummary));
+            this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
+            this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
+        });
     }
 
     public void Dispose()

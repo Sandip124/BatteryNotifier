@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media.Transformation;
@@ -17,11 +19,19 @@ public partial class MainWindow : Window
 {
     private static readonly TransformOperations SettingsOffScreen = TransformOperations.Parse("translateX(400px)");
     private static readonly TransformOperations SettingsOnScreen = TransformOperations.Parse("translateX(0px)");
-    private static readonly TimeSpan SettingsAnimDuration = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan SettingsAnimDuration = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan SettingsOpacityDuration = TimeSpan.FromMilliseconds(150);
+
+    private static Transitions MakeSettingsTransitions(Easing easing) => new()
+    {
+        new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = SettingsAnimDuration, Easing = easing },
+        new DoubleTransition { Property = Visual.OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
+    };
 
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
     private INotifyPropertyChanged? _subscribedViewModel;
+    private MainWindowViewModel? _subscribedMainVm;
     private bool _isSettingsAnimating;
 
     public MainWindow()
@@ -59,11 +69,22 @@ public partial class MainWindow : Window
             _subscribedViewModel.PropertyChanged -= OnViewModelPropertyChanged;
             _subscribedViewModel = null;
         }
+        if (_subscribedMainVm != null)
+        {
+            _subscribedMainVm.SettingsCloseRequested -= AnimateSettingsClose;
+            _subscribedMainVm = null;
+        }
 
         if (DataContext is INotifyPropertyChanged npc)
         {
             npc.PropertyChanged += OnViewModelPropertyChanged;
             _subscribedViewModel = npc;
+        }
+
+        if (DataContext is MainWindowViewModel vm)
+        {
+            vm.SettingsCloseRequested += AnimateSettingsClose;
+            _subscribedMainVm = vm;
         }
     }
 
@@ -155,16 +176,18 @@ public partial class MainWindow : Window
         if (e.PropertyName != nameof(MainWindowViewModel.CurrentView)) return;
         if (sender is not MainWindowViewModel vm) return;
 
+        // Only handle open — close is driven by SettingsCloseRequested event
+        // so the content stays visible during the slide-out animation
         if (vm.CurrentView != null)
             AnimateSettingsOpen();
-        else
-            AnimateSettingsClose();
     }
 
     private void AnimateSettingsOpen()
     {
         if (_isSettingsAnimating) return;
+        _isSettingsAnimating = true;
 
+        SettingsContent.Transitions = MakeSettingsTransitions(new CubicEaseOut());
         SettingsContent.Opacity = 0;
         SettingsContent.RenderTransform = SettingsOffScreen;
         SettingsContent.IsVisible = true;
@@ -174,6 +197,8 @@ public partial class MainWindow : Window
             SettingsContent.Opacity = 1;
             SettingsContent.RenderTransform = SettingsOnScreen;
         }, TimeSpan.FromMilliseconds(16));
+
+        DispatcherTimer.RunOnce(() => _isSettingsAnimating = false, SettingsAnimDuration);
     }
 
     private void AnimateSettingsClose()
@@ -181,6 +206,7 @@ public partial class MainWindow : Window
         if (_isSettingsAnimating) return;
         _isSettingsAnimating = true;
 
+        SettingsContent.Transitions = MakeSettingsTransitions(new CubicEaseIn());
         SettingsContent.Opacity = 0;
         SettingsContent.RenderTransform = SettingsOffScreen;
 

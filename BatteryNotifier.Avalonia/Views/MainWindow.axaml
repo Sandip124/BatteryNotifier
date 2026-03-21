@@ -27,9 +27,8 @@
       <Border Padding="4">
         <Grid>
 
-        <!-- Home screen (visible when not in settings) -->
-        <Grid RowDefinitions="Auto,*"
-              IsVisible="{Binding CurrentView, Converter={x:Static ObjectConverters.IsNull}}">
+        <!-- Home screen (always visible — settings overlays on top) -->
+        <Grid RowDefinitions="Auto,*">
 
             <!-- Header (drag handle) — ZIndex keeps it above the ambient glow -->
             <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="8"
@@ -225,14 +224,10 @@
         <!-- Settings screen (overlays home when CurrentView is set) -->
         <ContentControl x:Name="SettingsContent"
                         Content="{Binding CurrentView}"
+                        Background="{DynamicResource AppWindowBackground}"
                         IsVisible="False"
                         RenderTransform="translateX(400px)">
-            <ContentControl.Transitions>
-                <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.3" Easing="CubicEaseOut" />
-                    <DoubleTransition Property="Opacity" Duration="0:0:0.25" Easing="CubicEaseOut" />
-                </Transitions>
-            </ContentControl.Transitions>
+            <!-- Transitions set dynamically in code-behind for directional easing -->
         </ContentControl>
 
         <!-- Inline notification toast -->

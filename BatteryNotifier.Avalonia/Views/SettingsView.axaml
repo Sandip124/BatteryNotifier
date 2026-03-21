@@ -26,12 +26,9 @@
                 <Button Command="{Binding BackCommand}" Grid.Column="0"
                         Theme="{StaticResource PrimaryButton}"
                         Foreground="{DynamicResource AppAccentForeground}">
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
-                                HorizontalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <PathIcon Data="{StaticResource Icon.CaretLeft}"
-                                  VerticalAlignment="Center"
-                                  HorizontalAlignment="Center"
-                                  Width="10" Height="10" />
+                                  Width="10" Height="10" VerticalAlignment="Center" />
                         <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
                     </StackPanel>
                 </Button>
