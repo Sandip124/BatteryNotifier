@@ -328,7 +328,6 @@ namespace BatteryNotifier.Core.Managers
             foreach (var entry in candidates)
             {
                 if (!Path.IsPathRooted(Constants.ResolveCommand(entry.cmd))) continue;
-                Log.Debug("Linux audio: found {Command}", entry.cmd);
                 return entry;
             }
             return null;

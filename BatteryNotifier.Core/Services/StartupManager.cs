@@ -141,31 +141,9 @@ public static class StartupManager
 
     private static void ExecuteCommand(string command, params string[] args)
     {
-        try
-        {
-            using var process = new System.Diagnostics.Process
-            {
-                StartInfo = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = Constants.ResolveCommand(command),
-                    UseShellExecute = false,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    CreateNoWindow = true
-                }
-            };
-            // Use ArgumentList to prevent shell injection via crafted file paths
-            foreach (var arg in args)
-                process.StartInfo.ArgumentList.Add(arg);
-
-            process.Start();
-            if (!process.WaitForExit(Constants.ProcessTimeoutMs) && !process.HasExited)
-                process.Kill();
-        }
-        catch (Exception ex)
-        {
-            Logger.Error(ex, "Failed to execute command: {Command}", command);
-        }
+        var output = Utils.ProcessRunner.Run(command, args);
+        if (string.IsNullOrEmpty(output))
+            Logger.Debug("Executed {Command} (no output)", command);
     }
 
     private static string GetUid()

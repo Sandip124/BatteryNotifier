@@ -1,6 +1,4 @@
 using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -58,7 +56,7 @@ public partial class AboutWindow : Window
                         UpdateStatusText.Text = $"Update available: v{result.Release.TagName?.TrimStart('v')}";
                         UpdateStatusText.Foreground = global::Avalonia.Media.Brushes.DodgerBlue;
                         UpdateStatusText.Cursor = new Cursor(StandardCursorType.Hand);
-                        UpdateStatusText.PointerPressed += (_, _) => OpenUrl(result.Release.HtmlUrl);
+                        UpdateStatusText.PointerPressed += (_, _) => Services.PlatformHelper.OpenUrl(result.Release.HtmlUrl);
                         break;
                     case CheckStatus.UpToDate:
                         UpdateStatusText.Text = "You're on the latest version";
@@ -94,26 +92,6 @@ public partial class AboutWindow : Window
 
     private static void OnViewSource(object? sender, RoutedEventArgs e)
     {
-        OpenUrl(Constants.SourceRepositoryUrl);
-    }
-
-    private static void OpenUrl(string url)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var psi = new ProcessStartInfo(Constants.ResolveCommand("open")) { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        else
-        {
-            var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
+        Services.PlatformHelper.OpenUrl(Constants.SourceRepositoryUrl);
     }
 }

@@ -835,7 +835,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 switch (result.Status)
                 {
                     case CheckStatus.UpdateAvailable when result.Release != null:
-                        OpenUrlInBrowser(result.Release.HtmlUrl);
+                        Services.PlatformHelper.OpenUrl(result.Release.HtmlUrl);
                         break;
 
                     case CheckStatus.UpToDate:
@@ -861,25 +861,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private static void OpenUrlInBrowser(string url)
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            var psi = new ProcessStartInfo(Constants.ResolveCommand("open")) { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            using var p = Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-        }
-        else
-        {
-            var psi = new ProcessStartInfo(Constants.ResolveCommand("xdg-open")) { UseShellExecute = false };
-            psi.ArgumentList.Add(url);
-            using var p = Process.Start(psi);
-        }
-    }
+
 
     private void NavigateToSettings()
     {
