@@ -353,23 +353,59 @@ jobs:
           token: ${{ secrets.WINGET_TOKEN }}
           release-tag: ${{ github.ref_name }}
 
-  # ── Homebrew: update formula in personal tap ──
+  # ── Homebrew: update cask in personal tap ──
   homebrew:
     needs: release
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
 
     steps:
-      - name: Update Homebrew formula
-        uses: Justintime50/homebrew-releaser@8723315045b3b879065d4ce3e8ff143e6b958529 # v1
+      - name: Checkout tap
+        uses: actions/checkout@v4
         with:
-          homebrew_owner: Sandip124
-          homebrew_tap: homebrew-tap
-          formula_folder: Casks
-          github_token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          commit_owner: Sandip Choudhary
-          commit_email: ${{ secrets.GIT_EMAIL }}
-          install: 'prefix.install Dir["*"]'
-          target_darwin_amd64: true
-          target_darwin_arm64: true
-          update_readme_table: true
+          repository: Sandip124/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Update cask version and SHA
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          # Strip leading 'v' from tag
+          VERSION="${VERSION#v}"
+          ASSET_URL="https://github.com/Sandip124/BatteryNotifier/releases/download/v${VERSION}/BatteryNotifier-osx-arm64.tar.gz"
+          SHA256=$(curl -sL "$ASSET_URL" | shasum -a 256 | awk '{print $1}')
+
+          cat > Casks/battery-notifier.rb << CASK
+          cask "battery-notifier" do
+            version "${VERSION}"
+            sha256 "${SHA256}"
+
+            url "https://github.com/Sandip124/BatteryNotifier/releases/download/v#{version}/BatteryNotifier-osx-arm64.tar.gz"
+            name "BatteryNotifier"
+            desc "Cross-platform battery monitoring and notification app"
+            homepage "https://github.com/Sandip124/BatteryNotifier"
+
+            depends_on macos: ">= :ventura"
+
+            binary "BatteryNotifier"
+
+            zap trash: [
+              "~/Library/Application Support/BatteryNotifier",
+              "~/Library/LaunchAgents/com.batterynotifier.plist",
+            ]
+          end
+          CASK
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' Casks/battery-notifier.rb
+
+      - name: Commit and push
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          git config user.name "Sandip Choudhary"
+          git config user.email "${{ secrets.GIT_EMAIL }}"
+          git add Casks/battery-notifier.rb
+          git diff --staged --quiet && echo "No changes" && exit 0
+          git commit -m "Update BatteryNotifier to ${VERSION#v}"
+          git push
