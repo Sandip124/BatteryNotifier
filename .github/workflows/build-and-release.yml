@@ -249,7 +249,7 @@ jobs:
           esac
 
           # Install appimagetool
-          curl -sL "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o appimagetool
+          curl -sL --proto =https "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage" -o appimagetool
           chmod +x appimagetool
 
           # Assemble AppDir
@@ -413,7 +413,7 @@ jobs:
           # Strip leading 'v' from tag
           VERSION="${VERSION#v}"
           ASSET_URL="https://github.com/Sandip124/BatteryNotifier/releases/download/v${VERSION}/BatteryNotifier-osx-arm64.tar.gz"
-          SHA256=$(curl -sL "$ASSET_URL" | shasum -a 256 | awk '{print $1}')
+          SHA256=$(curl -sL --proto =https "$ASSET_URL" | shasum -a 256 | awk '{print $1}')
 
           cat > Casks/battery-notifier.rb << CASK
           cask "battery-notifier" do
@@ -442,9 +442,10 @@ jobs:
       - name: Commit and push
         env:
           VERSION: ${{ github.ref_name }}
+          GIT_EMAIL: ${{ secrets.GIT_EMAIL }}
         run: |
           git config user.name "Sandip Choudhary"
-          git config user.email "${{ secrets.GIT_EMAIL }}"
+          git config user.email "$GIT_EMAIL"
           git add Casks/battery-notifier.rb
           git diff --staged --quiet && echo "No changes" && exit 0
           git commit -m "Update BatteryNotifier to ${VERSION#v}"
