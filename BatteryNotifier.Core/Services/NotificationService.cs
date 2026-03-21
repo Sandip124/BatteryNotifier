@@ -132,6 +132,9 @@ public sealed class NotificationService : IDisposable
                 _trackers[tag] = tracker;
             }
 
+            // Critical notifications bypass backoff and silencing entirely
+            var isCritical = notification.Priority >= NotificationPriority.Critical;
+
             // Auto-recover after RecoveryInterval (Duolingo "recovering arm" concept)
             if (tracker.IsSilenced && (DateTime.UtcNow - tracker.LastNotificationTime) >= RecoveryInterval)
             {
@@ -139,7 +142,7 @@ public sealed class NotificationService : IDisposable
                 tracker.IsSilenced = false;
             }
 
-            if (tracker.IsSilenced)
+            if (tracker.IsSilenced && !isCritical)
             {
                 Logger.Debug("Notification silenced for tag {Tag} (reached max {Max} notifications, will recover after {Recovery})",
                     tag, MaxNotificationsBeforeSilence, RecoveryInterval);
@@ -151,7 +154,7 @@ public sealed class NotificationService : IDisposable
             var requiredDelay = BackoffIntervals[backoffIndex];
             var elapsed = DateTime.UtcNow - tracker.LastNotificationTime;
 
-            if (tracker.Count > 0 && elapsed < requiredDelay)
+            if (tracker.Count > 0 && elapsed < requiredDelay && !isCritical)
             {
                 Logger.Debug("Notification for tag {Tag} held back by backoff (elapsed {Elapsed}, required {Required})",
                     tag, elapsed, requiredDelay);
