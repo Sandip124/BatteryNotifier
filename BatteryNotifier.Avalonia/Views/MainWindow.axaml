@@ -126,7 +126,7 @@
                                 IsVisible="{Binding IsDndActive}"
                                 CornerRadius="8" Padding="10,7"
                                 Margin="0,0,0,6"
-                                Background="#2E1976D2">
+                                Background="{StaticResource BannerDndBrush}">
                             <Grid ColumnDefinitions="Auto,8,*">
                                 <PathIcon Grid.Column="0"
                                           Data="{StaticResource Icon.BellSlash}"
@@ -147,17 +147,17 @@
                                 IsVisible="{Binding ShowPausedBanner}"
                                 CornerRadius="8" Padding="10,7"
                                 Margin="0,0,0,6"
-                                Background="#2EFF9800">
+                                Background="{StaticResource BannerPausedBrush}">
                             <Grid ColumnDefinitions="Auto,8,*,8,Auto">
                                 <PathIcon Grid.Column="0"
                                           Data="{StaticResource Icon.BellSlash}"
                                           Width="14" Height="14"
-                                          Foreground="#FF9800"
+                                          Foreground="{StaticResource StatusAmberBrush}"
                                           VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2"
                                            Text="Notifications paused · auto-resumes in 2h"
                                            FontSize="11.5"
-                                           Foreground="#FF9800"
+                                           Foreground="{StaticResource StatusAmberBrush}"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="4"
                                         Command="{Binding ResumeNotificationsCommand}"
@@ -165,7 +165,7 @@
                                         Padding="8,3" FontSize="10"
                                         VerticalAlignment="Center"
                                         ToolTip.Tip="Resume notifications">
-                                    <TextBlock Text="Resume" Foreground="#FF9800" FontWeight="SemiBold" />
+                                    <TextBlock Text="Resume" Foreground="{StaticResource StatusAmberBrush}" FontWeight="SemiBold" />
                                 </Button>
                             </Grid>
                         </Border>

@@ -468,6 +468,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             var health = BatteryHealthService.Instance.LatestHealth;
             if (health == null) return "Checking...";
+            if (health.IsRapidDrain) return "Draining Fast";
             return health.HealthStatus switch
             {
                 MetricStatus.Good => "Healthy",
@@ -501,6 +502,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         get
         {
             var health = BatteryHealthService.Instance.LatestHealth;
+            if (health?.IsRapidDrain == true)
+                return _iconWarn ??= ResolveIcon("Icon.ExclamationMarkFill");
             return health?.HealthStatus switch
             {
                 MetricStatus.Good => _iconCheck ??= ResolveIcon("Icon.CheckFat"),
@@ -516,6 +519,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         get
         {
             var health = BatteryHealthService.Instance.LatestHealth;
+            if (health?.IsRapidDrain == true) return "#FF1744";
             return health?.HealthStatus switch
             {
                 MetricStatus.Good => "#388E3C",

@@ -185,6 +185,11 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         ChargingStatusDisplay = IsCharging ? "Charging" : "Discharging";
         ChargeTimeEstimate = ComputeChargeTimeEstimate(store, cached);
         RecommendationMessage = cached.RecommendationMessage;
+
+        IsRapidDrain = cached.IsRapidDrain;
+        DrainRateDisplay = cached.DrainRatePerMinute.HasValue
+            ? $"{cached.DrainRatePerMinute:F1}%/min"
+            : null;
     }
 
     private void UpdateStatusValues(BatteryHealthInfo cached)
@@ -289,6 +294,18 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
     } = "...";
 
     public bool IsCharging
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public bool IsRapidDrain
+    {
+        get;
+        private set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    public string? DrainRateDisplay
     {
         get;
         private set => this.RaiseAndSetIfChanged(ref field, value);

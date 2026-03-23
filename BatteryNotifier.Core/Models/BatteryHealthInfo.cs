@@ -17,6 +17,12 @@ public sealed class BatteryHealthInfo
     /// </summary>
     public bool CannotSustainLoad { get; set; }
 
+    /// <summary>Current drain rate in percent-per-minute. Positive = draining. Null if charging or insufficient data.</summary>
+    public double? DrainRatePerMinute { get; set; }
+
+    /// <summary>True when battery is draining abnormally fast (>3%/min).</summary>
+    public bool IsRapidDrain { get; set; }
+
     public MetricStatus HealthStatus
     {
         get

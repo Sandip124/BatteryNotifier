@@ -54,6 +54,7 @@ public static class Constants
 
     public const string LowBatteryTag = "LowBattery";
     public const string FullBatteryTag = "FullBattery";
+    public const string RapidDrainTag = "RapidDrain";
 
     /// <summary>App data directory (settings, custom sounds, logs).</summary>
     public static string AppDataDirectory => Path.Combine(

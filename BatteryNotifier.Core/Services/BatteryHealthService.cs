@@ -69,10 +69,13 @@ public sealed class BatteryHealthService : IDisposable
         }
     }
 
+    private volatile bool _rapidDrainNotified;
+
     private void FetchAndPublish()
     {
         var info = FetchHealthInfo();
         DetectCannotSustainLoad(info);
+        AnalyzeDrainRate(info);
         LatestHealth = info;
         HealthUpdated?.Invoke(this, info);
     }
@@ -81,9 +84,52 @@ public sealed class BatteryHealthService : IDisposable
     {
         var info = FetchHealthInfo();
         DetectCannotSustainLoad(info);
+        AnalyzeDrainRate(info);
         LatestHealth = info;
         HealthUpdated?.Invoke(this, info);
         return info;
+    }
+
+    private void AnalyzeDrainRate(BatteryHealthInfo info)
+    {
+        var store = Store.BatteryManagerStore.Instance;
+        if (store.IsPluggedIn || store.HasNoBattery || store.IsUnknown)
+        {
+            _rapidDrainNotified = false;
+            return;
+        }
+
+        var history = BatteryHistoryService.Instance.GetChargeHistory();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        info.DrainRatePerMinute = DrainRateAnalyzer.CalculateDrainRate(history, now);
+        info.IsRapidDrain = DrainRateAnalyzer.IsRapidDrain(info.DrainRatePerMinute);
+
+        if (info.IsRapidDrain && !_rapidDrainNotified)
+        {
+            _rapidDrainNotified = true;
+            PublishRapidDrainWarning(info.DrainRatePerMinute!.Value, (int)store.BatteryLifePercent);
+        }
+        else if (!info.IsRapidDrain)
+        {
+            _rapidDrainNotified = false;
+        }
+    }
+
+    private static void PublishRapidDrainWarning(double ratePerMinute, int currentLevel)
+    {
+        var minutesLeft = ratePerMinute > 0 ? (int)(currentLevel / ratePerMinute) : 0;
+        var timeWarning = minutesLeft > 0 ? $" At this rate, battery will be empty in ~{minutesLeft}min." : "";
+
+        Logger.Warning("Rapid battery drain detected: {Rate}%/min at {Level}%", ratePerMinute, currentLevel);
+
+        NotificationService.Instance.PublishNotification(new NotificationMessageEventArgs
+        {
+            Message = $"Battery draining rapidly ({ratePerMinute:F1}%/min, {currentLevel}% remaining).{timeWarning} Check for power-hungry apps.",
+            Type = NotificationType.Global,
+            Duration = Constants.DefaultNotificationTimeout,
+            Tag = Constants.RapidDrainTag,
+            Priority = currentLevel <= 20 ? NotificationPriority.Critical : NotificationPriority.Normal
+        });
     }
 
     /// <summary>

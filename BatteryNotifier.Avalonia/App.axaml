@@ -48,6 +48,11 @@
                         <GradientStop Color="#08FFFFFF" Offset="1" />
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#0C0C0C</Color>
+                    <!-- Banner colors (dark) -->
+                    <SolidColorBrush x:Key="BannerCriticalBg" Color="#20EF5350" />
+                    <SolidColorBrush x:Key="BannerCriticalBorder" Color="#EF5350" />
+                    <SolidColorBrush x:Key="BannerCriticalText" Color="#EF9A9A" />
+                    <SolidColorBrush x:Key="BannerCriticalBodyText" Color="#B0B0B0" />
 
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
@@ -68,6 +73,11 @@
                         <GradientStop Color="#08FFFFFF" Offset="1" />
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#0C0C0C</Color>
+                    <!-- Banner colors (dark) -->
+                    <SolidColorBrush x:Key="BannerCriticalBg" Color="#20EF5350" />
+                    <SolidColorBrush x:Key="BannerCriticalBorder" Color="#EF5350" />
+                    <SolidColorBrush x:Key="BannerCriticalText" Color="#EF9A9A" />
+                    <SolidColorBrush x:Key="BannerCriticalBodyText" Color="#B0B0B0" />
 
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
@@ -88,12 +98,49 @@
                         <GradientStop Color="#25000000" Offset="1" />
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#F5F5F5</Color>
+                    <!-- Banner colors (light) -->
+                    <SolidColorBrush x:Key="BannerCriticalBg" Color="#18D32F2F" />
+                    <SolidColorBrush x:Key="BannerCriticalBorder" Color="#D32F2F" />
+                    <SolidColorBrush x:Key="BannerCriticalText" Color="#C62828" />
+                    <SolidColorBrush x:Key="BannerCriticalBodyText" Color="#424242" />
 
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 
             <!-- Override ToggleSwitch min width to remove right padding -->
             <x:Double x:Key="ToggleSwitchThemeMinWidth">40</x:Double>
+
+            <!-- Semantic status colors (same in both themes) -->
+            <Color x:Key="StatusGreen">#388E3C</Color>
+            <Color x:Key="StatusAmber">#F57A00</Color>
+            <Color x:Key="StatusRed">#D32F2F</Color>
+            <Color x:Key="StatusCriticalRed">#FF1744</Color>
+            <Color x:Key="StatusBlue">#0288D1</Color>
+            <Color x:Key="StatusMuted">#8A8A8A</Color>
+
+            <!-- Accent colors for specific UI elements -->
+            <Color x:Key="AccentBrightGreen">#00E676</Color>
+            <Color x:Key="AccentBrightAmber">#FFAB00</Color>
+            <Color x:Key="AccentBrightRed">#FF1744</Color>
+            <Color x:Key="AccentFire">#F4511E</Color>
+            <Color x:Key="AccentPower">#FB8C00</Color>
+            <Color x:Key="AccentLightbulb">#FBC02D</Color>
+
+            <!-- Banner backgrounds (tinted, semi-transparent) -->
+            <Color x:Key="BannerDndBackground">#2E1976D2</Color>
+            <Color x:Key="BannerPausedBackground">#2EFF9800</Color>
+            <Color x:Key="BannerCriticalBackground">#30FF1744</Color>
+
+            <SolidColorBrush x:Key="BannerDndBrush" Color="{StaticResource BannerDndBackground}" />
+            <SolidColorBrush x:Key="BannerPausedBrush" Color="{StaticResource BannerPausedBackground}" />
+            <SolidColorBrush x:Key="BannerCriticalBrush" Color="{StaticResource BannerCriticalBackground}" />
+            <SolidColorBrush x:Key="StatusGreenBrush" Color="{StaticResource StatusGreen}" />
+            <SolidColorBrush x:Key="StatusAmberBrush" Color="{StaticResource StatusAmber}" />
+            <SolidColorBrush x:Key="StatusRedBrush" Color="{StaticResource StatusRed}" />
+            <SolidColorBrush x:Key="StatusCriticalRedBrush" Color="{StaticResource AccentBrightRed}" />
+            <SolidColorBrush x:Key="AccentFireBrush" Color="{StaticResource AccentFire}" />
+            <SolidColorBrush x:Key="AccentPowerBrush" Color="{StaticResource AccentPower}" />
+            <SolidColorBrush x:Key="AccentLightbulbBrush" Color="{StaticResource AccentLightbulb}" />
         </ResourceDictionary>
 
         <ControlTheme x:Key="PrimaryButton" TargetType="Button">
