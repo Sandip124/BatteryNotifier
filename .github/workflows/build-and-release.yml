@@ -88,6 +88,29 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      # ── macOS: Assemble .app bundle ──
+      - name: Assemble macOS .app bundle
+        if: contains(matrix.rid, 'osx')
+        run: |
+          APP_BUNDLE="./publish/${{ env.APP_NAME }}.app"
+          PUBLISH="./publish/${{ matrix.artifact }}"
+
+          mkdir -p "$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$APP_BUNDLE/Contents/Resources"
+
+          # Copy all published files into Contents/MacOS
+          cp -R "$PUBLISH"/* "$APP_BUNDLE/Contents/MacOS/"
+
+          # Move Info.plist to Contents/ (standard .app layout)
+          mv "$APP_BUNDLE/Contents/MacOS/Info.plist" "$APP_BUNDLE/Contents/Info.plist"
+
+          # Move icon to Resources/
+          mv "$APP_BUNDLE/Contents/MacOS/battery-notifier-logo.icns" "$APP_BUNDLE/Contents/Resources/battery-notifier-logo.icns"
+
+          # Ensure required .app plist keys are present
+          /usr/libexec/PlistBuddy -c "Add :CFBundleExecutable string BatteryNotifier" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :CFBundlePackageType string APPL" "$APP_BUNDLE/Contents/Info.plist" 2>/dev/null || true
+
       # ── Windows: Sign executable ──
       - name: Sign Windows executable
         if: startsWith(matrix.rid, 'win-') && startsWith(github.ref, 'refs/tags/v')
@@ -123,7 +146,7 @@ jobs:
           }
 
       # ── macOS: Sign and notarize ──
-      - name: Sign macOS binary
+      - name: Sign macOS .app bundle
         if: contains(matrix.rid, 'osx') && startsWith(github.ref, 'refs/tags/v')
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
@@ -131,6 +154,7 @@ jobs:
           MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
           MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
         run: |
+          APP_BUNDLE="./publish/${{ env.APP_NAME }}.app"
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           P12_PATH=$RUNNER_TEMP/certificate.p12
 
@@ -158,35 +182,39 @@ jobs:
             -s -k "$MACOS_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH"
 
-          # Find and validate binary
-          BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
-          if [ -z "$BINARY" ]; then echo "ERROR: Binary not found in publish output"; exit 1; fi
+          if [ ! -d "$APP_BUNDLE" ]; then echo "ERROR: .app bundle not found"; exit 1; fi
 
-          # Sign the binary
+          # Sign native libraries first (no entitlements)
+          find "$APP_BUNDLE" \( -name "*.dylib" -o -name "*.so" \) -exec \
+            codesign --force --options runtime --timestamp \
+              --sign "$MACOS_SIGNING_IDENTITY" {} \;
+
+          # Sign the .app bundle (applies entitlements to main executable)
           codesign --force --options runtime --timestamp \
             --entitlements BatteryNotifier.Avalonia/Entitlements.plist \
-            --sign "$MACOS_SIGNING_IDENTITY" "$BINARY"
+            --sign "$MACOS_SIGNING_IDENTITY" "$APP_BUNDLE"
 
           # Verify signature
-          codesign --verify --deep --strict "$BINARY"
+          codesign --verify --deep --strict "$APP_BUNDLE"
 
-      - name: Notarize macOS binary
+      - name: Notarize macOS .app bundle
         if: contains(matrix.rid, 'osx') && startsWith(github.ref, 'refs/tags/v')
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
         run: |
+          APP_BUNDLE="./publish/${{ env.APP_NAME }}.app"
+
           if [ -z "$APPLE_ID" ]; then
             echo "Skipping notarization — APPLE_ID secret not configured"
             exit 0
           fi
 
-          BINARY=$(find ./publish/${{ matrix.artifact }} -name "BatteryNotifier" -type f | head -1)
-          if [ -z "$BINARY" ]; then echo "ERROR: Binary not found in publish output"; exit 1; fi
+          if [ ! -d "$APP_BUNDLE" ]; then echo "ERROR: .app bundle not found"; exit 1; fi
 
           # Create ZIP for notarization
-          ditto -c -k --keepParent "$BINARY" $RUNNER_TEMP/notarize.zip
+          ditto -c -k --keepParent "$APP_BUNDLE" $RUNNER_TEMP/notarize.zip
 
           # Submit for notarization
           xcrun notarytool submit $RUNNER_TEMP/notarize.zip \
@@ -196,7 +224,7 @@ jobs:
             --wait
 
           # Staple the notarization ticket
-          xcrun stapler staple "$BINARY" || true
+          xcrun stapler staple "$APP_BUNDLE" || true
 
           # Cleanup
           rm -f $RUNNER_TEMP/notarize.zip
@@ -283,8 +311,12 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path "./publish/${{ matrix.artifact }}/*" -DestinationPath "./publish/${{ matrix.artifact }}.zip"
 
-      - name: Create macOS/Linux tarball
-        if: "!startsWith(matrix.rid, 'win-')"
+      - name: Create macOS ZIP (.app bundle)
+        if: contains(matrix.rid, 'osx')
+        run: ditto -c -k --keepParent "./publish/${{ env.APP_NAME }}.app" "./publish/${{ matrix.artifact }}.zip"
+
+      - name: Create Linux tarball
+        if: contains(matrix.rid, 'linux-')
         run: tar -czf ./publish/${{ matrix.artifact }}.tar.gz -C ./publish/${{ matrix.artifact }} .
 
       - name: Upload portable artifact
@@ -371,12 +403,12 @@ jobs:
             exit 1
           fi
 
-          # Create draft release with auto-generated notes
+          # Create release (not marked as latest — promote manually after review)
           gh release create "$TAG" "${FILES[@]}" \
             --repo "${{ github.repository }}" \
             --title "$TAG" \
             --generate-notes \
-            --draft
+            --latest=false
 
   # ── Winget: auto-submit package to microsoft/winget-pkgs ──
   winget:
@@ -389,7 +421,7 @@ jobs:
         uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
         with:
           identifier: Sandip124.BatteryNotifier
-          installers-regex: 'Setup-win-x64\.exe$'
+          installers-regex: 'Setup-win-(x64|arm64)\.exe$'
           token: ${{ secrets.WINGET_TOKEN }}
           release-tag: ${{ github.ref_name }}
 
@@ -412,22 +444,26 @@ jobs:
         run: |
           # Strip leading 'v' from tag
           VERSION="${VERSION#v}"
-          ASSET_URL="https://github.com/Sandip124/BatteryNotifier/releases/download/v${VERSION}/BatteryNotifier-osx-arm64.tar.gz"
-          SHA256=$(curl -sL --proto =https "$ASSET_URL" | shasum -a 256 | awk '{print $1}')
+          ASSET_URL="https://github.com/Sandip124/BatteryNotifier/releases/download/v${VERSION}/BatteryNotifier-osx-arm64.zip"
+
+          # Download asset to file (-f fails on HTTP errors instead of hashing error pages)
+          curl -sfL --proto =https "$ASSET_URL" -o /tmp/macos-asset.zip
+          SHA256=$(shasum -a 256 /tmp/macos-asset.zip | awk '{print $1}')
+          rm -f /tmp/macos-asset.zip
 
           cat > Casks/battery-notifier.rb << CASK
           cask "battery-notifier" do
             version "${VERSION}"
             sha256 "${SHA256}"
 
-            url "https://github.com/Sandip124/BatteryNotifier/releases/download/v#{version}/BatteryNotifier-osx-arm64.tar.gz"
+            url "https://github.com/Sandip124/BatteryNotifier/releases/download/v#{version}/BatteryNotifier-osx-arm64.zip"
             name "BatteryNotifier"
             desc "Cross-platform battery monitoring and notification app"
             homepage "https://github.com/Sandip124/BatteryNotifier"
 
             depends_on macos: ">= :ventura"
 
-            binary "BatteryNotifier"
+            app "BatteryNotifier.app"
 
             zap trash: [
               "~/Library/Application Support/BatteryNotifier",

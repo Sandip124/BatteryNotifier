@@ -4,6 +4,10 @@
 <dict>
 	<key>CFBundleName</key>
 	<string>BatteryNotifier</string>
+	<key>CFBundleExecutable</key>
+	<string>BatteryNotifier</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.batterynotifier.app</string>
 	<key>CFBundleVersion</key>
