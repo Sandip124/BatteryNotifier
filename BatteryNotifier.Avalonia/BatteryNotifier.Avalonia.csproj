@@ -10,7 +10,7 @@
         <ApplicationIcon>Assets\battery-notifier-logo.ico</ApplicationIcon>
         <AssemblyName>BatteryNotifier</AssemblyName>
         <Product>BatteryNotifier</Product>
-        <Version>4.2.0</Version>
+        <Version>4.2.1</Version>
         <AssemblyVersion>$(Version).0</AssemblyVersion>
         <FileVersion>$(Version).0</FileVersion>
         <Company>Sandip Choudhary</Company>
