@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Providers;
 using BatteryNotifier.Core.Store;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Core.Services;
@@ -307,8 +308,6 @@ public sealed class BatteryMonitorService : IDisposable
 
     private static bool ShouldSuppressNotifications(BatteryInfo status)
     {
-        // On macOS, when an external display is connected the charger must remain
-        // plugged in. Battery notifications are noise in this scenario.
         if (!OperatingSystem.IsMacOS()) return false;
         if (status.PowerLineStatus != BatteryPowerLineStatus.Online) return false;
 
@@ -319,34 +318,19 @@ public sealed class BatteryMonitorService : IDisposable
     {
         try
         {
-            using var process = new System.Diagnostics.Process();
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = Constants.ResolveCommand("system_profiler"),
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-            psi.ArgumentList.Add("SPDisplaysDataType");
-            process.StartInfo = psi;
-            process.Start();
-            var output = process.StandardOutput.ReadToEnd();
-            if (!process.WaitForExit(Constants.ProcessTimeoutMs))
-            {
-                if (!process.HasExited) process.Kill();
-                return false;
-            }
+            var output = ProcessRunner.Run("system_profiler", "SPDisplaysDataType");
+            if (string.IsNullOrWhiteSpace(output)) return false;
 
-            // Count "Resolution:" lines — each physical display has one
-            int displayCount = 0;
-            foreach (var line in output.Split('\n'))
-            {
-                var trimmed = line.TrimStart().StartsWith("Resolution:", StringComparison.OrdinalIgnoreCase);
-                if (trimmed)
-                    displayCount++;
-            }
+            var lines = output.Split('\n');
+            int displayCount = lines.Count(l =>
+                l.TrimStart().StartsWith("Resolution:", StringComparison.OrdinalIgnoreCase));
 
-            return displayCount > 1;
+            if (displayCount == 0) return false;
+
+            bool hasBuiltIn = output.Contains("Built-in", StringComparison.OrdinalIgnoreCase)
+                           || output.Contains("Color LCD", StringComparison.OrdinalIgnoreCase);
+
+            return displayCount > 1 || (displayCount == 1 && !hasBuiltIn);
         }
         catch
         {

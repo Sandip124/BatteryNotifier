@@ -179,7 +179,7 @@ internal sealed class TrayIconService : IDisposable
             mainWindow.Activate();
     }
 
-    private static void OnShowHideWindow(object? sender, EventArgs e)
+    private void OnShowHideWindow(object? sender, EventArgs e)
     {
         // Use _wasVisibleBeforeMenu to determine intent — on macOS, opening the menu
         // deactivates the window, so we can't rely on IsActive at menu-click time.
@@ -193,7 +193,7 @@ internal sealed class TrayIconService : IDisposable
     /// Tracks whether the window was visible before the tray menu opened.
     /// On macOS, opening the tray menu deactivates the window, making IsActive unreliable.
     /// </summary>
-    private static bool _wasVisibleBeforeMenu;
+    private bool _wasVisibleBeforeMenu;
 
     private void UpdateShowHideMenuLabel()
     {
