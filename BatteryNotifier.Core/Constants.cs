@@ -50,7 +50,7 @@ public static class Constants
     public const int ProcessTimeoutMs = 5000;
 
     /// <summary>Max characters to read from subprocess stdout to prevent OOM.</summary>
-    public const int MaxProcessOutputLength = 16384;
+    public const int MaxProcessOutputLength = 32768;
 
     public const string LowBatteryTag = "LowBattery";
     public const string FullBatteryTag = "FullBattery";
