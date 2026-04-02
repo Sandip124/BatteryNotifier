@@ -343,6 +343,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      osx-arm64-sha256: ${{ steps.checksums.outputs.osx-arm64-sha256 }}
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -353,10 +355,18 @@ jobs:
           path: ./artifacts
 
       - name: Generate checksums
+        id: checksums
         run: |
           cd artifacts
           find . -type f \( -name "*.zip" -o -name "*.tar.gz" -o -name "*.exe" -o -name "*.pkg" -o -name "*.AppImage" -o -name "*.nupkg" \) -exec sha256sum {} \; > checksums-sha256.txt
           cat checksums-sha256.txt
+          # Extract macOS arm64 zip SHA for homebrew tap
+          OSX_SHA=$(grep 'BatteryNotifier-osx-arm64/BatteryNotifier-osx-arm64\.zip' checksums-sha256.txt | awk '{print $1}')
+          if [ -z "$OSX_SHA" ]; then
+            echo "::error::Could not find macOS arm64 zip checksum"
+            exit 1
+          fi
+          echo "osx-arm64-sha256=$OSX_SHA" >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         env:
@@ -441,15 +451,10 @@ jobs:
       - name: Update cask version and SHA
         env:
           VERSION: ${{ github.ref_name }}
+          SHA256: ${{ needs.release.outputs.osx-arm64-sha256 }}
         run: |
           # Strip leading 'v' from tag
           VERSION="${VERSION#v}"
-          ASSET_URL="https://github.com/Sandip124/BatteryNotifier/releases/download/v${VERSION}/BatteryNotifier-osx-arm64.zip"
-
-          # Download asset to file (-f fails on HTTP errors instead of hashing error pages)
-          curl -sfL --proto =https "$ASSET_URL" -o /tmp/macos-asset.zip
-          SHA256=$(shasum -a 256 /tmp/macos-asset.zip | awk '{print $1}')
-          rm -f /tmp/macos-asset.zip
 
           cat > Casks/battery-notifier.rb << CASK
           cask "battery-notifier" do
