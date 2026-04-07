@@ -242,9 +242,19 @@ internal sealed class TrayIconService : IDisposable
             mainWindow.WindowState = WindowState.Normal;
     }
 
+    private static AboutWindow? _openAboutWindow;
+
     private static void OnOpenAbout(object? sender, EventArgs e)
     {
+        if (_openAboutWindow is { } existing)
+        {
+            existing.Activate();
+            return;
+        }
+
         var aboutWindow = new AboutWindow();
+        aboutWindow.Closed += (_, _) => _openAboutWindow = null;
+        _openAboutWindow = aboutWindow;
         aboutWindow.ShowStandalone();
     }
 
