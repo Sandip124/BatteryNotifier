@@ -113,17 +113,6 @@ public sealed class NotificationDisplayService
         ShowCard(title, notification.Message, level, ColorToHex(color));
     }
 
-    public void ShowSimpleNotification(string title, string message)
-    {
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            Dispatcher.UIThread.Post(() => ShowSimpleNotification(title, message));
-            return;
-        }
-
-        ShowCard(title, message, -1, "#1976D2");
-    }
-
     private static string DetermineTitle(string? tag) => tag switch
     {
         Constants.LowBatteryTag => "Low Battery",

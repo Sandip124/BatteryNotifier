@@ -258,15 +258,11 @@ internal sealed class TrayIconService : IDisposable
         aboutWindow.ShowStandalone();
     }
 
-    private void OnUpdateAvailable(object? sender, UpdateAvailableEventArgs e)
+    private static void OnUpdateAvailable(object? sender, UpdateAvailableEventArgs e)
     {
-        // Event fires from a threadpool thread — marshal to UI thread for tray access
-        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            var safeTag = PlatformHelper.SanitizeExternalText(e.Release.TagName);
-            _displayService?.ShowSimpleNotification("Update Available",
-                $"BatteryNotifier {safeTag} is available. Click 'Check for Updates' to install.");
-        });
+        var safeTag = PlatformHelper.SanitizeExternalText(e.Release.TagName);
+        InlineNotificationManager.Instance.Show(
+            $"Update available: BatteryNotifier {safeTag}. Click 'Check for Updates' to install.", durationMs: 8000);
     }
 
     private async void OnCheckForUpdates(object? sender, EventArgs e)
@@ -282,29 +278,34 @@ internal sealed class TrayIconService : IDisposable
                 if (result.Status == CheckStatus.UpdateAvailable && result.Release != null)
                     PlatformHelper.OpenUrl(result.Release.HtmlUrl);
                 else if (result.Status == CheckStatus.UpToDate)
-                    _displayService?.ShowSimpleNotification("No Updates",
-                        $"You're running the latest version ({Constants.ApplicationVersion}).");
+                    InlineNotificationManager.Instance.Show(
+                        $"You're running the latest version ({Constants.ApplicationVersion}).",
+                        InlineNotificationLevel.Success);
                 else if (result.Status == CheckStatus.Failed)
-                    _displayService?.ShowSimpleNotification("Update Check Failed",
-                        "Could not reach GitHub. Check your internet connection.");
+                    InlineNotificationManager.Instance.Show(
+                        "Could not reach GitHub. Check your internet connection.",
+                        InlineNotificationLevel.Error);
                 return;
             }
 
             var updateInfo = await mgr.CheckForUpdatesAsync();
             if (updateInfo == null)
             {
-                _displayService?.ShowSimpleNotification("No Updates",
-                    $"You're running the latest version ({Constants.ApplicationVersion}).");
+                InlineNotificationManager.Instance.Show(
+                    $"You're running the latest version ({Constants.ApplicationVersion}).",
+                    InlineNotificationLevel.Success);
                 return;
             }
 
-            _displayService?.ShowSimpleNotification("Downloading Update",
-                $"Downloading BatteryNotifier {updateInfo.TargetFullRelease.Version}...");
+            InlineNotificationManager.Instance.Show(
+                $"Downloading BatteryNotifier {updateInfo.TargetFullRelease.Version}...",
+                InlineNotificationLevel.Info, durationMs: 30000);
 
             await mgr.DownloadUpdatesAsync(updateInfo);
 
-            _displayService?.ShowSimpleNotification("Update Ready",
-                $"BatteryNotifier {updateInfo.TargetFullRelease.Version} downloaded. Restarting...");
+            InlineNotificationManager.Instance.Show(
+                $"BatteryNotifier {updateInfo.TargetFullRelease.Version} downloaded. Restarting...",
+                InlineNotificationLevel.Success, durationMs: 5000);
 
             // Brief delay so user can see the notification
             await Task.Delay(2000);
@@ -314,8 +315,9 @@ internal sealed class TrayIconService : IDisposable
         catch (Exception ex)
         {
             _logger.Error(ex, "Update check/download failed");
-            _displayService?.ShowSimpleNotification("Update Check Failed",
-                "An unexpected error occurred. Check your internet connection.");
+            InlineNotificationManager.Instance.Show(
+                "Update check failed. Check your internet connection.",
+                InlineNotificationLevel.Error);
         }
     }
 
