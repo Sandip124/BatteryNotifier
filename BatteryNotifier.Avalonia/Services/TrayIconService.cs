@@ -100,6 +100,9 @@ internal sealed class TrayIconService : IDisposable
                 _notificationManager = new NotificationManager(new SoundManager());
                 _displayService = new NotificationDisplayService();
                 _displayService.SetNotificationManager(_notificationManager);
+
+                // Auto-dismiss the on-screen alert when the charger is plugged/unplugged.
+                BatteryMonitorService.Instance.PowerLineStatusChanged += OnPowerLineStatusChanged;
             }
             catch (Exception serviceEx)
             {
@@ -159,6 +162,11 @@ internal sealed class TrayIconService : IDisposable
     private void OnNotificationReceived(object? sender, NotificationMessageEventArgs notification)
     {
         _displayService?.DeliverNotification(notification);
+    }
+
+    private void OnPowerLineStatusChanged(object? sender, BatteryStatusEventArgs e)
+    {
+        _displayService?.DismissAll();
     }
 
     private static void OnTrayIconClicked(object? sender, EventArgs e)
@@ -336,6 +344,7 @@ internal sealed class TrayIconService : IDisposable
         try
         {
             NotificationService.Instance.NotificationReceived -= OnNotificationReceived;
+            BatteryMonitorService.Instance.PowerLineStatusChanged -= OnPowerLineStatusChanged;
             UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
             UpdateService.Instance.Dispose();
 

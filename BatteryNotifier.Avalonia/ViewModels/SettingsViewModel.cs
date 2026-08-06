@@ -25,6 +25,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private bool _launchAtStartup;
     private bool _autoCheckForUpdates;
     private bool _screenFlashEnabled;
+    private bool _acAlerts;
     private NotificationPosition _notificationPosition;
     private bool _disposed;
 
@@ -88,6 +89,15 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             .Subscribe(pos =>
             {
                 _settings.NotificationPosition = pos;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.AcAlerts)
+            .Skip(1)
+            .Subscribe(enabled =>
+            {
+                _settings.AcAlerts = enabled;
                 _settings.Save();
             })
             .DisposeWith(_disposables);
@@ -159,6 +169,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _launchAtStartup = _settings.LaunchAtStartup;
         _autoCheckForUpdates = _settings.AutoCheckForUpdates;
         _screenFlashEnabled = _settings.ScreenFlashEnabled;
+        _acAlerts = _settings.AcAlerts;
         _notificationPosition = _settings.NotificationPosition;
     }
 
@@ -229,6 +240,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         get => _screenFlashEnabled;
         set => this.RaiseAndSetIfChanged(ref _screenFlashEnabled, value);
+    }
+
+    public bool AcAlerts
+    {
+        get => _acAlerts;
+        set => this.RaiseAndSetIfChanged(ref _acAlerts, value);
     }
 
     public NotificationPosition NotificationPosition

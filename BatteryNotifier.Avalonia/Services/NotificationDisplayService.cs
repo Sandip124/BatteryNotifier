@@ -243,6 +243,7 @@ public sealed class NotificationDisplayService
         foreach (var card in cards)
         {
             card.Close();
+            EfficiencyModeService.Instance.ReleaseNormalMode();
         }
     }
 
@@ -269,6 +270,8 @@ public sealed class NotificationDisplayService
         foreach (var card in cards)
         {
             card.Close();
+            // Release the normal-mode so efficiency mode can re-engage once no notifications are active.
+            EfficiencyModeService.Instance.ReleaseNormalMode();
         }
 
         // Stop sound + clear overlays
