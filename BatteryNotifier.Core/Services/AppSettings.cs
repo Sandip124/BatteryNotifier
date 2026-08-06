@@ -47,6 +47,11 @@ public sealed class AppSettings
     // Screen flash for Avalonia-native notifications
     public bool ScreenFlashEnabled { get; set; } = true;
 
+    /// <summary>
+    /// Alerts setting for charger plugged in or out
+    /// </summary>
+    public bool AcAlerts { get; set; } = true;
+
     // Notification card position on screen
     public NotificationPosition NotificationPosition { get; set; } = NotificationPosition.TopCenter;
 

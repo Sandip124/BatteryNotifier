@@ -229,6 +229,13 @@ public sealed class BatteryMonitorService : IDisposable
 
     private void ResetNotificationTrackers()
     {
+        // AC Alerts (global): when disabled, charger plug/unplug must not re-notify.
+        if (!AppSettings.Instance.AcAlerts)
+        {
+            _logger.Information("AC Alerts disabled — not resetting notification trackers on power line change");
+            return;
+        }
+
         _logger.Information("Resetting notification trackers due to power line change");
         NotificationService.Instance.ResetAllTrackers();
         AlertEvaluationService.Instance.ResetAll();

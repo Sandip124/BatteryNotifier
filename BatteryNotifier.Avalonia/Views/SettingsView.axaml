@@ -233,6 +233,17 @@
                                               Margin="0" Padding="0" />
                             </Grid>
                         </Border>
+
+                        <!-- AC power status change alerts toggle -->
+                        <Border Padding="12,6,12,10">
+                            <Grid ColumnDefinitions="*,42">
+                                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">AC power-status alerts</TextBlock>
+                                <ToggleSwitch Grid.Column="1"
+                                              IsChecked="{Binding AcAlerts}"
+                                              OnContent="" OffContent=""
+                                              Margin="0" Padding="0" />
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
 
