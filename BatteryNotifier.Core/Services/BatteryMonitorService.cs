@@ -175,7 +175,10 @@ public sealed class BatteryMonitorService : IDisposable
         var currentStatus = BatteryInfoProvider.GetBatteryInfo();
 
         if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown)
+        {
+            UpdateBatteryManagerStore(currentStatus, (int)(currentStatus.BatteryLifePercent * 100));
             return;
+        }
 
         BatteryChangeResult change;
         lock (_statusLock)
