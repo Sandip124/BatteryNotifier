@@ -696,7 +696,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 // Fast path: Darwin notify fires instantly on pre-Tahoe macOS
                 if (SystemStateDetector.HasPendingFocusChange())
                 {
-                    Dispatcher.UIThread.Post(RefreshDndStatus);
+                    RefreshDndStatus();
                     tickCount = 0;
                     continue;
                 }
@@ -704,7 +704,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 // Slow path: direct poll every 5s for Tahoe+ and non-macOS
                 if (tickCount >= 5)
                 {
-                    Dispatcher.UIThread.Post(RefreshDndStatus);
+                    RefreshDndStatus();
                     tickCount = 0;
                 }
             }
@@ -715,28 +715,39 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
+    /// <summary>
+    /// Recomputes DND/fullscreen suppression off the UI thread. GetSuppressionState() spawns
+    /// subprocesses (osascript/defaults/plutil) that can block for up to their 3s timeout, so it
+    /// must never run on the UI thread — doing so froze rendering and made scrolling stutter.
+    /// Only the resulting boolean is marshalled back to update the UI.
+    /// </summary>
     private void RefreshDndStatus()
     {
-        try
+        Task.Run(() =>
         {
-            var suppression = SystemStateDetector.GetSuppressionState();
-            var active = suppression.ShouldSuppressToast;
-
-            if (active != IsDndActive)
+            bool active;
+            try
             {
-                IsDndActive = active;
-                DndMessage = active
-                    ? DndMessages[Random.Shared.Next(DndMessages.Length)]
-                    : string.Empty;
-                this.RaisePropertyChanged(nameof(ShowPausedBanner));
+                active = SystemStateDetector.GetSuppressionState().ShouldSuppressToast;
             }
-        }
-        catch
-        {
-            IsDndActive = false;
-            DndMessage = string.Empty;
-        }
+            catch
+            {
+                active = false;
+            }
 
+            Dispatcher.UIThread.Post(() => ApplyDndState(active));
+        });
+    }
+
+    private void ApplyDndState(bool active)
+    {
+        if (active == IsDndActive) return;
+
+        IsDndActive = active;
+        DndMessage = active
+            ? DndMessages[Random.Shared.Next(DndMessages.Length)]
+            : string.Empty;
+        this.RaisePropertyChanged(nameof(ShowPausedBanner));
     }
 
     public string StatusMessage
