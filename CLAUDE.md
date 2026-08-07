@@ -386,32 +386,28 @@ Each tier has multiple escalation stages with randomized variants per stage.
 
 ---
 
-## Tray Icon Behavior
+## Tray / Flyout Window Model
 
-```
-Tray Menu:
-  Show Window / Hide Window    (label syncs with window visibility + focus state)
-  Pause Notifications (2h)     (toggles to "Resume Notifications" when paused)
-  ─────────────
-  Check for Updates...
-  About
-  ─────────────
-  Exit
-```
+The window behaves like a taskbar/menu-bar **flyout** (JetBrains Toolbox style): a single click on the tray/menu-bar icon toggles it, and it auto-hides when focus leaves the app. The icon stays in the notification area / menu bar (`ShowInTaskbar = false`).
 
-| Platform | Left-click tray | Right-click tray |
+| Platform | Left-click icon | Right-click icon |
 |---|---|---|
-| Windows/Linux | Show/hide/activate via `Clicked` handler | Context menu |
-| macOS | Context menu (OS enforced — NSStatusItem always shows menu) | Context menu |
+| Windows/Linux | Toggle window (Avalonia `TrayIcon.Clicked`) | Native tray context menu |
+| macOS | Toggle window (native `NSStatusItem`) | Native context menu (`NSStatusItem`) |
 
-**Window show/hide logic** (`OnTrayIconClicked`):
-- Hidden → `ShowMainWindow()` (show + activate)
-- Visible but behind other apps (`IsActive: false`) → `Activate()` only (no dock icon change)
-- Visible and focused (`IsActive: true`) → `HideMainWindow()`
+The context menu (both native macOS and Avalonia Win/Linux) has **no Show/Hide item** — a single click already toggles the window. Menu items: Pause/Resume Notifications, Check for Updates, About, Exit.
 
-**macOS menu workaround**: opening the tray menu deactivates the window, making `IsActive` unreliable at menu-click time. `_wasVisibleBeforeMenu` captures `IsVisible` state when the label updates (on `IsActive` change), so `OnShowHideWindow` reads the snapshot.
+**macOS uses a custom native `NSStatusItem`** (`Services/MacStatusItem.cs`, Objective-C interop) instead of Avalonia's `TrayIcon`. Avalonia's cross-platform `TrayIcon` forces "menu on click" on macOS and never fires `Clicked`, which makes single-click-to-open impossible. `MacStatusItem` wires the status-bar button's target/action directly: a runtime-created `BNStatusItemTarget` ObjC class receives clicks, distinguishes left vs right/control-click via `[NSApp currentEvent]`, toggles the window on left-click, and pops a native `NSMenu` (built from `TrayIconService.BuildMacMenu`, dispatched by tag via `HandleMacMenuSelection`) on right-click. The button image is sized to the status-bar thickness. `Install()` is best-effort and returns false on any failure, so `TrayIconService` falls back to the Avalonia `TrayIcon` (menu-driven). When the native item is used, the Avalonia `TrayIcon` is not created.
 
-**Main window close button**: cancels close and hides to tray. Skips hide if child dialogs (About, Sound Picker) are open to prevent accidental hide during settings.
+**Tray toggle** (`OnTrayIconClicked`): simple visible → `HideMainWindow()` / hidden → `ShowMainWindow()`. The old "activate if behind" branch was removed — clicking away now auto-hides, so a visible window is always the focused one.
+
+**Flyout auto-hide** (`MainWindow.axaml.cs`): on `Deactivated`, a deferred (150 ms grace) check hides to tray **only if** focus truly left the application. Guards, in order: window still visible & not re-focused → not within post-show settle (`NotifyShown()`, 500 ms) → no owned windows (Sound Picker / file dialog) → `AppFocusTracker.IsApplicationFocused()` is not true.
+- `AppFocusTracker` (`Services/AppFocusTracker.cs`) is **application**-level, not window-level, so opening our own child windows or (macOS) status menu does not trigger a hide: Windows = foreground window's PID == our PID; macOS = `NSApp.isActive`; Linux = `null` → fall back to "any of our windows active".
+- Re-checked when the About window or Sound Picker closes (via `ScheduleAutoHideCheck()`), catching "opened a child window, then switched apps".
+
+**Shared hide path**: `MainWindow.HideToTray()` (Hide + hide Dock icon + enter efficiency mode) is reused by the auto-hide, the tray toggle (`HideMainWindow`), and the close (X) button (`App.axaml.cs` `Closing`).
+
+**Main window close button**: cancels close and hides to tray. Skips hide if child dialogs (About, Sound Picker) are open (`OwnedWindows.Count > 0`) to prevent accidental hide during settings.
 
 ---
 
@@ -491,7 +487,7 @@ Main branch: `master`
 
 - `BatteryInfoProvider` uses WMI — **Windows only**. macOS/Linux battery info needs a cross-platform provider.
 - macOS Tahoe DND detection requires Accessibility permission (app prompts on first launch). Without it, DND state is not detected.
-- macOS tray icon: left-click always opens context menu (OS limitation). "Show Window" is the first menu item as a workaround.
+- macOS tray icon: uses a custom native `NSStatusItem` (`MacStatusItem.cs`) so single-click toggles the window and right-click shows a native menu. Avalonia's `TrayIcon` can't do this on macOS. Falls back to the Avalonia tray icon if native install fails.
 - macOS external display detection suppresses notifications when charger must stay connected.
 - Linux GNOME: no system tray by default (needs AppIndicator extension). Left-click behavior depends on SNI implementation.
 - Linux CI builds are currently disabled in the GitHub Actions workflow.

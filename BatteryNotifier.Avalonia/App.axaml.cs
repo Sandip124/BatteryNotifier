@@ -103,6 +103,12 @@ public class App : Application
                 if (desktop.MainWindow.OwnedWindows.Count > 0)
                     return;
 
+                if (desktop.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.HideToTray();
+                    return;
+                }
+
                 desktop.MainWindow.Hide();
                 MacOSDockIconHelper.HideDockIcon();
                 EfficiencyModeService.Instance.EnableEfficiency();

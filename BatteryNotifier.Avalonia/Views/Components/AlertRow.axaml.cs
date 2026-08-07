@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
+using BatteryNotifier.Avalonia.Views;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
 
@@ -72,6 +73,7 @@ public partial class AlertRow : UserControl
                             rootPanel.Children.Remove(backdrop);
                         });
                     }
+                    (ownerWindow as MainWindow)?.ScheduleAutoHideCheck();
                 }
             });
         }

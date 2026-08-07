@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using Avalonia;
@@ -20,21 +21,25 @@ internal sealed class TrayIconService : IDisposable
 {
     private readonly ILogger _logger;
     private TrayIcon? _trayIcon;
+    private bool _usingNativeMacStatusItem;
+
+    // Tags for the native macOS status-item context menu.
+    private const int MenuPause = 1;
+    private const int MenuUpdates = 2;
+    private const int MenuAbout = 3;
+    private const int MenuExit = 4;
     private NotificationManager? _notificationManager;
     private NotificationDisplayService? _displayService;
-    private IDisposable? _visibilitySubscription;
     private bool _disposed;
 
     // Store menu items for clean unsubscription in Dispose
     private NativeMenuItem? _pauseNotificationsMenuItem;
-    private NativeMenuItem? _showHideMenuItem;
     private NativeMenuItem? _aboutMenuItem;
     private NativeMenuItem? _updateMenuItem;
     private NativeMenuItem? _exitMenuItem;
 
-    public TrayIconService(IDisposable? visibilitySubscription = null)
+    public TrayIconService()
     {
-        _visibilitySubscription = visibilitySubscription;
         _logger = BatteryNotifierAppLogger.ForContext<TrayIconService>();
     }
 
@@ -42,28 +47,11 @@ internal sealed class TrayIconService : IDisposable
     {
         try
         {
-            _trayIcon = new TrayIcon();
+            // Build the tray context menu — used by the Avalonia tray icon on Windows/Linux
+            // and as the macOS fallback if the native status item can't be installed.
+            var trayMenu = new NativeMenu();
 
-            // Set icon using AssetLoader
-            try
-            {
-                var assetLoader = AssetLoader.Open(AssetUris.LogoIco);
-                _trayIcon.Icon = new WindowIcon(assetLoader);
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning(ex, "Failed to load tray icon from assets");
-            }
-
-            // Set tooltip
-            _trayIcon.ToolTipText = "BatteryNotifier";
-
-            // Create menu
-             var trayMenu = new NativeMenu();
-
-            _showHideMenuItem = new NativeMenuItem { Header = "Show Window" };
-            _showHideMenuItem.Click += OnShowHideWindow;
-
+            // No Show/Hide item — a single click on the tray icon already toggles the window.
             _pauseNotificationsMenuItem = new NativeMenuItem { Header = "Pause Notifications (2h)" };
             _pauseNotificationsMenuItem.Click += OnTogglePauseNotifications;
 
@@ -76,7 +64,6 @@ internal sealed class TrayIconService : IDisposable
             _exitMenuItem = new NativeMenuItem { Header = "Exit" };
             _exitMenuItem.Click += OnExit;
 
-            trayMenu.Add(_showHideMenuItem);
             trayMenu.Add(_pauseNotificationsMenuItem);
             trayMenu.Add(new NativeMenuItemSeparator());
             trayMenu.Add(_updateMenuItem);
@@ -84,14 +71,36 @@ internal sealed class TrayIconService : IDisposable
             trayMenu.Add(new NativeMenuItemSeparator());
             trayMenu.Add(_exitMenuItem);
 
-            _trayIcon.Menu = trayMenu;
+            // macOS: install a native NSStatusItem so a single left-click toggles the window and
+            // a right-click (or control-click) shows the context menu — Avalonia's cross-platform
+            // TrayIcon can't do this on macOS (it forces menu-on-click and never fires Clicked).
+            // Falls back to the Avalonia tray icon (menu-driven) if the native item fails.
+            _usingNativeMacStatusItem = OperatingSystem.IsMacOS() && TryInstallMacStatusItem();
 
-            // Sync pause menu label from any source (tray toggle, main window Resume, auto-resume)
+            if (!_usingNativeMacStatusItem)
+            {
+                _trayIcon = new TrayIcon { ToolTipText = "BatteryNotifier" };
+
+                try
+                {
+                    var assetLoader = AssetLoader.Open(AssetUris.LogoIco);
+                    _trayIcon.Icon = new WindowIcon(assetLoader);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Warning(ex, "Failed to load tray icon from assets");
+                }
+
+                _trayIcon.Menu = trayMenu;
+
+                // Left-click toggles the window on Windows/Linux. On macOS the OS shows the menu
+                // on click instead (NSStatusItem always shows its menu), so Clicked never fires.
+                if (!OperatingSystem.IsMacOS())
+                    _trayIcon.Clicked += OnTrayIconClicked;
+            }
+
+            // Keep the pause menu label in sync from any source (tray toggle, Resume, auto-resume)
             NotificationService.Instance.PausedChanged += OnPausedStateChanged;
-
-            // Handle left-click (Windows/Linux only — macOS routes all clicks to the menu)
-            if (!OperatingSystem.IsMacOS())
-                _trayIcon.Clicked += OnTrayIconClicked;
 
             // Subscribe to battery changes to update icon
             try
@@ -107,17 +116,6 @@ internal sealed class TrayIconService : IDisposable
             catch (Exception serviceEx)
             {
                 _logger.Warning(serviceEx, "Some battery services could not be initialized on this platform");
-            }
-
-            // Subscribe to window visibility changes to keep tray menu label in sync.
-            // This catches hides from the in-window menu, the X button, tray toggle, etc.
-            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime { MainWindow: { } mainWin })
-            {
-                var visibilitySub = mainWin.GetObservable(Visual.IsVisibleProperty)
-                    .Subscribe(_ => UpdateShowHideMenuLabel());
-                var activeSub = mainWin.GetObservable(Window.IsActiveProperty)
-                    .Subscribe(_ => UpdateShowHideMenuLabel());
-                _visibilitySubscription = new CompositeDisposable(visibilitySub, activeSub);
             }
 
             // Start background update checks (if enabled)
@@ -169,64 +167,92 @@ internal sealed class TrayIconService : IDisposable
         _displayService?.DismissAll();
     }
 
+    // ── Native macOS status item ──
+
+    private bool TryInstallMacStatusItem()
+    {
+        try
+        {
+            return MacStatusItem.Install(
+                LoadIconBytes(),
+                onLeftClick: () => OnTrayIconClicked(null, EventArgs.Empty),
+                menuProvider: BuildMacMenu,
+                onMenuItem: HandleMacMenuSelection);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Native macOS status item install threw; using Avalonia tray instead");
+            return false;
+        }
+    }
+
+    private byte[] LoadIconBytes()
+    {
+        // Monochrome glyph for the macOS menu bar (set as a template image by MacStatusItem).
+        try
+        {
+            using var stream = AssetLoader.Open(AssetUris.MenuBarIconMono);
+            using var ms = new System.IO.MemoryStream();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning(ex, "Failed to load macOS menu-bar icon asset");
+            return Array.Empty<byte>();
+        }
+    }
+
+    private static IReadOnlyList<MacMenuItem> BuildMacMenu()
+    {
+        var paused = NotificationService.Instance.IsPaused;
+
+        return new List<MacMenuItem>
+        {
+            MacMenuItem.Item(paused ? "Resume Notifications" : "Pause Notifications (2h)", MenuPause),
+            MacMenuItem.Separator,
+            MacMenuItem.Item("Check for Updates...", MenuUpdates),
+            MacMenuItem.Item("About", MenuAbout),
+            MacMenuItem.Separator,
+            MacMenuItem.Item("Exit", MenuExit),
+        };
+    }
+
+    private void HandleMacMenuSelection(int tag)
+    {
+        switch (tag)
+        {
+            case MenuPause: OnTogglePauseNotifications(null, EventArgs.Empty); break;
+            case MenuUpdates: OnCheckForUpdates(null, EventArgs.Empty); break;
+            case MenuAbout: OpenAbout(); break;
+            case MenuExit: OnExit(null, EventArgs.Empty); break;
+        }
+    }
+
     private static void OnTrayIconClicked(object? sender, EventArgs e)
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
 
-        if (desktop.MainWindow is not { IsVisible: true } mainWindow)
-        {
-            ShowMainWindow();
-            return;
-        }
-
-        // Window is visible — if focused, hide it. If behind other apps, just activate.
-        if (mainWindow.IsActive)
-            HideMainWindow();
-        else
-            mainWindow.Activate();
-    }
-
-    private void OnShowHideWindow(object? sender, EventArgs e)
-    {
-        // Use _wasVisibleBeforeMenu to determine intent — on macOS, opening the menu
-        // deactivates the window, so we can't rely on IsActive at menu-click time.
-        if (_wasVisibleBeforeMenu)
+        // Simple toggle: visible → hide, hidden → show. Clicking outside the window is
+        // now handled by the window's own flyout-style auto-hide, so the tray click no
+        // longer needs an "activate if behind" branch (a visible window is a focused one).
+        if (desktop.MainWindow is { IsVisible: true })
             HideMainWindow();
         else
             ShowMainWindow();
-    }
-
-    /// <summary>
-    /// Tracks whether the window was visible before the tray menu opened.
-    /// On macOS, opening the tray menu deactivates the window, making IsActive unreliable.
-    /// </summary>
-    private bool _wasVisibleBeforeMenu;
-
-    private void UpdateShowHideMenuLabel()
-    {
-        if (_showHideMenuItem == null) return;
-
-        if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
-            && desktop.MainWindow is { } win)
-        {
-            // Capture visibility state when the menu label updates.
-            // On macOS, this fires when IsActive changes (window deactivated by menu open),
-            // so we check IsVisible — if visible, the user had the window open before the menu.
-            _wasVisibleBeforeMenu = win.IsVisible;
-            _showHideMenuItem.Header = win.IsVisible ? "Hide Window" : "Show Window";
-        }
-        else
-        {
-            _wasVisibleBeforeMenu = false;
-            _showHideMenuItem.Header = "Show Window";
-        }
     }
 
     private static void HideMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
+
+        if (desktop.MainWindow is MainWindow mainWindow)
+        {
+            mainWindow.HideToTray();
+            return;
+        }
 
         desktop.MainWindow?.Hide();
         MacOSDockIconHelper.HideDockIcon();
@@ -245,6 +271,8 @@ internal sealed class TrayIconService : IDisposable
 
         mainWindow.Show();
         mainWindow.Activate();
+        // Guard against the activation settle immediately re-hiding the window.
+        mainWindow.NotifyShown();
 
         if (mainWindow.WindowState == WindowState.Minimized)
             mainWindow.WindowState = WindowState.Normal;
@@ -252,7 +280,10 @@ internal sealed class TrayIconService : IDisposable
 
     private static AboutWindow? _openAboutWindow;
 
-    private static void OnOpenAbout(object? sender, EventArgs e)
+    private static void OnOpenAbout(object? sender, EventArgs e) => OpenAbout();
+
+    /// <summary>Opens the About window (single-instance). Shared by the tray menu and the in-window menu.</summary>
+    internal static void OpenAbout()
     {
         if (_openAboutWindow is { } existing)
         {
@@ -261,7 +292,13 @@ internal sealed class TrayIconService : IDisposable
         }
 
         var aboutWindow = new AboutWindow();
-        aboutWindow.Closed += (_, _) => _openAboutWindow = null;
+        aboutWindow.Closed += (_, _) =>
+        {
+            _openAboutWindow = null;
+            if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+                && desktop.MainWindow is MainWindow mainWindow && mainWindow.IsVisible)
+                mainWindow.ScheduleAutoHideCheck();
+        };
         _openAboutWindow = aboutWindow;
         aboutWindow.ShowStandalone();
     }
@@ -348,11 +385,6 @@ internal sealed class TrayIconService : IDisposable
             UpdateService.Instance.UpdateAvailable -= OnUpdateAvailable;
             UpdateService.Instance.Dispose();
 
-
-            _visibilitySubscription?.Dispose();
-            _visibilitySubscription = null;
-
-
             _notificationManager?.Dispose();
             _notificationManager = null;
             _displayService?.DismissAll();
@@ -365,12 +397,6 @@ internal sealed class TrayIconService : IDisposable
             {
                 _pauseNotificationsMenuItem.Click -= OnTogglePauseNotifications;
                 _pauseNotificationsMenuItem = null;
-            }
-
-            if (_showHideMenuItem != null)
-            {
-                _showHideMenuItem.Click -= OnShowHideWindow;
-                _showHideMenuItem = null;
             }
 
             if (_aboutMenuItem != null)
@@ -396,6 +422,12 @@ internal sealed class TrayIconService : IDisposable
                 _trayIcon.Clicked -= OnTrayIconClicked;
                 _trayIcon.Dispose();
                 _trayIcon = null;
+            }
+
+            if (_usingNativeMacStatusItem)
+            {
+                MacStatusItem.Uninstall();
+                _usingNativeMacStatusItem = false;
             }
         }
         catch (Exception ex)
