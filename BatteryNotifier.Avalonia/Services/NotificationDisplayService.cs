@@ -155,6 +155,8 @@ public sealed class NotificationDisplayService
             var screens = desktop.MainWindow?.Screens;
             if (screens == null) return;
 
+            ClearOverlays();
+
             foreach (var screen in screens.All)
             {
                 var overlay = new ScreenFlashOverlay
