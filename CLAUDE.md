@@ -351,6 +351,16 @@ Messages vary by **battery level tier** and **escalation count**:
 
 Each tier has multiple escalation stages with randomized variants per stage.
 
+### Alert tone (message + color consistency)
+
+`BatteryAlert.Tone` (`AlertTone.Low` / `Full` / `Neutral`) is the **single** classifier for both the message wording (`NotificationTemplates.GetAlertMessage`) and the accent/flash color (`NotificationDisplayService.DetermineColor`), so they never disagree — including for wide, custom, or overlapping ranges:
+
+- **Low** — reaches empty (`LowerBound ≤ 5`) or sits in the low half (`UpperBound ≤ 50`) → low wording, amber/red (red ≤ 10%).
+- **Full** — reaches full (`UpperBound ≥ 95`) or sits in the high half (`LowerBound ≥ 50`) → full wording, green.
+- **Neutral** — spans both extremes (e.g. `0–100`) or neither (mid, e.g. `20–80`) → neutral wording, level-based color.
+
+A per-alert `FlashColor` (if set) always overrides the auto color. When ranges **overlap**, only the **narrowest** triggered alert fires (`BatteryMonitorService.PublishAlertNotifications` → `MinBy(UpperBound − LowerBound)`); e.g. full `80–100` (width 20) wins over low `0–85` (width 85) in their 80–85% overlap.
+
 ---
 
 ## Tray / Flyout Window Model

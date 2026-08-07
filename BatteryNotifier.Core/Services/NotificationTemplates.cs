@@ -175,20 +175,18 @@ public static class NotificationTemplates
     }
 
     /// <summary>
-    /// Gets a message for a multi-level alert based on range position and escalation.
-    /// Low ranges (upper bound ≤ 50) use low battery tone.
-    /// High ranges (lower bound ≥ 50) use full battery tone.
-    /// Mid ranges use a neutral informational tone.
+    /// Gets a message for a multi-level alert, keyed off <see cref="BatteryAlert.Tone"/> so the
+    /// wording always matches the accent color.
     /// </summary>
-    public static string GetAlertMessage(BatteryAlert alert, int currentLevel, int escalation)
+    public static string GetAlertMessage(BatteryAlert alert, int currentLevel, int escalation) => alert.Tone switch
     {
-        if (alert.UpperBound <= 50)
-            return GetLowBatteryMessage(currentLevel, escalation);
+        AlertTone.Low => GetLowBatteryMessage(currentLevel, escalation),
+        AlertTone.Full => GetFullBatteryMessage(currentLevel, escalation),
+        _ => GetNeutralMessage(alert, currentLevel),
+    };
 
-        if (alert.LowerBound >= 50)
-            return GetFullBatteryMessage(currentLevel, escalation);
-
-        // Mid-range alert — use a neutral message
+    private static string GetNeutralMessage(BatteryAlert alert, int currentLevel)
+    {
         var templates = new[]
         {
             "Battery at {0}% — in your '{1}' alert range.",

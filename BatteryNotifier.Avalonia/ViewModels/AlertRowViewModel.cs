@@ -38,10 +38,10 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     public static IReadOnlyList<FlashColorOption> FlashColorOptions { get; } =
     [
         new("Auto", null),
-        new("Red", "#D32F2F"),
-        new("Amber", "#F57A00"),
-        new("Green", "#388E3C"),
-        new("Blue", "#0288D1"),
+        new("Red", AlertAccent.RedHex),
+        new("Amber", AlertAccent.AmberHex),
+        new("Green", AlertAccent.GreenHex),
+        new("Blue", AlertAccent.BlueHex),
     ];
 
     public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; } = new();
@@ -232,12 +232,13 @@ public sealed class FlashColorOption
             {
                 StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
                 EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                // "Auto" swatch previews the accent palette as a gradient.
                 GradientStops =
                 {
-                    new GradientStop(Colors.Red, 0),
-                    new GradientStop(Colors.Orange, 0.33),
-                    new GradientStop(Colors.Green, 0.66),
-                    new GradientStop(Colors.Blue, 1),
+                    new GradientStop(AlertAccent.Red, 0),
+                    new GradientStop(AlertAccent.Amber, 0.33),
+                    new GradientStop(AlertAccent.Green, 0.66),
+                    new GradientStop(AlertAccent.Blue, 1),
                 }
             };
     }

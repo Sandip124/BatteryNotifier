@@ -122,25 +122,27 @@ public sealed class NotificationDisplayService
 
     private static Color DetermineColor(BatteryAlert? alert, int level)
     {
-        // Use user-configured flash color if set
+        // Explicit user-configured flash color wins.
         if (alert?.FlashColor is { } hex && !string.IsNullOrEmpty(hex))
         {
             try { return Color.Parse(hex); }
-            catch { /* fall through to defaults */ }
+            catch { /* fall through to auto */ }
         }
 
-        if (alert != null)
+        // Auto: derive from the same tone that drives the message, so they always agree.
+        return alert?.Tone switch
         {
-            // Low range alerts → amber/red, high range alerts → green
-            if (alert.UpperBound <= 50)
-                return level <= 10 ? Color.Parse("#EF5350") : Color.Parse("#FFA726");
-            if (alert.LowerBound >= 50)
-                return Color.Parse("#66BB6A");
-        }
+            AlertTone.Full => AlertAccent.Green,
+            AlertTone.Low => level <= 10 ? AlertAccent.Red : AlertAccent.Amber,
+            _ => LevelColor(level),
+        };
+    }
 
-        if (level <= 10) return Color.Parse("#EF5350");
-        if (level <= 30) return Color.Parse("#FFA726");
-        return Color.Parse("#66BB6A");
+    private static Color LevelColor(int level)
+    {
+        if (level <= 10) return AlertAccent.Red;
+        if (level <= 30) return AlertAccent.Amber;
+        return AlertAccent.Green;
     }
 
     private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
