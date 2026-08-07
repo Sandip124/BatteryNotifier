@@ -64,6 +64,13 @@ public partial class SoundPickerWindow : Window
         CloseWithResult(null);
     }
 
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        // Focus the search box on open so the user can start typing to search immediately.
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => SearchBox?.Focus());
+    }
+
     protected override void OnKeyDown(KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
@@ -73,6 +80,21 @@ public partial class SoundPickerWindow : Window
             return;
         }
         base.OnKeyDown(e);
+    }
+
+    // If focus has drifted off the search box (e.g. onto a row), route typed characters
+    // back into the search so "just start typing" always searches.
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        if (SearchBox is { IsFocused: false } box && !string.IsNullOrEmpty(e.Text))
+        {
+            box.Focus();
+            box.Text = (box.Text ?? string.Empty) + e.Text;
+            box.CaretIndex = box.Text.Length;
+            e.Handled = true;
+            return;
+        }
+        base.OnTextInput(e);
     }
 
     protected override void OnDataContextChanged(EventArgs e)

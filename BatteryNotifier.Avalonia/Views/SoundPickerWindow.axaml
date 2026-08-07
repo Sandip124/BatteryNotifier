@@ -44,7 +44,8 @@
 
         <!-- Search bar -->
         <Border Grid.Row="1" Padding="12,6,12,4">
-            <TextBox Text="{Binding SearchText, Mode=TwoWay}"
+            <TextBox x:Name="SearchBox"
+                     Text="{Binding SearchText, Mode=TwoWay}"
                      Watermark="Search sounds..."
                      FontSize="12"
                      Padding="8,6"
