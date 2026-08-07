@@ -472,7 +472,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 MetricStatus.Good => "Healthy",
                 MetricStatus.Fair => "Fair",
                 MetricStatus.Poor => "Service Recommended",
-                _ => "Checking..."
+                _ => "Unavailable"
             };
         }
     }
@@ -500,12 +500,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         get
         {
             var health = BatteryHealthService.Instance.LatestHealth;
-            return health?.HealthStatus switch
+            // No reading yet → spinner. Reading done but no data → neutral heart (not the spinner,
+            // which would imply it's still checking).
+            if (health == null) return _iconSpinner ??= ResolveIcon("Icon.Spinner");
+            return health.HealthStatus switch
             {
                 MetricStatus.Good => _iconCheck ??= ResolveIcon("Icon.CheckFat"),
                 MetricStatus.Fair => _iconHeart ??= ResolveIcon("Icon.HeartFill"),
                 MetricStatus.Poor => _iconWarn ??= ResolveIcon("Icon.ExclamationMarkFill"),
-                _ => _iconSpinner ??= ResolveIcon("Icon.Spinner")
+                _ => _iconHeart ??= ResolveIcon("Icon.HeartFill")
             };
         }
     }

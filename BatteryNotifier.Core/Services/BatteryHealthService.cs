@@ -142,8 +142,11 @@ public sealed class BatteryHealthService : IDisposable
             var amperageRaw = ParseULong(output, "\"Amperage\"\\s*=\\s*(\\d+)");
             double? amperageMa = amperageRaw.HasValue ? (double)unchecked((long)amperageRaw.Value) : null;
 
-            // AppleRawMaxCapacity is actual mAh capacity (MaxCapacity is always 100% on Apple Silicon)
-            var rawMaxCap = ParseDouble(output, "\"AppleRawMaxCapacity\"\\s*=\\s*(\\d+)");
+            // Actual mAh capacity. Older macOS exposes it as top-level "AppleRawMaxCapacity";
+            // newer macOS (Sonoma+) nests it inside the "BatteryData" dict as "FullChargeCapacity"
+            // (top-level "MaxCapacity" is always the 100% placeholder on Apple Silicon).
+            var rawMaxCap = ParseDouble(output, "\"AppleRawMaxCapacity\"\\s*=\\s*(\\d+)")
+                         ?? ParseDouble(output, "\"FullChargeCapacity\"\\s*=\\s*(\\d+)");
             var designCap = ParseDouble(output, "\"DesignCapacity\"\\s*=\\s*(\\d+)");
 
             if (rawMaxCap.HasValue && designCap.HasValue && designCap.Value > 0)
