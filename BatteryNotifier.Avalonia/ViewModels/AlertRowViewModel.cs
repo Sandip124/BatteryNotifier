@@ -112,8 +112,10 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         _alert.FlashColor = _flashColor;
 
         if (rangeChanged)
+        {
             Logger.Information("Alert '{Label}' ({Id}) range changed to {Lower}%–{Upper}%",
                 _label, _alert.Id, _lowerBound, _upperBound);
+        }
 
         _onChanged(rangeChanged);
     }

@@ -25,11 +25,13 @@
                 PointerPressed="SettingsTitleBar_PointerPressed">
             <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                 <Button Command="{Binding BackCommand}" Grid.Column="0"
-                        Theme="{StaticResource PrimaryButton}"
+                        Theme="{StaticResource SecondaryButton}"
+                        CornerRadius="8" Padding="10,6"
                         Foreground="{DynamicResource AppAccentForeground}">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <PathIcon Data="{StaticResource Icon.CaretLeft}"
-                                  Width="10" Height="10" VerticalAlignment="Center" />
+                                  Width="10" Height="10" VerticalAlignment="Center"
+                                  Foreground="{DynamicResource AppAccentForeground}" />
                         <TextBlock Margin="4,0,0,0" FontSize="12">Back</TextBlock>
                     </StackPanel>
                 </Button>
@@ -59,21 +61,24 @@
                                 <!-- Theme -->
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Theme</TextBlock>
-                                    <Border Grid.Column="1" CornerRadius="4" BorderBrush="#9C9C9C"
-                                            BorderThickness="1" ClipToBounds="True">
-                                        <StackPanel Orientation="Horizontal">
+                                    <Border Grid.Column="1" CornerRadius="9"
+                                            Background="{DynamicResource AppWindowBackground}"
+                                            BorderBrush="{DynamicResource AppCardBorder}"
+                                            BorderThickness="1"
+                                            Padding="3">
+                                        <StackPanel Orientation="Horizontal" Spacing="2">
                                             <Button Classes.theme-active="{Binding IsLightTheme}"
                                                     Command="{Binding SetLightThemeCommand}"
                                                     Theme="{StaticResource PrimaryButton}"
-                                                    CornerRadius="4,0,0,4">Light</Button>
+                                                    CornerRadius="6" Padding="12,5">Light</Button>
                                             <Button Classes.theme-active="{Binding IsSystemTheme}"
                                                     Command="{Binding SetSystemThemeCommand}"
                                                     Theme="{StaticResource PrimaryButton}"
-                                                    CornerRadius="0">System</Button>
+                                                    CornerRadius="6" Padding="12,5">System</Button>
                                             <Button Classes.theme-active="{Binding IsDarkTheme}"
                                                     Command="{Binding SetDarkThemeCommand}"
                                                     Theme="{StaticResource PrimaryButton}"
-                                                    CornerRadius="0,4,4,0">Dark</Button>
+                                                    CornerRadius="6" Padding="12,5">Dark</Button>
                                         </StackPanel>
                                     </Border>
                                 </Grid>
@@ -285,7 +290,7 @@
                             <ItemsControl ItemsSource="{Binding Alerts}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Margin="0,4" Padding="8" CornerRadius="8"
+                                        <Border Margin="0,4" Padding="8" CornerRadius="12"
                                                 BorderThickness="1"
                                                 BorderBrush="{DynamicResource AppCardBorder}">
                                             <components:AlertRow />
@@ -306,8 +311,9 @@
                                 <StackPanel Orientation="Horizontal" Spacing="6">
                                     <PathIcon Data="{StaticResource Icon.Plus}"
                                               Width="12" Height="12"
-                                              Foreground="{DynamicResource AppAccentForeground}" />
-                                    <TextBlock FontSize="12" VerticalAlignment="Center">Add Custom Alert</TextBlock>
+                                              Foreground="{DynamicResource AppForeground}" />
+                                    <TextBlock FontSize="12" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource AppForeground}">Add Custom Alert</TextBlock>
                                 </StackPanel>
                             </Button>
                         </Border>

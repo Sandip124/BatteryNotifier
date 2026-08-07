@@ -15,10 +15,15 @@
         <Button Command="{Binding DeleteCommand}"
                 Theme="{StaticResource PrimaryButton}"
                 HorizontalAlignment="Right"
-                Padding="4" Margin="0,-2,-2,0"
+                Width="22" Height="22" Padding="0"
+                CornerRadius="11"
+                HorizontalContentAlignment="Center"
+                VerticalContentAlignment="Center"
+                Margin="0"
                 ToolTip.Tip="Remove alert"
                 IsVisible="{Binding CanDelete}">
             <PathIcon Data="{StaticResource Icon.X}" Width="9" Height="9"
+                      HorizontalAlignment="Center" VerticalAlignment="Center"
                       Foreground="{DynamicResource AppSubtleText}" Opacity="0.6" />
         </Button>
 
@@ -95,12 +100,13 @@
                                    FontSize="11.5"
                                    VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" />
+                        <!-- Right chevron (›) signals this opens a picker dialog, not a dropdown -->
                         <PathIcon Grid.Column="2"
                                   Data="{StaticResource Icon.CaretLeft}"
                                   Width="8" Height="8"
                                   Foreground="{DynamicResource AppSubtleText}"
                                   VerticalAlignment="Center"
-                                  RenderTransform="rotate(270deg)" />
+                                  RenderTransform="rotate(180deg)" />
                     </Grid>
                 </Button>
             </StackPanel>
@@ -113,6 +119,7 @@
                           HorizontalAlignment="Stretch"
                           Padding="8,6" MinHeight="32"
                           CornerRadius="6"
+                          BorderThickness="0"
                           FontSize="11.5">
                     <ComboBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:FlashColorOption">

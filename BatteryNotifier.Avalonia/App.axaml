@@ -49,6 +49,23 @@
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#0C0C0C</Color>
 
+                    <!-- Match Fluent TextBox / ComboBox to the app theme (subtle border, app colors) -->
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#2A2A2A" />
+
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
@@ -69,6 +86,23 @@
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#0C0C0C</Color>
 
+                    <!-- Match Fluent TextBox / ComboBox to the app theme (subtle border, app colors) -->
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#2A2A2A" />
+
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#F5F5F5" />
@@ -88,6 +122,23 @@
                         <GradientStop Color="#25000000" Offset="1" />
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#F5F5F5</Color>
+
+                    <!-- Match Fluent TextBox / ComboBox to the app theme (subtle border, app colors) -->
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#B8B8B8" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#E0E0E0" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#E0E0E0" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#B8B8B8" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#B8B8B8" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#D0D0D0" />
 
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>

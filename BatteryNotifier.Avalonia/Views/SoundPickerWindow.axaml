@@ -169,7 +169,7 @@
                 <Button Grid.Column="0"
                         Theme="{StaticResource SecondaryButton}"
                         Command="{Binding ImportSoundCommand}"
-                        FontSize="12" Padding="10,6"
+                        FontSize="12" Padding="10,6" CornerRadius="6"
                         HorizontalAlignment="Left"
                         ToolTip.Tip="Import a sound file into your library">
                     <StackPanel Orientation="Horizontal" Spacing="5">
@@ -183,9 +183,20 @@
                         FontSize="12" Padding="14,6"
                         Background="{DynamicResource AppAccentBackground}"
                         Foreground="White"
-                        CornerRadius="4"
+                        CornerRadius="6"
                         BorderThickness="0"
                         Cursor="Hand">
+                    <Button.Styles>
+                        <!-- Keep it accent-colored on hover/press (darker shades) instead of Fluent's gray -->
+                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource SystemAccentColorDark1}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource SystemAccentColorDark2}" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Style>
+                    </Button.Styles>
                     Select
                 </Button>
             </Grid>
