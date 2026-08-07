@@ -13,6 +13,9 @@ namespace BatteryNotifier.Avalonia.Views;
 public partial class ScreenFlashOverlay : Window
 {
     private CancellationTokenSource? _flashCts;
+    private bool _closing;
+
+    private const int StopFadeOutMs = 250;
 
     // CGWindowLevel constants (from CGWindowLevel.h)
     private const int NsWindowLevelScreenSaver = 1000;      // kCGScreenSaverWindowLevel
@@ -71,15 +74,42 @@ public partial class ScreenFlashOverlay : Window
                 await Task.Delay(pauseMs, ct);
         }
 
-        Close();
+        if (!_closing)
+            Close();
     }
 
+    /// <summary>
+    /// Stops the flash gracefully
+    /// </summary>
     public void StopFlash()
     {
+        if (_closing) return;
+        _closing = true;
+
         _flashCts?.Cancel();
         _flashCts?.Dispose();
         _flashCts = null;
-        Close();
+
+        _ = FadeOutAndCloseAsync();
+    }
+
+    private async Task FadeOutAndCloseAsync()
+    {
+        try
+        {
+            var from = GlowControl.Opacity;
+            if (from > 0.001)
+                await CreateFadeAnimation(from, 0.0, StopFadeOutMs).RunAsync(GlowControl);
+        }
+        catch (Exception ex)
+        {
+            BatteryNotifierAppLogger.ForContext<ScreenFlashOverlay>()
+                .Debug(ex, "Screen flash fade-out failed");
+        }
+        finally
+        {
+            Close();
+        }
     }
 
     private static Animation CreateFadeAnimation(double from, double to, int durationMs) => new()
