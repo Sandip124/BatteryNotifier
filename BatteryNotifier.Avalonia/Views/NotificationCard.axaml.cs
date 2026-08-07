@@ -100,13 +100,13 @@ public partial class NotificationCard : Window
             if (remaining <= 0)
             {
                 _progressTimer?.Stop();
-                Dismiss();
+                Dismiss(userInitiated: false);
             }
         };
         _progressTimer.Start();
     }
 
-    private async Task Dismiss()
+    private async Task Dismiss(bool userInitiated)
     {
         if (_isDismissing) return;
         _isDismissing = true;
@@ -121,7 +121,7 @@ public partial class NotificationCard : Window
         await Task.Delay(AnimOutDuration).ConfigureAwait(true);
 
         if (DataContext is NotificationCardViewModel vm)
-            vm.DismissCommand.Execute().Subscribe();
+            vm.Dismiss(userInitiated);
     }
 
     private void ApplyAccentWash()
@@ -142,7 +142,7 @@ public partial class NotificationCard : Window
     }
 
     private void DismissButton_Click(object? sender,
-        global::Avalonia.Interactivity.RoutedEventArgs e) => Dismiss();
+        global::Avalonia.Interactivity.RoutedEventArgs e) => Dismiss(userInitiated: true);
 
     private void SetAboveFlashOverlay()
     {

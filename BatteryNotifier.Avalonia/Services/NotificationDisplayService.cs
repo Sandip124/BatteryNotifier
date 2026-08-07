@@ -76,7 +76,7 @@ public sealed class NotificationDisplayService
             ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
             : null;
 
-        ShowNotification(notification, alert);
+        ShowNotification(notification, alert, dismissalTag: notification.Tag);
 
         if (!suppression.ShouldSuppressSound || isCritical)
             _ = _notificationManager?.EmitGlobalNotification(notification);
@@ -85,11 +85,11 @@ public sealed class NotificationDisplayService
     }
 
     public void ShowNotification(NotificationMessageEventArgs notification, BatteryAlert? alert,
-        bool playSound = false)
+        bool playSound = false, string? dismissalTag = null)
     {
         if (!Dispatcher.UIThread.CheckAccess())
         {
-            Dispatcher.UIThread.Post(() => ShowNotification(notification, alert, playSound));
+            Dispatcher.UIThread.Post(() => ShowNotification(notification, alert, playSound, dismissalTag));
             return;
         }
 
@@ -110,7 +110,7 @@ public sealed class NotificationDisplayService
         }
 
         // Notification card
-        ShowCard(title, notification.Message, level, ColorToHex(color));
+        ShowCard(title, notification.Message, level, ColorToHex(color), dismissalTag);
     }
 
     private static string DetermineTitle(string? tag) => tag switch
@@ -185,7 +185,7 @@ public sealed class NotificationDisplayService
         }
     }
 
-    private void ShowCard(string title, string message, int level, string accentColor)
+    private void ShowCard(string title, string message, int level, string accentColor, string? dismissalTag = null)
     {
         try
         {
@@ -195,7 +195,7 @@ public sealed class NotificationDisplayService
             var card = new NotificationCard();
             var vm = new NotificationCardViewModel(
                 title, message, level, accentColor,
-                onDismiss: () => DismissNotification(card));
+                onDismiss: userInitiated => DismissNotification(card, dismissalTag, userInitiated));
             card.DataContext = vm;
 
             lock (_cardsLock) { _activeCards.Add(card); }
@@ -213,13 +213,16 @@ public sealed class NotificationDisplayService
     /// <summary>
     /// Dismisses a single notification card and stops all associated effects (sound + flash).
     /// </summary>
-    private void DismissNotification(NotificationCard card)
+    private void DismissNotification(NotificationCard card, string? dismissalTag = null, bool userInitiated = false)
     {
         if (!Dispatcher.UIThread.CheckAccess())
         {
-            Dispatcher.UIThread.Post(() => DismissNotification(card));
+            Dispatcher.UIThread.Post(() => DismissNotification(card, dismissalTag, userInitiated));
             return;
         }
+
+        if (!string.IsNullOrEmpty(dismissalTag))
+            AlertEvaluationService.Instance.RecordDismissal(dismissalTag, userInitiated);
 
         // Remove and close the card
         lock (_cardsLock) { _activeCards.Remove(card); }

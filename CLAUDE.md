@@ -22,9 +22,10 @@ BatteryNotifier/
 │   ├── Providers/
 │   │   └── BatteryInfoProvider.cs   # WMI Win32_Battery query
 │   ├── Services/
+│   │   ├── AlertEvaluationService.cs # "When to (re)notify" brain: entry / rapid drop / severity-capped backoff / engagement
 │   │   ├── AppSettings.cs           # Encrypted settings singleton (DPAPI / AES-GCM)
 │   │   ├── BatteryMonitorService.cs # 1s polling + WMI/Darwin events
-│   │   ├── NotificationService.cs   # Priority queue, escalating backoff, throttling
+│   │   ├── NotificationService.cs   # Delivery pipe: pause, 2s dedup, priority queue
 │   │   ├── NotificationTemplates.cs # Level-aware + escalation-aware message templates
 │   │   ├── SettingsEncryption.cs    # AES-GCM encrypt/decrypt for settings at rest
 │   │   ├── StartupManager.cs        # Cross-platform launch at startup
@@ -130,31 +131,51 @@ BatteryMonitorService
   ↓ BatteryStatusChanged / PowerLineStatusChanged events
   ├── BatteryManagerStore  (shared in-memory state)
   ├── MainWindowViewModel  (updates UI on Dispatcher.UIThread)
-  └── NotificationService.PublishNotification()
-        ↓ (escalating backoff + throttle + pause check + critical bypass)
+  └── PublishAlertNotifications()
+        ↓ AlertEvaluationService.EvaluateAlerts()   ← the "when to (re)notify" brain
+        │    (entry / rapid drop / severity-capped backoff / engagement)
+        ↓ NotificationService.PublishNotification()  ← delivery pipe
+        │    (pause drop + 2s rapid-fire dedup + priority emit)
       NotificationService.NotificationReceived event
         ↓
       NotificationDisplayService.DeliverNotification()
         ↓ SystemStateDetector.GetSuppressionState()
         ├── [DND/Fullscreen?] → suppress toast + sound (Critical overrides)
         ├── Screen flash + notification card (Avalonia-native)
+        │     └── on dismiss → AlertEvaluationService.RecordDismissal(tag, userInitiated)
         └── NotificationManager → SoundManager (audio playback)
 ```
 
+**Two clear responsibilities:** `AlertEvaluationService` decides *whether/when* an alert should fire (battery-aware, per alert). `NotificationService` is a generic *delivery pipe* — it no longer owns any escalation state.
+
 ### Notification Trigger Rules
 
-- **Full battery**: level >= threshold AND charger plugged in (`PowerLineStatus == Online`)
-- **Low battery**: level <= threshold AND not charging
-- Unplugging while above full threshold does NOT trigger a notification
-- Power state changes reset all notification trackers for eager re-notification
+An alert only fires when the level is inside its range **and** the charger state matches its
+`AlertTone` (see `AlertEvaluationService.IsInsideAlertRange`) — the tone is the single classifier:
 
-### Notification Escalation (Duolingo-inspired)
+- **Full** tone alert → only while **plugged in** (`PowerLineStatus == Online`) — an "unplug now" reminder.
+- **Low** tone alert → only while **unplugged** — a "plug in" reminder (gated on plugged/unplugged, not "actively charging", so a plugged-but-not-charging battery won't nag).
+- **Neutral** tone (custom / mid-range) → **generic**, fires regardless of the charger.
+- Power state changes reset all alert state (`ResetAll`) for eager re-notification.
 
-Per-tag escalating backoff replaces flat deduplication:
-- **Backoff**: immediate → 2 min → 5 min → 10 min → 15 min → 30 min → 45 min → silenced
-- **Auto-recovery**: after 2 hours of silence, the tracker resets ("recovering arm")
-- **Message templates** (`NotificationTemplates`): vary by battery level tier AND escalation count
-- **Power state change**: resets all trackers so notifications fire eagerly again
+### Notification Re-notify Logic (AlertEvaluationService — the brain)
+
+Alerts are **not** just edge-triggered; while the battery stays inside an alert's range,
+`AlertEvaluationService` decides when to re-notify from four inputs (fire if any apply):
+
+1. **Entry** — fires once when the battery crosses into the range (resets the cycle).
+2. **Rapid drop** — a ≥5% fall since the last alert (fast-draining / degraded battery).
+3. **Severity-capped backoff** — `interval = min(escalating[2→5→10→15→30→45 min], severityCap)`
+   where `severityCap` = 2 min (≤10%), 5 min (≤20%), 15 min (else). The cap means it never
+   goes silent for hours, and it can't grow past the cap.
+4. **Engagement** (`RecordDismissal`) — a **user dismissal** keeps the escalation growing (nag
+   less); an **ignored/timed-out** alert resets the cycle so reminders stay eager. Previews
+   pass no tag, so they never affect escalation.
+
+- **Message templates** (`NotificationTemplates`): vary by battery level tier AND `GetEscalationCount`.
+- **Power state change**: `ResetAll()` clears all per-alert state so alerts fire eagerly again.
+- **Overlapping alerts**: when several trigger at once, only the **narrowest** range fires
+  (`BatteryMonitorService.SelectNarrowestAlert`).
 
 ### Settings Flow
 
@@ -205,7 +226,7 @@ DND monitoring: Darwin `notify_check` every 1s (zero-cost memory read) for insta
 
 macOS Tahoe detection: reads `description of every menu bar item` from ControlCenter process. When Focus is active, macOS shows a "Focus" item. No clicking, no dropdown, no flicker. Requires Accessibility permission — app prompts on first launch via `AXIsProcessTrusted()` check and opens System Settings directly.
 
-Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority (battery ≤10% while discharging) bypasses everything including backoff, silencing, throttle, and pause.
+Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority (battery ≤10% while discharging) bypasses everything including the re-notify interval, throttle, pause, and DND.
 
 ---
 
@@ -320,16 +341,27 @@ Dispatcher.UIThread.Post(RefreshBatteryStatus);
 
 ---
 
-## NotificationService — Escalating Backoff & Throttling
+## Two-layer notification design
 
-- **Escalating backoff**: per-tag tracker with intervals [0, 2min, 5min, 10min, 15min, 30min, 45min] → silenced after 7 notifications
-- **Auto-recovery**: silenced tags auto-reset after 2 hours
-- **Throttle interval**: 2 s — rapid notifications held in `_pendingNotifications`, flushed by one-shot timer
-- **Power state change**: resets all trackers via `ResetAllTrackers()`
-- **Alert range change**: resets trackers + forces immediate re-check so new thresholds trigger instantly
-- **Overlapping alerts**: when multiple alerts trigger simultaneously, only the narrowest range fires
-- **Critical priority** (battery ≤10% discharging): bypasses backoff, silencing, throttle, and pause
-- **Pause/Resume**: user can pause all non-critical notifications for 2 hours (auto-resumes via `AutoResumeIfExpired()`). Toggled from tray menu or main window banner. `PausedChanged` event syncs UI instantly
+The "when" and the "how" are deliberately separate. Keep new logic on the correct side.
+
+### AlertEvaluationService — the "when to (re)notify" brain (battery-aware, per alert)
+
+- **Re-notify triggers** (fire if any): entry into range, ≥5% rapid drop, or severity-capped
+  escalating interval — see [Notification Re-notify Logic](#notification-re-notify-logic-alertevaluationservice--the-brain).
+- **Per-alert state**: `WasInside`, `FireCount`, `LastFireLevel`, `LastFireTime` (2% debounce on exit).
+- **`GetEscalationCount(id)`**: prior-notifications count for message-template selection.
+- **`RecordDismissal(id, userInitiated)`**: engagement feedback — user-dismiss keeps escalating, ignored resets.
+- **`ResetAll()`**: clears all per-alert state (called on power-line change / alert-range change).
+- **Test seam**: internal `Clock` for deterministic interval tests.
+
+### NotificationService — the delivery pipe (generic, no escalation state)
+
+- **Pause/Resume**: drops non-critical notifications while paused (2 h default, auto-resumes via `AutoResumeIfExpired()`). Toggled from tray menu or main-window banner; `PausedChanged` syncs UI instantly.
+- **Throttle interval**: 2 s — rapid-fire bursts coalesced per tag in `_pendingNotifications`, flushed by a one-shot timer (keeps the latest).
+- **Priority queue**: emits highest-priority first via `NotificationReceived`.
+- **`ResetAllTrackers()`**: now just discards queued/pending notifications (stale-toast guard); the escalation reset lives in `AlertEvaluationService.ResetAll()`.
+- **Critical priority** (battery ≤10% discharging): bypasses throttle, pause, and DND.
 
 ---
 
@@ -351,13 +383,13 @@ Messages vary by **battery level tier** and **escalation count**:
 
 Each tier has multiple escalation stages with randomized variants per stage.
 
-### Alert tone (message + color consistency)
+### Alert tone (message + color + charger gating consistency)
 
-`BatteryAlert.Tone` (`AlertTone.Low` / `Full` / `Neutral`) is the **single** classifier for both the message wording (`NotificationTemplates.GetAlertMessage`) and the accent/flash color (`NotificationDisplayService.DetermineColor`), so they never disagree — including for wide, custom, or overlapping ranges:
+`BatteryAlert.Tone` (`AlertTone.Low` / `Full` / `Neutral`) is the **single** classifier for the message wording (`NotificationTemplates.GetAlertMessage`), the accent/flash color (`NotificationDisplayService.DetermineColor`), **and** the charger gate (`AlertEvaluationService.IsInsideAlertRange`), so they never disagree — including for wide, custom, or overlapping ranges:
 
-- **Low** — reaches empty (`LowerBound ≤ 5`) or sits in the low half (`UpperBound ≤ 50`) → low wording, amber/red (red ≤ 10%).
-- **Full** — reaches full (`UpperBound ≥ 95`) or sits in the high half (`LowerBound ≥ 50`) → full wording, green.
-- **Neutral** — spans both extremes (e.g. `0–100`) or neither (mid, e.g. `20–80`) → neutral wording, level-based color.
+- **Low** — reaches empty (`LowerBound ≤ 5`) or sits in the low half (`UpperBound ≤ 50`) → low wording, amber/red (red ≤ 10%), fires only while **unplugged**.
+- **Full** — reaches full (`UpperBound ≥ 95`) or sits in the high half (`LowerBound ≥ 50`) → full wording, green, fires only while **plugged in**.
+- **Neutral** — spans both extremes (e.g. `0–100`) or neither (mid, e.g. `20–80`) → neutral wording, level-based color, **generic** (fires regardless of charger).
 
 A per-alert `FlashColor` (if set) always overrides the auto color. When ranges **overlap**, only the **narrowest** triggered alert fires (`BatteryMonitorService.PublishAlertNotifications` → `MinBy(UpperBound − LowerBound)`); e.g. full `80–100` (width 20) wins over low `0–85` (width 85) in their 80–85% overlap.
 
