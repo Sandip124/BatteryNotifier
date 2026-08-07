@@ -60,31 +60,40 @@ public sealed class NotificationService : IDisposable
 
     // ── Pause / Resume ────────────────────────────────────────
 
-    private static readonly TimeSpan PauseAutoResumeAfter = TimeSpan.FromHours(2);
     private DateTime _pausedAt;
+    private TimeSpan? _pauseDuration; // null = paused until manually resumed
 
     public event Action<bool>? PausedChanged;
 
-    public void PauseNotifications()
+    /// <summary>Pauses non-critical notifications. <paramref name="duration"/> null = until manually resumed.</summary>
+    public void PauseNotifications(TimeSpan? duration)
     {
         _paused = true;
         _pausedAt = DateTime.UtcNow;
+        _pauseDuration = duration;
         PausedChanged?.Invoke(true);
     }
 
     public void ResumeNotifications()
     {
         _paused = false;
+        _pauseDuration = null;
         PausedChanged?.Invoke(false);
     }
 
     public bool IsPaused => _paused;
 
+    /// <summary>Duration the current pause will last, or null if paused until manually resumed.</summary>
+    public TimeSpan? PauseDuration => _pauseDuration;
+
+    /// <summary>When the current timed pause will auto-resume (UTC), or null if indefinite/not paused.</summary>
+    public DateTime? PauseResumesAt => _paused && _pauseDuration is { } d ? _pausedAt + d : null;
+
     private void AutoResumeIfExpired()
     {
-        if (_paused && (DateTime.UtcNow - _pausedAt) >= PauseAutoResumeAfter)
+        if (_paused && _pauseDuration is { } duration && (DateTime.UtcNow - _pausedAt) >= duration)
         {
-            Logger.Information("Auto-resuming notifications after {Duration}", PauseAutoResumeAfter);
+            Logger.Information("Auto-resuming notifications after {Duration}", duration);
             ResumeNotifications();
         }
     }

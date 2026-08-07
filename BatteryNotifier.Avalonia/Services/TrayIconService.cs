@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Threading.Tasks;
 using Avalonia;
@@ -24,16 +25,28 @@ internal sealed class TrayIconService : IDisposable
     private bool _usingNativeMacStatusItem;
 
     // Tags for the native macOS status-item context menu.
-    private const int MenuPause = 1;
+    private const int MenuResume = 1;
     private const int MenuUpdates = 2;
     private const int MenuAbout = 3;
     private const int MenuExit = 4;
+    private const int MenuPauseBase = 10; // pause options use MenuPauseBase + index
+
+    /// <summary>Minimal set of pause durations (null = until manually resumed).</summary>
+    private static readonly (string Label, TimeSpan? Duration)[] PauseOptions =
+    [
+        ("30 minutes", TimeSpan.FromMinutes(30)),
+        ("1 hour", TimeSpan.FromHours(1)),
+        ("2 hours", TimeSpan.FromHours(2)),
+        ("Until I turn it back on", null),
+    ];
+
     private NotificationManager? _notificationManager;
     private NotificationDisplayService? _displayService;
     private bool _disposed;
 
     // Store menu items for clean unsubscription in Dispose
     private NativeMenuItem? _pauseNotificationsMenuItem;
+    private NativeMenu? _pauseSubmenu;
     private NativeMenuItem? _aboutMenuItem;
     private NativeMenuItem? _updateMenuItem;
     private NativeMenuItem? _exitMenuItem;
@@ -52,8 +65,18 @@ internal sealed class TrayIconService : IDisposable
             var trayMenu = new NativeMenu();
 
             // No Show/Hide item — a single click on the tray icon already toggles the window.
-            _pauseNotificationsMenuItem = new NativeMenuItem { Header = "Pause Notifications (2h)" };
-            _pauseNotificationsMenuItem.Click += OnTogglePauseNotifications;
+            // "Pause notification for" opens a submenu of durations; toggles to "Resume" when paused.
+            _pauseSubmenu = new NativeMenu();
+            foreach (var (label, duration) in PauseOptions)
+            {
+                var d = duration;
+                var optItem = new NativeMenuItem { Header = label };
+                optItem.Click += (_, _) => NotificationService.Instance.PauseNotifications(d);
+                _pauseSubmenu.Add(optItem);
+            }
+
+            _pauseNotificationsMenuItem = new NativeMenuItem();
+            UpdatePauseMenuItem(NotificationService.Instance.IsPaused);
 
             _aboutMenuItem = new NativeMenuItem { Header = "About" };
             _aboutMenuItem.Click += OnOpenAbout;
@@ -138,23 +161,31 @@ internal sealed class TrayIconService : IDisposable
 
 
 
-    private static void OnTogglePauseNotifications(object? sender, EventArgs e)
+    private static void OnResumeNotifications(object? sender, EventArgs e)
+        => NotificationService.Instance.ResumeNotifications();
+
+    /// <summary>Paused → single "Resume Notifications"; otherwise → "Pause notification for" submenu.</summary>
+    private void UpdatePauseMenuItem(bool paused)
     {
-        if (NotificationService.Instance.IsPaused)
-            NotificationService.Instance.ResumeNotifications();
+        if (_pauseNotificationsMenuItem == null) return;
+
+        _pauseNotificationsMenuItem.Click -= OnResumeNotifications;
+        if (paused)
+        {
+            _pauseNotificationsMenuItem.Header = "Resume Notifications";
+            _pauseNotificationsMenuItem.Menu = null;
+            _pauseNotificationsMenuItem.Click += OnResumeNotifications;
+        }
         else
-            NotificationService.Instance.PauseNotifications();
+        {
+            _pauseNotificationsMenuItem.Header = "Pause notification for";
+            _pauseNotificationsMenuItem.Menu = _pauseSubmenu;
+        }
     }
 
     private void OnPausedStateChanged(bool paused)
     {
-        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            if (_pauseNotificationsMenuItem != null)
-                _pauseNotificationsMenuItem.Header = paused
-                    ? "Resume Notifications"
-                    : "Pause Notifications (2h)";
-        });
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => UpdatePauseMenuItem(paused));
     }
 
     private void OnNotificationReceived(object? sender, NotificationMessageEventArgs notification)
@@ -205,11 +236,14 @@ internal sealed class TrayIconService : IDisposable
 
     private static IReadOnlyList<MacMenuItem> BuildMacMenu()
     {
-        var paused = NotificationService.Instance.IsPaused;
+        var pauseEntry = NotificationService.Instance.IsPaused
+            ? MacMenuItem.Item("Resume Notifications", MenuResume)
+            : MacMenuItem.Sub("Pause notification for",
+                PauseOptions.Select((o, i) => MacMenuItem.Item(o.Label, MenuPauseBase + i)).ToList());
 
         return new List<MacMenuItem>
         {
-            MacMenuItem.Item(paused ? "Resume Notifications" : "Pause Notifications (2h)", MenuPause),
+            pauseEntry,
             MacMenuItem.Separator,
             MacMenuItem.Item("Check for Updates...", MenuUpdates),
             MacMenuItem.Item("About", MenuAbout),
@@ -222,10 +256,15 @@ internal sealed class TrayIconService : IDisposable
     {
         switch (tag)
         {
-            case MenuPause: OnTogglePauseNotifications(null, EventArgs.Empty); break;
+            case MenuResume: NotificationService.Instance.ResumeNotifications(); break;
             case MenuUpdates: OnCheckForUpdates(null, EventArgs.Empty); break;
             case MenuAbout: OpenAbout(); break;
             case MenuExit: OnExit(null, EventArgs.Empty); break;
+            default:
+                var index = tag - MenuPauseBase;
+                if (index >= 0 && index < PauseOptions.Length)
+                    NotificationService.Instance.PauseNotifications(PauseOptions[index].Duration);
+                break;
         }
     }
 
@@ -395,7 +434,7 @@ internal sealed class TrayIconService : IDisposable
             // Unsubscribe menu item Click handlers to prevent event leaks
             if (_pauseNotificationsMenuItem != null)
             {
-                _pauseNotificationsMenuItem.Click -= OnTogglePauseNotifications;
+                _pauseNotificationsMenuItem.Click -= OnResumeNotifications;
                 _pauseNotificationsMenuItem = null;
             }
 

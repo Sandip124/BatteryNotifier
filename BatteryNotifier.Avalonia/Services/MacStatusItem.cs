@@ -7,11 +7,12 @@ using Serilog;
 
 namespace BatteryNotifier.Avalonia.Services;
 
-/// <summary>One entry in the native status-item context menu.</summary>
-internal readonly record struct MacMenuItem(string Title, int Tag, bool IsSeparator)
+/// <summary>One entry in the native status-item context menu (optionally a submenu).</summary>
+internal readonly record struct MacMenuItem(string Title, int Tag, bool IsSeparator, IReadOnlyList<MacMenuItem>? Submenu)
 {
-    public static MacMenuItem Separator { get; } = new(string.Empty, -1, true);
-    public static MacMenuItem Item(string title, int tag) => new(title, tag, false);
+    public static MacMenuItem Separator { get; } = new(string.Empty, -1, true, null);
+    public static MacMenuItem Item(string title, int tag) => new(title, tag, false, null);
+    public static MacMenuItem Sub(string title, IReadOnlyList<MacMenuItem> children) => new(title, -1, false, children);
 }
 
 /// <summary>
@@ -218,8 +219,17 @@ internal static class MacStatusItem
         var items = _menuProvider?.Invoke();
         if (items is not { Count: > 0 }) return;
 
-        var menu = MsgSend(MsgSend(Cls("NSMenu"), Sel("alloc")), Sel("init"));
+        var menu = BuildMenu(items);
         if (menu == IntPtr.Zero) return;
+
+        // +[NSMenu popUpContextMenu:withEvent:forView:] — shows the menu without hijacking left-click.
+        MsgSend(Cls("NSMenu"), Sel("popUpContextMenu:withEvent:forView:"), menu, evt, _button);
+    }
+
+    private static IntPtr BuildMenu(IReadOnlyList<MacMenuItem> items)
+    {
+        var menu = MsgSend(MsgSend(Cls("NSMenu"), Sel("alloc")), Sel("init"));
+        if (menu == IntPtr.Zero) return IntPtr.Zero;
 
         MsgSend(menu, Sel("setAutoenablesItems:"), false); // keep our explicit targets enabled
 
@@ -235,10 +245,22 @@ internal static class MacStatusItem
             var empty = CFString(string.Empty);
             try
             {
+                // A submenu parent has no action (nil selector) — clicking it just expands it.
+                var action = entry.Submenu != null ? IntPtr.Zero : Sel("menuItemClicked:");
                 var mi = MsgSend(MsgSend(Cls("NSMenuItem"), Sel("alloc")),
-                    Sel("initWithTitle:action:keyEquivalent:"), title, Sel("menuItemClicked:"), empty);
-                MsgSend(mi, Sel("setTarget:"), _target);
-                MsgSend(mi, Sel("setTag:"), (IntPtr)entry.Tag);
+                    Sel("initWithTitle:action:keyEquivalent:"), title, action, empty);
+
+                if (entry.Submenu != null)
+                {
+                    var sub = BuildMenu(entry.Submenu);
+                    if (sub != IntPtr.Zero) MsgSend(mi, Sel("setSubmenu:"), sub);
+                }
+                else
+                {
+                    MsgSend(mi, Sel("setTarget:"), _target);
+                    MsgSend(mi, Sel("setTag:"), (IntPtr)entry.Tag);
+                }
+
                 MsgSend(menu, Sel("addItem:"), mi);
             }
             finally
@@ -248,8 +270,7 @@ internal static class MacStatusItem
             }
         }
 
-        // +[NSMenu popUpContextMenu:withEvent:forView:] — shows the menu without hijacking left-click.
-        MsgSend(Cls("NSMenu"), Sel("popUpContextMenu:withEvent:forView:"), menu, evt, _button);
+        return menu;
     }
 
     // ── Objective-C / CoreFoundation interop ──

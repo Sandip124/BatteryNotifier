@@ -155,7 +155,7 @@
                                           Foreground="#FF9800"
                                           VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2"
-                                           Text="Notifications paused · auto-resumes in 2h"
+                                           Text="{Binding PausedBannerText}"
                                            FontSize="11.5"
                                            Foreground="#FF9800"
                                            VerticalAlignment="Center" />

@@ -125,6 +125,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             CancelTypewriter();
             StatusMessage = string.Empty;
         }
+
+        UpdatePauseCountdown();
     }
 
     private void StartPhraseCycling()
@@ -568,6 +570,32 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>Show pause banner only when paused AND DND is not active (DND already covers it).</summary>
     public bool ShowPausedBanner => IsNotificationsPaused && !IsDndActive;
 
+    /// <summary>Banner text with a live countdown of the remaining pause time.</summary>
+    public string PausedBannerText
+    {
+        get
+        {
+            if (NotificationService.Instance.PauseResumesAt is not { } resumesAt)
+                return "Notifications paused · until you turn it back on";
+
+            var remaining = resumesAt - DateTime.UtcNow;
+            if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
+            return $"Notifications paused · {FormatRemaining(remaining)} remaining";
+        }
+    }
+
+    /// <summary>"1h 5m" / "1h" / "5m" — minutes shown only when non-zero (whole hours drop the "0m").</summary>
+    private static string FormatRemaining(TimeSpan d)
+    {
+        var totalMinutes = (int)Math.Ceiling(d.TotalMinutes);
+        var hours = totalMinutes / 60;
+        var minutes = totalMinutes % 60;
+
+        if (hours > 0)
+            return minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
+        return $"{minutes}m";
+    }
+
     public ReactiveCommand<Unit, Unit> ResumeNotificationsCommand { get; } =
         ReactiveCommand.Create(() => NotificationService.Instance.ResumeNotifications());
 
@@ -577,7 +605,44 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         {
             IsNotificationsPaused = paused;
             this.RaisePropertyChanged(nameof(ShowPausedBanner));
+            this.RaisePropertyChanged(nameof(PausedBannerText));
+            UpdatePauseCountdown();
         });
+    }
+
+    private IDisposable? _pauseCountdown;
+
+    /// <summary>Ticks the banner countdown once a second, but only while the window is visible and
+    /// a timed pause is active. Starts/stops itself as those conditions change.</summary>
+    private void UpdatePauseCountdown()
+    {
+        var svc = NotificationService.Instance;
+        var active = _isWindowVisible && svc.IsPaused && svc.PauseDuration is { };
+
+        if (active && _pauseCountdown == null)
+        {
+            _pauseCountdown = DispatcherTimer.Run(TickPauseCountdown, TimeSpan.FromSeconds(1));
+        }
+        else if (!active)
+        {
+            _pauseCountdown?.Dispose();
+            _pauseCountdown = null;
+        }
+    }
+
+    private bool TickPauseCountdown()
+    {
+        var svc = NotificationService.Instance;
+
+        // Deadline reached — resume now (the service's own check is otherwise lazy).
+        if (svc.PauseResumesAt is { } resumesAt && DateTime.UtcNow >= resumesAt)
+        {
+            svc.ResumeNotifications(); // → OnPausedChanged → UpdatePauseCountdown disposes this timer
+            return false;
+        }
+
+        this.RaisePropertyChanged(nameof(PausedBannerText));
+        return true;
     }
 
     private void CheckAccessibilityPermission()
@@ -893,6 +958,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         if (_disposed) return;
         StopDndMonitor();
         StopPhraseCycling();
+        _pauseCountdown?.Dispose();
         CancelTypewriter();
         CurrentView?.Dispose();
         HealthDashboard.Dispose();
