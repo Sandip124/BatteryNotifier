@@ -124,8 +124,8 @@ internal static class MacStatusItem
     {
         if (png.Length == 0) return;
 
-        // Size to the menu-bar thickness (with a 1pt inset) when we got a sane value.
-        var size = thickness is >= 16 and <= 48 ? thickness - 1 : 20;
+        // Size to the menu-bar thickness (with a small inset) when we got a sane value.
+        var size = thickness is >= 16 and <= 48 ? thickness - 3 : 18;
 
         var handle = GCHandle.Alloc(png, GCHandleType.Pinned);
         try
