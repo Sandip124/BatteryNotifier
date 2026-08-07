@@ -42,10 +42,16 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                 <Button Command="{Binding PreviewCommand}"
                         Theme="{StaticResource SecondaryButton}"
-                        Padding="7,5" CornerRadius="6"
+                        Padding="10,5" CornerRadius="6"
                         ToolTip.Tip="Preview alert">
-                    <PathIcon Data="{StaticResource Icon.Play}" Width="13" Height="13"
-                              Foreground="{DynamicResource AppSubtleText}" />
+                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                        <PathIcon Data="{StaticResource Icon.Play}" Width="11" Height="11"
+                                  Foreground="{DynamicResource AppSubtleText}"
+                                  VerticalAlignment="Center" />
+                        <TextBlock Text="Preview" FontSize="11.5"
+                                   Foreground="{DynamicResource AppSubtleText}"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
                 </Button>
                 <ToggleSwitch IsChecked="{Binding IsEnabled}"
                               OnContent="" OffContent=""
