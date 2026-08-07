@@ -40,7 +40,9 @@
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" Padding="0,10,0,0">
+        <Grid Grid.Row="1">
+            <ScrollViewer Name="SettingsScroller" Padding="0,10,0,0"
+                          ScrollChanged="OnSettingsScrollChanged">
             <StackPanel Spacing="10" Margin="10,0,10,40">
 
                 <!-- Appearance & Behaviour -->
@@ -321,7 +323,35 @@
                 </Border>
 
             </StackPanel>
-        </ScrollViewer>
+            </ScrollViewer>
+
+            <!-- Scroll shadows: hint that content continues above / below. Toggled in code-behind. -->
+            <Border Name="TopScrollShadow" Height="10" VerticalAlignment="Top"
+                    IsHitTestVisible="False" Opacity="0">
+                <Border.Transitions>
+                    <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.15" /></Transitions>
+                </Border.Transitions>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#33000000" Offset="0" />
+                        <GradientStop Color="#00000000" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <Border Name="BottomScrollShadow" Height="10" VerticalAlignment="Bottom"
+                    IsHitTestVisible="False" Opacity="0">
+                <Border.Transitions>
+                    <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.15" /></Transitions>
+                </Border.Transitions>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#00000000" Offset="0" />
+                        <GradientStop Color="#33000000" Offset="1" />
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+        </Grid>
     </Grid>
 
 </UserControl>

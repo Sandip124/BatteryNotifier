@@ -17,6 +17,21 @@ public partial class SettingsView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        Loaded += (_, _) => UpdateScrollShadows();
+    }
+
+    // Show a soft shadow on whichever edge has more content beyond it, hinting the list scrolls.
+    private void OnSettingsScrollChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollShadows();
+
+    private void UpdateScrollShadows()
+    {
+        if (SettingsScroller is null) return;
+
+        var offset = SettingsScroller.Offset.Y;
+        var maxOffset = SettingsScroller.Extent.Height - SettingsScroller.Viewport.Height;
+
+        TopScrollShadow.Opacity = offset > 1 ? 1 : 0;
+        BottomScrollShadow.Opacity = offset < maxOffset - 1 ? 1 : 0;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
