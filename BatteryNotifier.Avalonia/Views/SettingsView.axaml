@@ -25,7 +25,7 @@
                 PointerPressed="SettingsTitleBar_PointerPressed">
             <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
                 <Button Command="{Binding BackCommand}" Grid.Column="0"
-                        Theme="{StaticResource SecondaryButton}"
+                        Theme="{StaticResource PrimaryButton}"
                         CornerRadius="8" Padding="10,6"
                         Foreground="{DynamicResource AppAccentForeground}">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
