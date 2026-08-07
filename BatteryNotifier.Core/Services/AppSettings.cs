@@ -47,6 +47,9 @@ public sealed class AppSettings
     // Screen flash for Avalonia-native notifications
     public bool ScreenFlashEnabled { get; set; } = true;
 
+    /// <summary>Alert sound volume, 0–100. 0 = muted (no sound played).</summary>
+    public int AlertVolume { get; set; } = 100;
+
     /// <summary>
     /// Alerts setting for charger plugged in or out
     /// </summary>
@@ -125,6 +128,9 @@ public sealed class AppSettings
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AutoCheckForUpdates = settings.AutoCheckForUpdates;
                 ScreenFlashEnabled = settings.ScreenFlashEnabled;
+                AlertVolume = Math.Clamp(settings.AlertVolume, 0, 100);
+                AcAlerts = settings.AcAlerts;
+                NotificationPosition = settings.NotificationPosition;
                 SettingsVersion = settings.SettingsVersion;
                 Alerts = settings.Alerts ?? new List<BatteryAlert>();
                 AppId = settings.AppId;
@@ -291,6 +297,9 @@ public sealed class AppSettings
         LaunchAtStartup = true;
         AutoCheckForUpdates = true;
         ScreenFlashEnabled = true;
+        AlertVolume = 100;
+        AcAlerts = true;
+        NotificationPosition = NotificationPosition.TopCenter;
         Alerts = CreateDefaultAlerts();
         SettingsVersion = 2;
         // AppId intentionally preserved — unique per install

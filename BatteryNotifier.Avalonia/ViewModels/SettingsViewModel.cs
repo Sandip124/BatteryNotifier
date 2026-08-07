@@ -26,6 +26,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private bool _autoCheckForUpdates;
     private bool _screenFlashEnabled;
     private bool _acAlerts;
+    private int _alertVolume;
     private NotificationPosition _notificationPosition;
     private bool _disposed;
 
@@ -101,6 +102,18 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                 _settings.Save();
             })
             .DisposeWith(_disposables);
+
+        // Volume slider fires rapidly while dragging — throttle the encrypted save.
+        this.WhenAnyValue(x => x.AlertVolume)
+            .Skip(1)
+            .Throttle(TimeSpan.FromMilliseconds(400))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(volume =>
+            {
+                _settings.AlertVolume = volume;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
     }
 
     private void LoadAlerts()
@@ -170,6 +183,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _autoCheckForUpdates = _settings.AutoCheckForUpdates;
         _screenFlashEnabled = _settings.ScreenFlashEnabled;
         _acAlerts = _settings.AcAlerts;
+        _alertVolume = _settings.AlertVolume;
         _notificationPosition = _settings.NotificationPosition;
     }
 
@@ -247,6 +261,20 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         get => _acAlerts;
         set => this.RaiseAndSetIfChanged(ref _acAlerts, value);
     }
+
+    public int AlertVolume
+    {
+        get => _alertVolume;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _alertVolume, value) != value) return;
+            this.RaisePropertyChanged(nameof(AlertVolumeDisplay));
+            this.RaisePropertyChanged(nameof(IsAlertMuted));
+        }
+    }
+
+    public string AlertVolumeDisplay => _alertVolume <= 0 ? "Muted" : $"{_alertVolume}%";
+    public bool IsAlertMuted => _alertVolume <= 0;
 
     public NotificationPosition NotificationPosition
     {

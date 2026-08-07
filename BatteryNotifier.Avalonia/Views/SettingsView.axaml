@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
              xmlns:components="clr-namespace:BatteryNotifier.Avalonia.Views.Components"
+             xmlns:controls="clr-namespace:BatteryNotifier.Avalonia.Controls"
              xmlns:services="clr-namespace:BatteryNotifier.Core.Services;assembly=BatteryNotifier.Core"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="600"
              x:Class="BatteryNotifier.Avalonia.Views.SettingsView"
@@ -243,6 +244,29 @@
                                               OnContent="" OffContent=""
                                               Margin="0" Padding="0" />
                             </Grid>
+                        </Border>
+
+                        <!-- Alert volume -->
+                        <Border Padding="12,6,12,10">
+                            <StackPanel Spacing="6">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Alert volume</TextBlock>
+                                    <TextBlock Grid.Column="1" VerticalAlignment="Center"
+                                               FontSize="12" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource AppSubtleText}"
+                                               Text="{Binding AlertVolumeDisplay}" />
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,8,*">
+                                    <PathIcon Grid.Column="0" Width="14" Height="14" VerticalAlignment="Center"
+                                              Foreground="{DynamicResource AppSubtleText}"
+                                              Data="{StaticResource Icon.SpeakerHigh}" />
+                                    <controls:RangeSlider Grid.Column="2"
+                                                          IsRange="False"
+                                                          Minimum="0" Maximum="100"
+                                                          Value="{Binding AlertVolume}"
+                                                          VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
                         </Border>
                     </StackPanel>
                 </Border>

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using BatteryNotifier.Core.Logger;
 using Serilog;
 #if WINDOWS
@@ -30,9 +31,13 @@ namespace BatteryNotifier.Core.Managers
         }
 
         public async Task PlaySoundAsync(string? source, bool loop = false,
-            int durationMs = DefaultPlayDurationMs)
+            int durationMs = DefaultPlayDurationMs, int volumePercent = 100)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
+
+            // 0 = muted: skip playback entirely (works on every backend, incl. aplay).
+            if (volumePercent <= 0) return;
+            volumePercent = Math.Min(volumePercent, 100);
 
             var resolvedPath = ResolveSoundPath(source);
             if (resolvedPath == null) return;
@@ -53,7 +58,7 @@ namespace BatteryNotifier.Core.Managers
 
             try
             {
-                await Task.Run(() => PlaySound(resolvedPath, loop, durationMs, token), token).ConfigureAwait(false);
+                await Task.Run(() => PlaySound(resolvedPath, loop, durationMs, volumePercent, token), token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -123,16 +128,16 @@ namespace BatteryNotifier.Core.Managers
             return true;
         }
 
-        private void PlaySound(string source, bool loop, int durationMs, CancellationToken token)
+        private void PlaySound(string source, bool loop, int durationMs, int volumePercent, CancellationToken token)
         {
             if (OperatingSystem.IsMacOS())
-                PlayWithSubprocess("afplay", null, source, loop, durationMs, token);
+                PlayWithSubprocess("afplay", null, source, loop, durationMs, volumePercent, token);
 #if WINDOWS
             else if (OperatingSystem.IsWindows())
-                PlayWithNAudio(source, loop, durationMs, token);
+                PlayWithNAudio(source, loop, durationMs, volumePercent, token);
 #else
             else if (OperatingSystem.IsLinux())
-                PlayOnLinux(source, loop, durationMs, token);
+                PlayOnLinux(source, loop, durationMs, volumePercent, token);
 #endif
             else
                 _logger.Warning("Unsupported platform for sound playback");
@@ -141,7 +146,7 @@ namespace BatteryNotifier.Core.Managers
         // ── Subprocess playback (macOS + Linux) ──────────────────────
 
         private void PlayWithSubprocess(string command, string[]? extraArgs, string source,
-            bool loop, int durationMs, CancellationToken token)
+            bool loop, int durationMs, int volumePercent, CancellationToken token)
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
 
@@ -149,7 +154,7 @@ namespace BatteryNotifier.Core.Managers
             {
                 token.ThrowIfCancellationRequested();
 
-                if (!RunSubprocessOnce(command, extraArgs, source, deadline, token))
+                if (!RunSubprocessOnce(command, extraArgs, source, volumePercent, deadline, token))
                     return; // Process failed — don't retry
 
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
@@ -157,7 +162,7 @@ namespace BatteryNotifier.Core.Managers
 
         /// <summary>Runs one playback subprocess. Returns true if it completed normally.</summary>
         private bool RunSubprocessOnce(string command, string[]? extraArgs, string source,
-            DateTime deadline, CancellationToken token)
+            int volumePercent, DateTime deadline, CancellationToken token)
         {
             var psi = new ProcessStartInfo
             {
@@ -173,6 +178,7 @@ namespace BatteryNotifier.Core.Managers
                 foreach (var arg in extraArgs)
                     psi.ArgumentList.Add(arg);
             }
+            AddVolumeArgs(psi, command, volumePercent);
             psi.ArgumentList.Add(source);
 
             using var process = new Process { StartInfo = psi };
@@ -208,15 +214,48 @@ namespace BatteryNotifier.Core.Managers
             return true;
         }
 
+        /// <summary>
+        /// Adds the volume flag for the given playback command. No-op at full volume, or for
+        /// commands without volume support (aplay) — those play at full unless muted (0 = skipped).
+        /// </summary>
+        private static void AddVolumeArgs(ProcessStartInfo psi, string command, int volumePercent)
+        {
+            if (volumePercent >= 100) return;
+
+            var linear = volumePercent / 100.0;
+            var inv = CultureInfo.InvariantCulture;
+
+            switch (command)
+            {
+                case "afplay":  // macOS: -v <0.0–1.0+>
+                    psi.ArgumentList.Add("-v");
+                    psi.ArgumentList.Add(linear.ToString("0.###", inv));
+                    break;
+                case "paplay":  // PulseAudio: --volume in 0–65536 (65536 = 100%)
+                    psi.ArgumentList.Add($"--volume={(int)Math.Round(linear * 65536)}");
+                    break;
+                case "pw-play": // PipeWire: --volume as a linear factor (1.0 = unmodified)
+                    psi.ArgumentList.Add($"--volume={linear.ToString("0.###", inv)}");
+                    break;
+                case "mpv":     // --volume in 0–100
+                    psi.ArgumentList.Add($"--volume={volumePercent.ToString(inv)}");
+                    break;
+                case "ffplay":  // -volume in 0–100
+                    psi.ArgumentList.Add("-volume");
+                    psi.ArgumentList.Add(volumePercent.ToString(inv));
+                    break;
+            }
+        }
+
 #if WINDOWS
         // ── Windows: NAudio (WaveOutEvent + AudioFileReader) ──────────
 
         private WaveOutEvent? _naudioDevice;
         private AudioFileReader? _naudioReader;
 
-        private void PlayWithNAudio(string source, bool loop, int durationMs, CancellationToken token)
+        private void PlayWithNAudio(string source, bool loop, int durationMs, int volumePercent, CancellationToken token)
         {
-            using var reader = new AudioFileReader(source);
+            using var reader = new AudioFileReader(source) { Volume = volumePercent / 100f };
             using var device = new WaveOutEvent();
             using var playbackDone = new ManualResetEventSlim(false);
 
@@ -282,11 +321,11 @@ namespace BatteryNotifier.Core.Managers
 #else
         // ── Linux: try SoundFlow, fall back to subprocess ──────────────────────────
 
-        private void PlayOnLinux(string source, bool loop, int durationMs, CancellationToken token)
+        private void PlayOnLinux(string source, bool loop, int durationMs, int volumePercent, CancellationToken token)
         {
             var (command, extraArgs) = FindLinuxAudioCommand(source);
             if (command != null)
-                PlayWithSubprocess(command, extraArgs, source, loop, durationMs, token);
+                PlayWithSubprocess(command, extraArgs, source, loop, durationMs, volumePercent, token);
             else
                 _logger.Warning("No audio playback command found on Linux (tried paplay, pw-play, aplay, mpv, ffplay)");
         }

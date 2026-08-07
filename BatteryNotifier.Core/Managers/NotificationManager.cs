@@ -50,7 +50,8 @@ namespace BatteryNotifier.Core.Managers
                 // Loop all sounds for the notification duration — short sounds repeat,
                 // long sounds get cut at the deadline. StopSound() ends playback on dismiss.
                 await _soundManager.PlaySoundAsync(sound, loop: true,
-                    durationMs: Constants.NotificationDurationMs).ConfigureAwait(false);
+                    durationMs: Constants.NotificationDurationMs,
+                    volumePercent: AppSettings.Instance.AlertVolume).ConfigureAwait(false);
             }
         }
 

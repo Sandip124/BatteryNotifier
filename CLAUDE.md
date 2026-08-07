@@ -224,6 +224,10 @@ Encrypted at rest. Windows uses DPAPI (OS-managed, tied to user account). macOS/
 | `FullBatteryNotificationMusic` | `builtin:Harp` | Sound (`builtin:Name`, `bundled:File`, `custom:File`, or absolute path) |
 | `LowBatteryNotificationMusic` | `builtin:Klaxon` | Sound (`builtin:Name`, `bundled:File`, `custom:File`, or absolute path) |
 | `StartMinimized` | `true` | Hide to tray on launch |
+| `AlertVolume` | `100` | Alert sound volume 0–100 (0 = muted, no sound played) |
+| `AcAlerts` | `true` | Re-fire alerts on charger plug/unplug (global) |
+| `NotificationPosition` | `TopCenter` | On-screen notification card position |
+| `ScreenFlashEnabled` | `true` | Screen-edge glow flash on notification |
 | `ThemeMode` | `System` | `System` / `Light` / `Dark` |
 | `LaunchAtStartup` | `true` | Register in OS startup mechanism |
 | `AppId` | `Guid` | Unique app identity |
@@ -411,6 +415,8 @@ Auto-checks for updates on open (Chrome-style): shows "Checking for updates..." 
 | Linux | `paplay` subprocess, falls back to `aplay` (ArgumentList) |
 
 Built-in synthesized tones loop until duration timeout or `StopSound()`. Custom and bundled sounds play once in full.
+
+**Volume** (`AppSettings.AlertVolume`, 0–100) is applied per backend in `SoundManager.PlaySoundAsync(volumePercent)`: `afplay -v` (macOS), `AudioFileReader.Volume` (Windows), and `--volume`/`-volume` for `paplay`/`pw-play`/`mpv`/`ffplay` (Linux). **0 = muted** — playback is skipped entirely (universal, incl. `aplay` which has no volume flag). The sound-picker audition always plays at full volume so sounds can be previewed even when alerts are muted.
 
 ---
 

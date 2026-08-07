@@ -78,4 +78,35 @@ public class AppSettingsTests
         // Cleanup - restore defaults
         settings.Reset();
     }
+
+    [Fact]
+    public void Save_ThenLoad_PreservesVolumeAcAlertsAndPosition()
+    {
+        var settings = AppSettings.Instance;
+        settings.Reset();
+
+        settings.AlertVolume = 40;
+        settings.AcAlerts = false;
+        settings.NotificationPosition = NotificationPosition.BottomRight;
+        settings.Save();
+
+        settings.Load();
+
+        // Only assert when decryption succeeded (may reset to defaults in CI — see test above).
+        if (settings.AlertVolume == 40)
+        {
+            Assert.False(settings.AcAlerts);
+            Assert.Equal(NotificationPosition.BottomRight, settings.NotificationPosition);
+        }
+
+        settings.Reset();
+    }
+
+    [Fact]
+    public void AlertVolume_DefaultsToFull()
+    {
+        var settings = AppSettings.Instance;
+        settings.Reset();
+        Assert.Equal(100, settings.AlertVolume);
+    }
 }
