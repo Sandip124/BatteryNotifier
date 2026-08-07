@@ -7,14 +7,23 @@ using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
+using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Avalonia.Views;
 
 public partial class NotificationCard : Window
 {
-    private static readonly TransformOperations Hidden = TransformOperations.Parse("scale(0.9,0.9) translateY(-12px)");
-    private static readonly TransformOperations Visible = TransformOperations.Parse("scale(1,1) translateY(0px)");
+    // Entrance/exit animation tuning.
+    private const double HiddenScale = 0.9;          // shrink factor for the hidden state
+    private const int SlideOffsetPx = 12;            // distance the card slides toward its edge
+
     private static readonly TimeSpan AnimOutDuration = TimeSpan.FromMilliseconds(300);
+    private static readonly TimeSpan AnimStartDelay = TimeSpan.FromMilliseconds(16);   // ~1 frame, lets transitions apply
+    private static readonly TimeSpan ProgressTickInterval = TimeSpan.FromMilliseconds(30);
+
+    private static readonly TransformOperations Visible = TransformOperations.Parse("scale(1,1) translate(0px,0px)");
+    // Hidden state emanates from the docked corner; recomputed per position by SetAnchor.
+    private TransformOperations _hidden = BuildHiddenTransform(0, -SlideOffsetPx);
 
     private DispatcherTimer? _progressTimer;
     private DateTime _showTime;
@@ -25,20 +34,52 @@ public partial class NotificationCard : Window
         InitializeComponent();
     }
 
+    /// <summary>
+    /// Aligns the entrance/exit animation with the on-screen notification position so the card
+    /// grows and slides from the corner/edge it's docked to (not always the top). Call before Show().
+    /// </summary>
+    public void SetAnchor(NotificationPosition position)
+    {
+        var (originX, originY) = AnchorOrigin(position);
+
+        _hidden = BuildHiddenTransform(SlideForOrigin(originX), SlideForOrigin(originY));
+        CardBorder.RenderTransformOrigin = new RelativePoint(originX, originY, RelativeUnit.Relative);
+        CardBorder.RenderTransform = _hidden;
+    }
+
+    /// <summary>Origin at the docked corner: X ∈ {0 left, 0.5 center, 1 right}, Y ∈ {0 top, 1 bottom}.</summary>
+    private static (double X, double Y) AnchorOrigin(NotificationPosition position) => position switch
+    {
+        NotificationPosition.TopLeft => (0, 0),
+        NotificationPosition.TopCenter => (0.5, 0),
+        NotificationPosition.TopRight => (1, 0),
+        NotificationPosition.BottomLeft => (0, 1),
+        NotificationPosition.BottomCenter => (0.5, 1),
+        NotificationPosition.BottomRight => (1, 1),
+        _ => (0.5, 0),
+    };
+
+    /// <summary>Slide the hidden state toward the anchored edge: origin 0 → -N, 0.5 → 0, 1 → +N.</summary>
+    private static int SlideForOrigin(double origin) => (int)((origin - 0.5) * 2 * SlideOffsetPx);
+
+    private static TransformOperations BuildHiddenTransform(int offsetX, int offsetY) =>
+        TransformOperations.Parse(FormattableString.Invariant(
+            $"scale({HiddenScale},{HiddenScale}) translate({offsetX}px,{offsetY}px)"));
+
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
         SetAboveFlashOverlay();
         ApplyAccentWash();
 
-        // CardBorder starts at opacity=0, scale=0.85 (set in XAML).
-        // Transition properties trigger the animation on next frame.
+        // CardBorder starts hidden (opacity 0, scaled, offset — set in XAML / SetAnchor).
+        // Flipping to the visible state one frame later triggers the transitions.
         DispatcherTimer.RunOnce(() =>
         {
             CardBorder.Opacity = 1;
             CardBorder.RenderTransform = Visible;
             StartCountdown();
-        }, TimeSpan.FromMilliseconds(16));
+        }, AnimStartDelay);
     }
 
     private void StartCountdown()
@@ -48,7 +89,7 @@ public partial class NotificationCard : Window
 
         ProgressBar.Width = CardBorder.Bounds.Width;
 
-        _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
+        _progressTimer = new DispatcherTimer { Interval = ProgressTickInterval };
         _progressTimer.Tick += (_, _) =>
         {
             var elapsed = (DateTime.UtcNow - _showTime).TotalMilliseconds;
@@ -72,9 +113,9 @@ public partial class NotificationCard : Window
 
         _progressTimer?.Stop();
 
-        // Animate out using the same transitions defined in XAML
+        // Animate out toward the docked corner (mirrors the entrance)
         CardBorder.Opacity = 0;
-        CardBorder.RenderTransform = Hidden;
+        CardBorder.RenderTransform = _hidden;
 
         // Wait for the transition to finish
         await Task.Delay(AnimOutDuration).ConfigureAwait(true);

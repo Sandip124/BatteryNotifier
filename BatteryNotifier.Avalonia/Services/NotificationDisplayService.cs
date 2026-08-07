@@ -198,6 +198,7 @@ public sealed class NotificationDisplayService
 
             lock (_cardsLock) { _activeCards.Add(card); }
 
+            card.SetAnchor(AppSettings.Instance.NotificationPosition);
             PositionCards();
             card.Show();
         }

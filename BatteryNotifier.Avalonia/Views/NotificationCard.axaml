@@ -21,7 +21,7 @@
             ClipToBounds="True"
             Opacity="0"
             RenderTransformOrigin="0.5,0"
-            RenderTransform="scale(0.9,0.9) translateY(-12px)">
+            RenderTransform="scale(0.9,0.9) translate(0px,-12px)">
         <Border.Transitions>
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.35" Easing="CubicEaseOut" />
