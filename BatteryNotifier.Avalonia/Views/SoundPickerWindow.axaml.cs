@@ -5,8 +5,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
-using Avalonia.VisualTree;
 using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views;
@@ -16,8 +14,6 @@ public partial class SoundPickerWindow : Window
     private IDisposable? _selectSub;
     private IDisposable? _cancelSub;
     private IDisposable? _browseSub;
-    private Action? _filterChangedHandler;
-    private SoundPickerViewModel? _subscribedFilterVm;
 
     private bool _closingFromBrowse;
     private TaskCompletionSource<SoundPickerItem?>? _tcs;
@@ -87,14 +83,6 @@ public partial class SoundPickerWindow : Window
         _cancelSub?.Dispose();
         _browseSub?.Dispose();
 
-        // Unsubscribe previous FilterChanged handler to prevent leak
-        if (_subscribedFilterVm != null && _filterChangedHandler != null)
-        {
-            _subscribedFilterVm.FilterChanged -= _filterChangedHandler;
-            _subscribedFilterVm = null;
-            _filterChangedHandler = null;
-        }
-
         if (DataContext is SoundPickerViewModel vm)
         {
             _selectSub = vm.SelectCommand.Subscribe(item =>
@@ -120,33 +108,26 @@ public partial class SoundPickerWindow : Window
                     _closingFromBrowse = false;
                 }
             });
-
-            _filterChangedHandler = () =>
-                Dispatcher.UIThread.Post(() => UpdateCheckIcons(vm), DispatcherPriority.Render);
-            vm.FilterChanged += _filterChangedHandler;
-            _subscribedFilterVm = vm;
         }
     }
 
-    protected override void OnOpened(EventArgs e)
+    // Row click selects only — it never plays (auto-play on click is annoying).
+    // Selection is shown via the data-bound "Selected" badge (SoundPickerItem.IsSelected).
+    private void OnSoundItemClick(object? sender, RoutedEventArgs e)
     {
-        base.OnOpened(e);
-        if (DataContext is SoundPickerViewModel vm)
-            Dispatcher.UIThread.Post(() => UpdateCheckIcons(vm), DispatcherPriority.Render);
+        if (sender is Button { DataContext: SoundPickerItem item }
+            && DataContext is SoundPickerViewModel vm)
+            vm.SelectedItem = item;
     }
 
-    private async void OnSoundItemClick(object? sender, RoutedEventArgs e)
+    // Play/pause button auditions the sound on demand, without changing the selection.
+    private void OnPreviewToggleClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Button button || button.DataContext is not SoundPickerItem item)
-            return;
+        e.Handled = true; // don't let the row's select handler fire
 
-        if (DataContext is not SoundPickerViewModel vm)
-            return;
-
-        vm.SelectedItem = item;
-        UpdateCheckIcons(vm);
-
-        await vm.PreviewItem(item).ConfigureAwait(false);
+        if (sender is Button { DataContext: SoundPickerItem item }
+            && DataContext is SoundPickerViewModel vm)
+            vm.TogglePreview(item);
     }
 
     private void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
@@ -158,31 +139,6 @@ public partial class SoundPickerWindow : Window
 
         if (DataContext is SoundPickerViewModel vm)
             vm.DeleteCustomCommand.Execute(item).Subscribe();
-    }
-
-    private void UpdateCheckIcons(SoundPickerViewModel vm)
-    {
-        var hoverBrush = this.TryFindResource("AppHoverBackground", ActualThemeVariant, out var res) && res is IBrush b
-            ? b : Brushes.Transparent;
-
-        foreach (var descendant in this.GetVisualDescendants())
-        {
-            if (descendant is not Button btn || btn.DataContext is not SoundPickerItem item)
-                continue;
-
-            var isSelected = vm.SelectedItem == item;
-            btn.Background = isSelected ? hoverBrush : Brushes.Transparent;
-            SetCheckIconVisibility(btn, isSelected);
-        }
-    }
-
-    private static void SetCheckIconVisibility(Button btn, bool visible)
-    {
-        foreach (var child in btn.GetVisualDescendants())
-        {
-            if (child is PathIcon { Name: "CheckIcon" } icon)
-                icon.IsVisible = visible;
-        }
     }
 
     private async Task<string?> BrowseAudioFile()

@@ -71,47 +71,85 @@
                                         <Button x:Name="SoundItemButton"
                                                 HorizontalAlignment="Stretch"
                                                 HorizontalContentAlignment="Stretch"
-                                                Padding="10,8"
+                                                Padding="0"
                                                 Margin="0,1"
                                                 CornerRadius="6"
                                                 Cursor="Hand"
                                                 Background="Transparent"
                                                 BorderThickness="0"
                                                 Click="OnSoundItemClick">
-                                            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                                <PathIcon Grid.Column="0"
-                                                          Data="{StaticResource Icon.MusicNote}"
-                                                          Width="14" Height="14"
-                                                          Foreground="{DynamicResource AppSubtleText}"
-                                                          Margin="0,0,8,0"
-                                                          VerticalAlignment="Center" />
-                                                <TextBlock Grid.Column="1"
-                                                           Text="{Binding DisplayName}"
-                                                           FontSize="13"
-                                                           Foreground="{DynamicResource AppForeground}"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis" />
-                                                <Button Grid.Column="2"
-                                                        x:Name="DeleteButton"
-                                                        IsVisible="{Binding IsCustomLibraryItem}"
-                                                        Background="Transparent"
-                                                        BorderThickness="0"
-                                                        Padding="4" Margin="4,0"
-                                                        Cursor="Hand"
-                                                        ToolTip.Tip="Remove from library"
-                                                        Click="OnDeleteCustomClick">
-                                                    <PathIcon Data="{StaticResource Icon.X}"
-                                                              Width="10" Height="10"
-                                                              Foreground="{DynamicResource AppSubtleText}" />
-                                                </Button>
-                                                <PathIcon Grid.Column="3"
-                                                          x:Name="CheckIcon"
-                                                          Data="{StaticResource Icon.Check}"
-                                                          Width="14" Height="14"
-                                                          Foreground="{DynamicResource AppAccentForeground}"
-                                                          IsVisible="False"
-                                                          VerticalAlignment="Center" />
-                                            </Grid>
+                                            <Panel>
+                                                <!-- Selected-row highlight (data-bound) -->
+                                                <Border Background="{DynamicResource AppHoverBackground}"
+                                                        CornerRadius="6"
+                                                        IsVisible="{Binding IsSelected}" />
+
+                                                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="10,8"
+                                                      ClipToBounds="True">
+                                                    <PathIcon Grid.Column="0"
+                                                              Data="{StaticResource Icon.MusicNote}"
+                                                              Width="14" Height="14"
+                                                              Foreground="{DynamicResource AppSubtleText}"
+                                                              Margin="0,0,8,0"
+                                                              VerticalAlignment="Center" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding DisplayName}"
+                                                               FontSize="13"
+                                                               Foreground="{DynamicResource AppForeground}"
+                                                               VerticalAlignment="Center"
+                                                               HorizontalAlignment="Left"
+                                                               MaxWidth="150"
+                                                               TextWrapping="NoWrap"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip.Tip="{Binding DisplayName}" />
+
+                                                    <!-- Persistent "Selected" badge — marks the saved sound, not a tentative click. -->
+                                                    <Border Grid.Column="2"
+                                                            IsVisible="{Binding IsCurrent}"
+                                                            Background="{DynamicResource AppAccentBackground}"
+                                                            CornerRadius="4" Padding="6,2" Margin="4,0"
+                                                            VerticalAlignment="Center">
+                                                        <TextBlock Text="Selected"
+                                                                   FontSize="10" FontWeight="SemiBold"
+                                                                   Foreground="White" />
+                                                    </Border>
+
+                                                    <!-- Play / pause preview (audition on demand; doesn't select) -->
+                                                    <Button Grid.Column="3"
+                                                            x:Name="PreviewButton"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Padding="5" Margin="2,0"
+                                                            Cursor="Hand"
+                                                            ToolTip.Tip="Preview"
+                                                            Click="OnPreviewToggleClick">
+                                                        <Panel Width="12" Height="12">
+                                                            <PathIcon Data="{StaticResource Icon.Play}"
+                                                                      Width="12" Height="12"
+                                                                      Foreground="{DynamicResource AppSubtleText}"
+                                                                      IsVisible="{Binding !IsPlaying}" />
+                                                            <PathIcon Data="{StaticResource Icon.Pause}"
+                                                                      Width="12" Height="12"
+                                                                      Foreground="{DynamicResource AppAccentForeground}"
+                                                                      IsVisible="{Binding IsPlaying}" />
+                                                        </Panel>
+                                                    </Button>
+
+                                                    <Button Grid.Column="4"
+                                                            x:Name="DeleteButton"
+                                                            IsVisible="{Binding IsCustomLibraryItem}"
+                                                            Background="Transparent"
+                                                            BorderThickness="0"
+                                                            Padding="4" Margin="4,0"
+                                                            Cursor="Hand"
+                                                            ToolTip.Tip="Remove from library"
+                                                            Click="OnDeleteCustomClick">
+                                                        <PathIcon Data="{StaticResource Icon.X}"
+                                                                  Width="10" Height="10"
+                                                                  Foreground="{DynamicResource AppSubtleText}" />
+                                                    </Button>
+                                                </Grid>
+                                            </Panel>
                                         </Button>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

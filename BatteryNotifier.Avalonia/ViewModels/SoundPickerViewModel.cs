@@ -5,6 +5,7 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Core.Managers;
 using ReactiveUI;
@@ -14,7 +15,9 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 {
     private readonly SoundManager _soundManager = new();
     private readonly CompositeDisposable _disposables = new();
+    private readonly string? _currentSettingsValue;
     private List<SoundPickerGroup> _allGroups;
+    private SoundPickerItem? _playingItem;
 
     private bool _disposed;
 
@@ -25,12 +28,18 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
     public ReactiveCommand<SoundPickerItem, Unit> DeleteCustomCommand { get; }
 
     public Interaction<Unit, string?> BrowseFileInteraction { get; } = new();
-    public event Action? FilterChanged;
 
     public SoundPickerItem? SelectedItem
     {
         get;
-        set => this.RaiseAndSetIfChanged(ref field, value);
+        set
+        {
+            if (field == value) return;
+            if (field != null) field.IsSelected = false;
+            field = value;
+            if (value != null) value.IsSelected = true;
+            this.RaisePropertyChanged();
+        }
     }
 
     public string? SearchText
@@ -48,9 +57,11 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
     public SoundPickerViewModel(string? currentSettingsValue, string sectionTitle)
     {
         PickerTitle = $"Choose {sectionTitle} Sound";
+        _currentSettingsValue = currentSettingsValue;
         _allGroups = BuildGroups();
+        MarkCurrent();
 
-        // Set initial selection
+        // Pre-highlight the saved sound so the Select button is enabled without a click.
         if (!string.IsNullOrEmpty(currentSettingsValue))
         {
             SelectedItem = _allGroups
@@ -75,8 +86,8 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 
             // Rebuild groups to include the new import
             _allGroups = BuildGroups();
+            MarkCurrent();
             ApplyFilter(SearchText);
-            FilterChanged?.Invoke();
 
             // Auto-select the newly imported sound
             var settingsValue = CustomSoundsLibrary.ToSettingsValue(fileName);
@@ -96,20 +107,24 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
                 SelectedItem = null;
 
             _allGroups = BuildGroups();
+            MarkCurrent();
             ApplyFilter(SearchText);
-            FilterChanged?.Invoke();
         });
 
         this.WhenAnyValue(x => x.SearchText)
             .Skip(1)
             .Throttle(TimeSpan.FromMilliseconds(150))
             .ObserveOn(RxApp.MainThreadScheduler)
-            .Subscribe(text =>
-            {
-                ApplyFilter(text);
-                FilterChanged?.Invoke();
-            })
+            .Subscribe(ApplyFilter)
             .DisposeWith(_disposables);
+    }
+
+    /// <summary>Flags the item matching the saved value as current (for the "Selected" badge).</summary>
+    private void MarkCurrent()
+    {
+        foreach (var item in _allGroups.SelectMany(g => g.Items))
+            item.IsCurrent = !string.IsNullOrEmpty(_currentSettingsValue)
+                && string.Equals(item.SettingsValue, _currentSettingsValue, StringComparison.Ordinal);
     }
 
     private void ApplyFilter(string? search)
@@ -130,6 +145,47 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
         FilteredGroups = filtered;
     }
 
+    /// <summary>
+    /// Toggles preview playback for the item on demand (from its play/pause button). Playing a new
+    /// item stops the previous one. Selection is intentionally left untouched — auditioning a sound
+    /// does not change the current selection.
+    /// </summary>
+    public void TogglePreview(SoundPickerItem item)
+    {
+        if (item.IsPlaying)
+        {
+            StopPreview();
+            return;
+        }
+
+        // Stop whatever is currently playing, then start this one.
+        StopPreview();
+
+        _playingItem = item;
+        item.IsPlaying = true;
+        _ = PlayThenResetAsync(item);
+    }
+
+    private async Task PlayThenResetAsync(SoundPickerItem item)
+    {
+        try
+        {
+            await PreviewItem(item).ConfigureAwait(false);
+        }
+        finally
+        {
+            // Back on the UI thread: clear the playing flag if this item is still the active one.
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_playingItem == item)
+                {
+                    item.IsPlaying = false;
+                    _playingItem = null;
+                }
+            });
+        }
+    }
+
     public async Task PreviewItem(SoundPickerItem item)
     {
         _soundManager.StopSound();
@@ -146,6 +202,12 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 
     public void StopPreview()
     {
+        if (_playingItem != null)
+        {
+            _playingItem.IsPlaying = false;
+            _playingItem = null;
+        }
+
         try { _soundManager.StopSound(); }
         catch { /* best effort */ }
     }
@@ -223,6 +285,27 @@ public sealed class SoundPickerItem : ReactiveObject
     public bool IsCustomLibraryItem { get; init; }
 
     public string DisplayName => Name;
+
+    /// <summary>True while this item's preview is playing (toggles the play/pause icon).</summary>
+    public bool IsPlaying
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>Tentative highlight for the row the user clicked (what the Select button will apply).</summary>
+    public bool IsSelected
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
+
+    /// <summary>True for the currently-saved sound — drives the persistent "Selected" badge.</summary>
+    public bool IsCurrent
+    {
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
+    }
 
     public SoundPickerItem(string name, string? settingsValue)
     {
