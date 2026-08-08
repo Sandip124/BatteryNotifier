@@ -93,7 +93,8 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
             // Auto-select the newly imported sound
             var settingsValue = CustomSoundsLibrary.ToSettingsValue(fileName);
             FlashSequenceLibrary.Instance.Invalidate(settingsValue); // in case the name was reused
-            FlashSequenceLibrary.Instance.EnsureGenerated(settingsValue);
+            if (AppSettings.Instance.ScreenFlashEnabled)
+                FlashSequenceLibrary.Instance.EnsureGenerated(settingsValue);
             SelectedItem = _allGroups
                 .SelectMany(g => g.Items)
                 .FirstOrDefault(i => i.SettingsValue == settingsValue);

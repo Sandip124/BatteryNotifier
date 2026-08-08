@@ -68,7 +68,8 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             if (result != null)
             {
                 _alert.Sound = result.SettingsValue;
-                FlashSequenceLibrary.Instance.EnsureGenerated(result.SettingsValue);
+                if (AppSettings.Instance.ScreenFlashEnabled)
+                    FlashSequenceLibrary.Instance.EnsureGenerated(result.SettingsValue);
                 UpdateSoundDisplayName();
                 _onChanged(false);
             }

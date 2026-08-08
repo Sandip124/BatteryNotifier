@@ -32,6 +32,8 @@ public sealed class NotificationDisplayService
     // with the sound. Rebuilt only when the screen layout changes.
     private readonly List<ScreenFlashOverlay> _flashOverlays = new();
     private string? _flashScreenSignature;
+    private IDisposable? _flashPoolTeardown;
+    private static readonly TimeSpan FlashPoolIdle = TimeSpan.FromSeconds(60);
     private readonly object _cardsLock = new();
     private readonly object _overlaysLock = new();
     private const int CardSpacing = 8;
@@ -47,9 +49,11 @@ public sealed class NotificationDisplayService
         _notificationManager = manager;
         Current = this;
 
-        // Pre-generate flash envelopes for the configured alert sounds so the first flash reacts.
-        foreach (var alert in AppSettings.Instance.Alerts)
-            FlashSequenceLibrary.Instance.EnsureGenerated(alert.Sound);
+        // Pre-generate flash envelopes for configured sounds so the first flash reacts — but only
+        // when the flash is actually enabled (otherwise it's wasted decode/disk work).
+        if (AppSettings.Instance.ScreenFlashEnabled)
+            foreach (var alert in AppSettings.Instance.Alerts)
+                FlashSequenceLibrary.Instance.EnsureGenerated(alert.Sound);
     }
 
     /// <summary>
@@ -86,7 +90,7 @@ public sealed class NotificationDisplayService
             ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
             : null;
 
-
+        // Start the sound first so its spawn latency overlaps the flash/card UI and they land together.
         if (!suppression.ShouldSuppressSound || isCritical)
             _ = _notificationManager?.EmitGlobalNotification(notification);
         else
@@ -170,6 +174,9 @@ public sealed class NotificationDisplayService
 
             var screens = desktop.MainWindow?.Screens;
             if (screens == null) return;
+
+            _flashPoolTeardown?.Dispose();   // in active use again — cancel any pending idle teardown
+            _flashPoolTeardown = null;
 
             List<ScreenFlashOverlay> overlays;
             lock (_overlaysLock)
@@ -335,6 +342,21 @@ public sealed class NotificationDisplayService
         foreach (var overlay in overlays)
         {
             overlay.StopFlash();
+        }
+        
+        _flashPoolTeardown?.Dispose();
+        _flashPoolTeardown = DispatcherTimer.RunOnce(TeardownFlashPool, FlashPoolIdle);
+    }
+
+    private void TeardownFlashPool()
+    {
+        _flashPoolTeardown = null;
+        lock (_overlaysLock)
+        {
+            foreach (var overlay in _flashOverlays)
+                overlay.Close();
+            _flashOverlays.Clear();
+            _flashScreenSignature = null;
         }
     }
 
