@@ -17,6 +17,7 @@ public partial class ScreenFlashOverlay : Window
 {
     private CancellationTokenSource? _flashCts;
     private bool _closing;
+    private int _flashGeneration;
 
     private const int StopFadeOutMs = 250;
 
@@ -68,6 +69,7 @@ public partial class ScreenFlashOverlay : Window
         var ct = _flashCts.Token;
 
         _closing = false; // reused from the pool — clear any prior stop state
+        var generation = ++_flashGeneration;
         GlowControl.GlowColor = glowColor;
 
         try
@@ -87,10 +89,9 @@ public partial class ScreenFlashOverlay : Window
             BatteryNotifierAppLogger.ForContext<ScreenFlashOverlay>().Warning(ex, "Flash playback failed");
         }
 
-        // Natural completion (not cancelled by a new flash or a stop) → hide, but keep the window
-        // alive in the pool so the next flash reuses it instantly (no re-creation latency).
+        // Fade out gracefully
         if (!_closing && !ct.IsCancellationRequested)
-            ResetHidden();
+            await FadeOutAndHideAsync(generation);
     }
 
     /// <summary>
@@ -189,10 +190,10 @@ public partial class ScreenFlashOverlay : Window
         _flashCts?.Dispose();
         _flashCts = null;
 
-        _ = FadeOutAndHideAsync();
+        _ = FadeOutAndHideAsync(_flashGeneration);
     }
 
-    private async Task FadeOutAndHideAsync()
+    private async Task FadeOutAndHideAsync(int generation)
     {
         try
         {
@@ -205,12 +206,9 @@ public partial class ScreenFlashOverlay : Window
             BatteryNotifierAppLogger.ForContext<ScreenFlashOverlay>()
                 .Debug(ex, "Screen flash fade-out failed");
         }
-        finally
-        {
-            // Skip the hide if a new flash started meanwhile (it cleared _closing and is running).
-            if (_closing)
-                ResetHidden();
-        }
+
+        if (generation == _flashGeneration)
+            ResetHidden();
     }
 
     /// <summary>Returns the overlay to its idle hidden state without destroying it.</summary>
