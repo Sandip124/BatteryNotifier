@@ -88,7 +88,7 @@
                             Background="{DynamicResource AppCardBackground}">
                         <Grid>
                         <StackPanel Spacing="10">
-                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,10,Auto">
+                            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
                                 <StackPanel Grid.Row="0" Grid.Column="0" HorizontalAlignment="Center">
                                     <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Capacity</TextBlock>
                                     <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
@@ -105,29 +105,12 @@
                                     <TextBlock FontSize="20" FontWeight="Bold" TextAlignment="Center"
                                                Text="{Binding HealthDashboard.CycleCountDisplay}" />
                                 </StackPanel>
-
-                                <StackPanel Grid.Row="2" Grid.Column="0" HorizontalAlignment="Center">
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Status</TextBlock>
-                                    <TextBlock FontSize="13" FontWeight="SemiBold" TextAlignment="Center"
-                                               Text="{Binding HealthDashboard.ChargingStatusDisplay}" />
-                                </StackPanel>
-
-                                <StackPanel Grid.Row="2" Grid.Column="1" HorizontalAlignment="Center">
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center">Time</TextBlock>
-                                    <TextBlock FontSize="13" FontWeight="SemiBold" TextAlignment="Center"
-                                               Foreground="{DynamicResource AppAccentForeground}"
-                                               Text="{Binding HealthDashboard.ChargeTimeEstimate}"
-                                               IsVisible="{Binding HealthDashboard.ChargeTimeEstimate, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                                    <TextBlock FontSize="13" Foreground="{DynamicResource AppSubtleText}" TextAlignment="Center"
-                                               Text="--"
-                                               IsVisible="{Binding HealthDashboard.ChargeTimeEstimate, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
-                                </StackPanel>
                             </Grid>
                         </StackPanel>
                         <PathIcon Data="{StaticResource Icon.Info}" Width="10" Height="10"
                                   Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
                                   HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <ToolTip.Tip>Capacity: max charge vs. new. Cycles: full charge-discharge count (most last 500-1000). Wear trend shown below capacity.</ToolTip.Tip>
+                            <ToolTip.Tip>Capacity: current max charge vs. when new (wear shown below). Cycles: full charge cycles used, and the design limit if known.</ToolTip.Tip>
                         </PathIcon>
                         </Grid>
                     </Border>
@@ -153,7 +136,7 @@
                                 <PathIcon Data="{StaticResource Icon.Info}" Width="9" Height="9"
                                           Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
                                           HorizontalAlignment="Right" VerticalAlignment="Top">
-                                    <ToolTip.Tip>Battery temperature. Below 35°C is normal. High temps accelerate wear.</ToolTip.Tip>
+                                    <ToolTip.Tip>Current battery temperature and its status. Under 35°C is normal.</ToolTip.Tip>
                                 </PathIcon>
                             </Grid>
                         </Border>
@@ -183,25 +166,11 @@
                                 <PathIcon Data="{StaticResource Icon.Info}" Width="9" Height="9"
                                           Foreground="{DynamicResource AppSubtleText}" Opacity="0.5"
                                           HorizontalAlignment="Right" VerticalAlignment="Top">
-                                    <ToolTip.Tip>Current power draw in watts. Shows how fast your battery is charging or draining.</ToolTip.Tip>
+                                    <ToolTip.Tip>Power draw in watts (how fast the battery is charging or draining), with battery voltage and current below.</ToolTip.Tip>
                                 </PathIcon>
                             </Grid>
                         </Border>
                     </Grid>
-
-                    <!-- Contextual recommendation -->
-                    <Border CornerRadius="10" Padding="12,8"
-                            Background="{DynamicResource AppCardBackground}">
-                        <Grid ColumnDefinitions="Auto,8,*">
-                            <PathIcon Grid.Column="0" Data="{StaticResource Icon.Lightbulb}"
-                                      Foreground="#FBC02D"
-                                      Width="14" Height="14" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="2"
-                                       Text="{Binding HealthDashboard.RecommendationMessage}"
-                                       FontSize="12" TextWrapping="Wrap"
-                                       Foreground="{DynamicResource AppSubtleText}" />
-                        </Grid>
-                    </Border>
 
                 </StackPanel>
                 </ScrollViewer>
