@@ -11,6 +11,7 @@ using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Services;
 using ReactiveUI;
 using Serilog;
 
@@ -67,6 +68,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             if (result != null)
             {
                 _alert.Sound = result.SettingsValue;
+                FlashSequenceLibrary.Instance.EnsureGenerated(result.SettingsValue);
                 UpdateSoundDisplayName();
                 _onChanged(false);
             }

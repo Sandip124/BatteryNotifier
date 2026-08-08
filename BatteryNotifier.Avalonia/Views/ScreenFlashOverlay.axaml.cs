@@ -6,7 +6,10 @@ using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.Threading;
+using BatteryNotifier.Avalonia.Controls;
 using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Models;
 
 namespace BatteryNotifier.Avalonia.Views;
 
@@ -46,16 +49,115 @@ public partial class ScreenFlashOverlay : Window
         }
     }
 
-    public async Task FlashAsync(Color glowColor, int durationMs = Core.Constants.NotificationDurationMs)
+    private const double PeakOpacity = 0.4;
+    // Intensity also drives the glow's band height: quiet → thin, loud → tall.
+    private const double MinGlowThickness = 12;
+    private const double MaxGlowThickness = 95;
+    private const double DefaultGlowThickness = 60;
+    // Approximate gap between sound-loop iterations (player re-spawn); mirrored in the flash loop.
+    private const int LoopGapMs = 940;
+
+    public async Task FlashAsync(Color glowColor,
+        int durationMs = Core.Constants.NotificationDurationMs,
+        FlashSequence? sequence = null)
     {
-        _flashCts?.CancelAsync();
+        // Cancel synchronously on the UI thread — animation teardown must not run off-thread.
+        _flashCts?.Cancel();
         _flashCts?.Dispose();
         _flashCts = new CancellationTokenSource();
         var ct = _flashCts.Token;
 
+        _closing = false; // reused from the pool — clear any prior stop state
         GlowControl.GlowColor = glowColor;
 
-        const double peakOpacity = 0.4;
+        try
+        {
+            if (sequence is { Intensities.Count: > 1 })
+                await PlaySequenceAsync(sequence, durationMs, ct);
+            else
+                await PlayDefaultPulseAsync(durationMs, ct);
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a new flash or a stop — whoever cancelled us handles hiding.
+        }
+        catch (Exception ex)
+        {
+            // FlashAsync is fire-and-forget; never let an exception go unobserved.
+            BatteryNotifierAppLogger.ForContext<ScreenFlashOverlay>().Warning(ex, "Flash playback failed");
+        }
+
+        // Natural completion (not cancelled by a new flash or a stop) → hide, but keep the window
+        // alive in the pool so the next flash reuses it instantly (no re-creation latency).
+        if (!_closing && !ct.IsCancellationRequested)
+            ResetHidden();
+    }
+
+    /// <summary>
+    /// Drives the glow along a sound-derived intensity envelope, looped to fill the duration.
+    /// Avalonia interpolates between the keyframes, so the sampled sequence plays back smoothly.
+    /// </summary>
+    private async Task PlaySequenceAsync(FlashSequence sequence, int durationMs, CancellationToken ct)
+    {
+        // Mirror the sound's per-loop restart gap only when the envelope is shorter than the window
+        // and actually loops (built-ins span the window and play once).
+        bool willLoop = sequence.DurationMs < durationMs;
+        int gapMs = willLoop ? LoopGapMs : 0;
+        int loopMs = sequence.DurationMs + gapMs;
+        double playFraction = (double)sequence.DurationMs / loopMs;
+
+        // Avalonia forbids RunAsync on an infinite animation; the timeout below trims to durationMs.
+        var iterations = (ulong)Math.Max(1, (int)Math.Ceiling((double)durationMs / loopMs));
+
+        var animation = new Animation
+        {
+            Duration = TimeSpan.FromMilliseconds(loopMs),
+            IterationCount = new IterationCount(iterations),
+            FillMode = FillMode.Forward
+        };
+
+        var count = sequence.Intensities.Count;
+        for (int i = 0; i < count; i++)
+        {
+            var intensity = sequence.Intensities[i];
+            animation.Children.Add(new KeyFrame
+            {
+                Cue = new Cue(playFraction * ((double)i / (count - 1))),
+                Setters =
+                {
+                    new Setter(OpacityProperty, intensity * PeakOpacity),
+                    new Setter(EdgeGlowRenderer.GlowThicknessProperty,
+                        MinGlowThickness + intensity * (MaxGlowThickness - MinGlowThickness)),
+                }
+            });
+        }
+
+        // Dark tail across the loop gap, mirroring the sound's silent restart pause (looping only).
+        if (gapMs > 0)
+        {
+            animation.Children.Add(new KeyFrame
+            {
+                Cue = new Cue(1.0),
+                Setters =
+                {
+                    new Setter(OpacityProperty, 0.0),
+                    new Setter(EdgeGlowRenderer.GlowThicknessProperty, MinGlowThickness),
+                }
+            });
+        }
+
+        // Bound to durationMs. Cancel via DispatcherTimer (UI thread) — a threadpool timer
+        // (CancelAfter) would tear down the animation off-thread and crash.
+        using var window = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        using var timeout = DispatcherTimer.RunOnce(window.Cancel, TimeSpan.FromMilliseconds(durationMs));
+        await animation.RunAsync(GlowControl, window.Token);
+    }
+
+    /// <summary>Fallback when a sound has no envelope yet: the original steady pulse.</summary>
+    private async Task PlayDefaultPulseAsync(int durationMs, CancellationToken ct)
+    {
+        GlowControl.GlowThickness = DefaultGlowThickness; // reset in case a prior sequence left it small
+
         const int fadeInMs = 400;
         const int holdMs = 500;
         const int fadeOutMs = 600;
@@ -66,20 +168,17 @@ public partial class ScreenFlashOverlay : Window
 
         for (int i = 0; i < pulseCount && DateTime.UtcNow < deadline && !ct.IsCancellationRequested; i++)
         {
-            await CreateFadeAnimation(0.0, peakOpacity, fadeInMs).RunAsync(GlowControl, ct);
+            await CreateFadeAnimation(0.0, PeakOpacity, fadeInMs).RunAsync(GlowControl, ct);
             await Task.Delay(holdMs, ct);
-            await CreateFadeAnimation(peakOpacity, 0.0, fadeOutMs).RunAsync(GlowControl, ct);
+            await CreateFadeAnimation(PeakOpacity, 0.0, fadeOutMs).RunAsync(GlowControl, ct);
 
             if (i < pulseCount - 1)
                 await Task.Delay(pauseMs, ct);
         }
-
-        if (!_closing)
-            Close();
     }
 
     /// <summary>
-    /// Stops the flash gracefully
+    /// Stops the flash gracefully and hides the overlay (kept alive for reuse from the pool).
     /// </summary>
     public void StopFlash()
     {
@@ -90,10 +189,10 @@ public partial class ScreenFlashOverlay : Window
         _flashCts?.Dispose();
         _flashCts = null;
 
-        _ = FadeOutAndCloseAsync();
+        _ = FadeOutAndHideAsync();
     }
 
-    private async Task FadeOutAndCloseAsync()
+    private async Task FadeOutAndHideAsync()
     {
         try
         {
@@ -108,8 +207,17 @@ public partial class ScreenFlashOverlay : Window
         }
         finally
         {
-            Close();
+            // Skip the hide if a new flash started meanwhile (it cleared _closing and is running).
+            if (_closing)
+                ResetHidden();
         }
+    }
+
+    /// <summary>Returns the overlay to its idle hidden state without destroying it.</summary>
+    private void ResetHidden()
+    {
+        GlowControl.Opacity = 0;
+        Hide();
     }
 
     private static Animation CreateFadeAnimation(double from, double to, int durationMs) => new()

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Core.Managers;
+using BatteryNotifier.Core.Services;
 using ReactiveUI;
 namespace BatteryNotifier.Avalonia.ViewModels;
 
@@ -91,6 +92,8 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 
             // Auto-select the newly imported sound
             var settingsValue = CustomSoundsLibrary.ToSettingsValue(fileName);
+            FlashSequenceLibrary.Instance.Invalidate(settingsValue); // in case the name was reused
+            FlashSequenceLibrary.Instance.EnsureGenerated(settingsValue);
             SelectedItem = _allGroups
                 .SelectMany(g => g.Items)
                 .FirstOrDefault(i => i.SettingsValue == settingsValue);
@@ -102,6 +105,7 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
             if (fileName == null) return;
 
             CustomSoundsLibrary.Delete(fileName);
+            FlashSequenceLibrary.Instance.Invalidate(item.SettingsValue);
 
             if (SelectedItem == item)
                 SelectedItem = null;

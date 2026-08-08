@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -25,7 +27,11 @@ public sealed class NotificationDisplayService
 {
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("NotificationDisplayService");
     private readonly List<NotificationCard> _activeCards = new();
-    private readonly List<ScreenFlashOverlay> _activeOverlays = new();
+    // Persistent, reused pool of flash overlays (one per screen). Created once and hidden between
+    // flashes so firing a flash is instant (no per-notification window creation) and stays in sync
+    // with the sound. Rebuilt only when the screen layout changes.
+    private readonly List<ScreenFlashOverlay> _flashOverlays = new();
+    private string? _flashScreenSignature;
     private readonly object _cardsLock = new();
     private readonly object _overlaysLock = new();
     private const int CardSpacing = 8;
@@ -40,6 +46,10 @@ public sealed class NotificationDisplayService
     {
         _notificationManager = manager;
         Current = this;
+
+        // Pre-generate flash envelopes for the configured alert sounds so the first flash reacts.
+        foreach (var alert in AppSettings.Instance.Alerts)
+            FlashSequenceLibrary.Instance.EnsureGenerated(alert.Sound);
     }
 
     /// <summary>
@@ -103,10 +113,13 @@ public sealed class NotificationDisplayService
             _ = _notificationManager.EmitGlobalNotification(notification);
         }
 
-        // Screen flash (if enabled)
+        // Screen flash (if enabled) — drive the glow from the sound's loudness envelope when we
+        // have one; EnsureGenerated readies it for next time if this is the first use.
         if (AppSettings.Instance.ScreenFlashEnabled)
         {
-            _ = ShowScreenFlashAsync(color);
+            var sequence = FlashSequenceLibrary.Instance.Get(alert?.Sound);
+            FlashSequenceLibrary.Instance.EnsureGenerated(alert?.Sound);
+            ShowScreenFlash(color, sequence);
         }
 
         // Notification card
@@ -147,7 +160,8 @@ public sealed class NotificationDisplayService
 
     private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 
-    private async Task ShowScreenFlashAsync(Color color)
+    private void ShowScreenFlash(Color color, FlashSequence? sequence,
+        int durationMs = Core.Constants.NotificationDurationMs)
     {
         try
         {
@@ -157,32 +171,54 @@ public sealed class NotificationDisplayService
             var screens = desktop.MainWindow?.Screens;
             if (screens == null) return;
 
-            ClearOverlays();
-
-            foreach (var screen in screens.All)
+            List<ScreenFlashOverlay> overlays;
+            lock (_overlaysLock)
             {
-                var overlay = new ScreenFlashOverlay
-                {
-                    Width = screen.Bounds.Width / screen.Scaling,
-                    Height = screen.Bounds.Height / screen.Scaling,
-                    Position = screen.Bounds.Position
-                };
+                EnsureFlashPool(screens);
+                overlays = new List<ScreenFlashOverlay>(_flashOverlays);
+            }
 
-                lock (_overlaysLock) { _activeOverlays.Add(overlay); }
-
-                overlay.Closed += (_, _) =>
-                {
-                    lock (_overlaysLock) { _activeOverlays.Remove(overlay); }
-                };
-
-                overlay.Show();
-                _ = overlay.FlashAsync(color);
+            foreach (var overlay in overlays)
+            {
+                overlay.Show();                                  // no-op if already shown; reuses the pooled window
+                _ = overlay.FlashAsync(color, durationMs, sequence); // null sequence → default pulse
             }
         }
         catch (Exception ex)
         {
             Logger.Warning(ex, "Failed to show screen flash overlay");
         }
+    }
+
+    /// <summary>
+    /// Lazily (re)builds the flash overlay pool to match the current screen layout. Overlays are
+    /// created once and kept for reuse; they're only recreated when screens change. Must be called
+    /// under <see cref="_overlaysLock"/>.
+    /// </summary>
+    private void EnsureFlashPool(Screens screens)
+    {
+        var all = screens.All;
+        var signature = string.Join("|", all.Select(s =>
+            $"{s.Bounds.X},{s.Bounds.Y},{s.Bounds.Width},{s.Bounds.Height},{s.Scaling}"));
+
+        if (signature == _flashScreenSignature && _flashOverlays.Count == all.Count)
+            return;
+
+        foreach (var stale in _flashOverlays)
+            stale.Close();
+        _flashOverlays.Clear();
+
+        foreach (var screen in all)
+        {
+            _flashOverlays.Add(new ScreenFlashOverlay
+            {
+                Width = screen.Bounds.Width / screen.Scaling,
+                Height = screen.Bounds.Height / screen.Scaling,
+                Position = screen.Bounds.Position
+            });
+        }
+
+        _flashScreenSignature = signature;
     }
 
     private void ShowCard(string title, string message, int level, string accentColor, string? dismissalTag = null)
@@ -292,8 +328,8 @@ public sealed class NotificationDisplayService
         List<ScreenFlashOverlay> overlays;
         lock (_overlaysLock)
         {
-            overlays = new List<ScreenFlashOverlay>(_activeOverlays);
-            _activeOverlays.Clear();
+            // Snapshot only — the pool persists; StopFlash gracefully fades then hides each overlay.
+            overlays = new List<ScreenFlashOverlay>(_flashOverlays);
         }
 
         foreach (var overlay in overlays)
