@@ -45,7 +45,6 @@
 
                 <!-- Appearance & Behaviour -->
                 <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                        BorderBrush="{DynamicResource AppCardBorder}"
                         Background="{DynamicResource AppCardBackground}">
                     <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
                         <Border Grid.Row="0" Padding="12,10,12,4">
@@ -108,7 +107,6 @@
 
                 <!-- Notification Display -->
                 <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                        BorderBrush="{DynamicResource AppCardBorder}"
                         Background="{DynamicResource AppCardBackground}">
                     <StackPanel>
                         <Border Padding="12,10,12,4">
@@ -278,7 +276,6 @@
 
                 <!-- Battery Alerts -->
                 <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                        BorderBrush="{DynamicResource AppCardBorder}"
                         Background="{DynamicResource AppCardBackground}">
                     <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*">
                         <Border Grid.Row="0" Padding="12,10,12,4">
@@ -292,7 +289,8 @@
                                     <DataTemplate>
                                         <Border Margin="0,4" Padding="8" CornerRadius="12"
                                                 BorderThickness="1"
-                                                BorderBrush="{DynamicResource AppCardBorder}">
+                                                BorderBrush="{DynamicResource AppCardBorder}"
+                                                >
                                             <components:AlertRow />
                                         </Border>
                                     </DataTemplate>
