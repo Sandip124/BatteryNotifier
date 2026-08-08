@@ -76,12 +76,13 @@ public sealed class NotificationDisplayService
             ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
             : null;
 
-        ShowNotification(notification, alert, dismissalTag: notification.Tag);
 
         if (!suppression.ShouldSuppressSound || isCritical)
             _ = _notificationManager?.EmitGlobalNotification(notification);
         else
             Logger.Information("Sound suppressed by DND");
+
+        ShowNotification(notification, alert, dismissalTag: notification.Tag);
     }
 
     public void ShowNotification(NotificationMessageEventArgs notification, BatteryAlert? alert,
@@ -97,16 +98,15 @@ public sealed class NotificationDisplayService
         var color = DetermineColor(alert, level);
         var title = alert?.Label ?? DetermineTitle(notification.Tag);
 
+        if (playSound && _notificationManager != null)
+        {
+            _ = _notificationManager.EmitGlobalNotification(notification);
+        }
+
         // Screen flash (if enabled)
         if (AppSettings.Instance.ScreenFlashEnabled)
         {
             _ = ShowScreenFlashAsync(color);
-        }
-
-        // Play sound if requested (preview mode)
-        if (playSound && _notificationManager != null)
-        {
-            _ = _notificationManager.EmitGlobalNotification(notification);
         }
 
         // Notification card

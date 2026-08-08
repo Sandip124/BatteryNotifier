@@ -12,7 +12,7 @@
 
         <!-- ── Header: label + actions ── -->
         <!-- Delete button — top right, separate from actions -->
-        <Button Command="{Binding DeleteCommand}"
+        <Button Click="OnDeleteAlertClick"
                 Theme="{StaticResource PrimaryButton}"
                 HorizontalAlignment="Right"
                 Width="22" Height="22" Padding="0"

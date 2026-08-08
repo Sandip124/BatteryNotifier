@@ -15,7 +15,7 @@ public partial class SoundPickerWindow : Window
     private IDisposable? _cancelSub;
     private IDisposable? _browseSub;
 
-    private bool _closingFromBrowse;
+    private bool _suppressLightDismiss;
     private TaskCompletionSource<SoundPickerItem?>? _tcs;
 
     public SoundPickerWindow()
@@ -60,7 +60,7 @@ public partial class SoundPickerWindow : Window
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
-        if (_closingFromBrowse) return;
+        if (_suppressLightDismiss) return;
         CloseWithResult(null);
     }
 
@@ -119,7 +119,7 @@ public partial class SoundPickerWindow : Window
 
             _browseSub = vm.BrowseFileInteraction.RegisterHandler(async ctx =>
             {
-                _closingFromBrowse = true;
+                _suppressLightDismiss = true;
                 try
                 {
                     var path = await BrowseAudioFile().ConfigureAwait(false);
@@ -127,7 +127,7 @@ public partial class SoundPickerWindow : Window
                 }
                 finally
                 {
-                    _closingFromBrowse = false;
+                    _suppressLightDismiss = false;
                 }
             });
         }
@@ -152,14 +152,28 @@ public partial class SoundPickerWindow : Window
             vm.TogglePreview(item);
     }
 
-    private void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
+    private async void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
     {
         e.Handled = true; // Prevent the parent button's OnSoundItemClick from firing
 
-        if (sender is not Button button || button.DataContext is not SoundPickerItem item)
-            return;
+        if (sender is not Button { DataContext: SoundPickerItem item }) return;
+        if (DataContext is not SoundPickerViewModel vm) return;
 
-        if (DataContext is SoundPickerViewModel vm)
+        _suppressLightDismiss = true;
+        bool confirmed;
+        try
+        {
+            confirmed = await ConfirmDialog.ShowAsync(this,
+                "Remove sound?",
+                $"“{item.DisplayName}” will be removed from your library.",
+                "Remove");
+        }
+        finally
+        {
+            _suppressLightDismiss = false;
+        }
+
+        if (confirmed)
             vm.DeleteCustomCommand.Execute(item).Subscribe();
     }
 

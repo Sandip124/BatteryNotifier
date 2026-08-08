@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="BatteryNotifier.Avalonia.Views.ConfirmDialog"
+        Title="Confirm"
+        Width="320" MinWidth="280"
+        SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        SystemDecorations="Full"
+        ShowInTaskbar="False"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="0"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent">
+
+    <Border ClipToBounds="True" CornerRadius="10"
+            Background="{DynamicResource AppWindowBackground}"
+            BorderThickness="1" BorderBrush="{DynamicResource AppCardBorder}">
+        <StackPanel Margin="18" Spacing="10">
+            <TextBlock Name="TitleText"
+                       FontSize="15" FontWeight="SemiBold"
+                       Foreground="{DynamicResource AppForeground}" />
+            <TextBlock Name="MessageText"
+                       FontSize="12.5" TextWrapping="Wrap"
+                       Foreground="{DynamicResource AppSubtleText}" />
+
+            <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,6,0,0">
+                <Button Grid.Column="1"
+                        Theme="{StaticResource SecondaryButton}"
+                        Content="Cancel"
+                        FontSize="12" Padding="14,6" CornerRadius="6"
+                        Margin="0,0,8,0"
+                        Click="OnCancel" />
+                <Button Grid.Column="2" Name="ConfirmButton"
+                        Content="Remove"
+                        FontSize="12" Padding="14,6" CornerRadius="6"
+                        Background="#D32F2F" Foreground="White"
+                        BorderThickness="0" Cursor="Hand"
+                        Click="OnConfirm">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="#B71C1C" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Style>
+                        <Style Selector="Button:pressed /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="#961717" />
+                            <Setter Property="Foreground" Value="White" />
+                        </Style>
+                    </Button.Styles>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

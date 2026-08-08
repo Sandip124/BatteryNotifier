@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
@@ -15,6 +16,26 @@ public partial class AlertRow : UserControl
     public AlertRow()
     {
         InitializeComponent();
+    }
+
+    // Confirm before removing — the ✕ is small and deletion is irreversible.
+    private async void OnDeleteAlertClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not AlertRowViewModel vm) return;
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+
+        var confirmed = await ConfirmDialog.ShowAsync(owner,
+            "Remove alert?",
+            string.IsNullOrWhiteSpace(vm.Label)
+                ? "This alert will be removed."
+                : $"“{vm.Label}” will be removed.",
+            "Remove");
+
+        // A modal dialog deactivates the flyout window; re-check auto-hide after it closes.
+        (owner as MainWindow)?.ScheduleAutoHideCheck();
+
+        if (confirmed)
+            vm.DeleteCommand.Execute().Subscribe();
     }
 
     protected override void OnDataContextChanged(EventArgs e)
