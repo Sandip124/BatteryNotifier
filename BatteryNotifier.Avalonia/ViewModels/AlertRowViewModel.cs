@@ -75,7 +75,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             }
         });
 
-        PreviewCommand = ReactiveCommand.Create(PreviewAlert);
+        PreviewCommand = ReactiveCommand.Create(TogglePreview);
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
 
         // Auto-save on property changes (throttled for sliders)
@@ -197,10 +197,29 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             SoundDisplayName = Path.GetFileName(sound) ?? "Custom file";
     }
 
-    private void PreviewAlert()
+    /// <summary>True while this alert's preview is showing — drives the play/stop toggle button.</summary>
+    public bool IsPreviewing
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(PreviewButtonText));
+        }
+    }
+
+    public string PreviewButtonText => IsPreviewing ? "Stop" : "Preview";
+
+    private void TogglePreview()
     {
         var displayService = NotificationDisplayService.Current;
         if (displayService == null) return;
+
+        if (IsPreviewing)
+        {
+            displayService.DismissAll(); // stops card + sound + flash; Closed handler clears IsPreviewing
+            return;
+        }
 
         var notification = new Core.Services.NotificationMessageEventArgs
         {
@@ -208,7 +227,9 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             Tag = _alert.Id
         };
 
-        displayService.ShowNotification(notification, _alert, playSound: true);
+        IsPreviewing = true;
+        displayService.ShowNotification(notification, _alert, playSound: true,
+            onClosed: () => IsPreviewing = false);
     }
 
     public BatteryAlert GetAlert() => _alert;

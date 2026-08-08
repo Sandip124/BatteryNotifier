@@ -45,10 +45,15 @@
                         Padding="10,5" CornerRadius="6"
                         ToolTip.Tip="Preview alert">
                     <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <PathIcon Data="{StaticResource Icon.Play}" Width="11" Height="11"
-                                  Foreground="{DynamicResource AppSubtleText}"
-                                  VerticalAlignment="Center" />
-                        <TextBlock Text="Preview" FontSize="11.5"
+                        <Panel Width="11" Height="11" VerticalAlignment="Center">
+                            <PathIcon Data="{StaticResource Icon.Play}" Width="11" Height="11"
+                                      Foreground="{DynamicResource AppSubtleText}"
+                                      IsVisible="{Binding !IsPreviewing}" />
+                            <PathIcon Data="{StaticResource Icon.Stop}" Width="11" Height="11"
+                                      Foreground="{DynamicResource AppSubtleText}"
+                                      IsVisible="{Binding IsPreviewing}" />
+                        </Panel>
+                        <TextBlock Text="{Binding PreviewButtonText}" FontSize="11.5"
                                    Foreground="{DynamicResource AppSubtleText}"
                                    VerticalAlignment="Center" />
                     </StackPanel>

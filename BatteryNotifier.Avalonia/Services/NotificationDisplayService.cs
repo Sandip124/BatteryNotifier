@@ -100,11 +100,11 @@ public sealed class NotificationDisplayService
     }
 
     public void ShowNotification(NotificationMessageEventArgs notification, BatteryAlert? alert,
-        bool playSound = false, string? dismissalTag = null)
+        bool playSound = false, string? dismissalTag = null, Action? onClosed = null)
     {
         if (!Dispatcher.UIThread.CheckAccess())
         {
-            Dispatcher.UIThread.Post(() => ShowNotification(notification, alert, playSound, dismissalTag));
+            Dispatcher.UIThread.Post(() => ShowNotification(notification, alert, playSound, dismissalTag, onClosed));
             return;
         }
 
@@ -127,7 +127,7 @@ public sealed class NotificationDisplayService
         }
 
         // Notification card
-        ShowCard(title, notification.Message, level, ColorToHex(color), dismissalTag);
+        ShowCard(title, notification.Message, level, ColorToHex(color), dismissalTag, onClosed);
     }
 
     private static string DetermineTitle(string? tag) => tag switch
@@ -228,7 +228,8 @@ public sealed class NotificationDisplayService
         _flashScreenSignature = signature;
     }
 
-    private void ShowCard(string title, string message, int level, string accentColor, string? dismissalTag = null)
+    private void ShowCard(string title, string message, int level, string accentColor,
+        string? dismissalTag = null, Action? onClosed = null)
     {
         try
         {
@@ -240,6 +241,11 @@ public sealed class NotificationDisplayService
                 title, message, level, accentColor,
                 onDismiss: userInitiated => DismissNotification(card, dismissalTag, userInitiated));
             card.DataContext = vm;
+
+            // Notify the caller whenever the card closes (timeout, user, or replaced) — used by the
+            // alert preview to reset its play/stop toggle.
+            if (onClosed != null)
+                card.Closed += (_, _) => onClosed();
 
             lock (_cardsLock) { _activeCards.Add(card); }
 
