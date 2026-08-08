@@ -18,9 +18,12 @@ internal class GlassBadge : Control
     public static readonly StyledProperty<Color> AccentColorProperty =
         AvaloniaProperty.Register<GlassBadge, Color>(nameof(AccentColor), Colors.DodgerBlue);
 
+    public static readonly StyledProperty<double> PercentProperty =
+        AvaloniaProperty.Register<GlassBadge, double>(nameof(Percent), 100);
+
     static GlassBadge()
     {
-        AffectsRender<GlassBadge>(TextProperty, AccentColorProperty);
+        AffectsRender<GlassBadge>(TextProperty, AccentColorProperty, PercentProperty);
     }
 
     public string Text
@@ -33,6 +36,12 @@ internal class GlassBadge : Control
     {
         get => GetValue(AccentColorProperty);
         set => SetValue(AccentColorProperty, value);
+    }
+
+    public double Percent
+    {
+        get => GetValue(PercentProperty);
+        set => SetValue(PercentProperty, value);
     }
 
     private static readonly RelativePoint RelTop = new(0, 0, RelativeUnit.Relative);
@@ -64,19 +73,37 @@ internal class GlassBadge : Control
 
     private void DrawGlassBody(DrawingContext ctx, Rect rect, double cornerR, Color color)
     {
-        // Cylindrical fill gradient
-        var bodyBrush = new LinearGradientBrush
+        var fillFraction = Math.Clamp(Percent / 100.0, 0, 1);
+
+        var emptyBrush = new LinearGradientBrush
         {
             StartPoint = RelTop, EndPoint = RelBottom,
             GradientStops = new GradientStops
             {
-                new(Lighten(color, 0.38), 0.0),
-                new(Lighten(color, 0.18), 0.15),
-                new(color, 0.45),
-                new(Darken(color, 0.10), 0.72),
-                new(Darken(color, 0.28), 1.0),
+                new(Color.FromArgb(60, 90, 90, 100), 0.0),
+                new(Color.FromArgb(38, 40, 40, 48), 1.0),
             }
         };
+        ctx.DrawRectangle(emptyBrush, null, rect, cornerR, cornerR);
+
+        if (fillFraction > 0)
+        {
+            var bodyBrush = new LinearGradientBrush
+            {
+                StartPoint = RelTop, EndPoint = RelBottom,
+                GradientStops = new GradientStops
+                {
+                    new(Lighten(color, 0.38), 0.0),
+                    new(Lighten(color, 0.18), 0.15),
+                    new(color, 0.45),
+                    new(Darken(color, 0.10), 0.72),
+                    new(Darken(color, 0.28), 1.0),
+                }
+            };
+
+            using (ctx.PushGeometryClip(new RectangleGeometry(rect, cornerR, cornerR)))
+                ctx.DrawRectangle(bodyBrush, null, new Rect(rect.X, rect.Y, rect.Width * fillFraction, rect.Height));
+        }
 
         // Metallic edge border — bright top, dark bottom
         var edgePen = new Pen(new LinearGradientBrush
@@ -92,7 +119,7 @@ internal class GlassBadge : Control
             }
         }, 1.6);
 
-        ctx.DrawRectangle(bodyBrush, edgePen, rect, cornerR, cornerR);
+        ctx.DrawRectangle(null, edgePen, rect, cornerR, cornerR);
 
         // Diffuse interior glow
         var diffuse = new RadialGradientBrush

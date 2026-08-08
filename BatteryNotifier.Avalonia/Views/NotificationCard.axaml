@@ -45,6 +45,7 @@
                     <controls:GlassBadge Grid.Column="0"
                             Width="72" Height="40"
                             Text="{Binding BatteryPercent}"
+                            Percent="{Binding BatteryLevel}"
                             AccentColor="{Binding AccentColorValue}"
                             VerticalAlignment="Center"
                             IsVisible="{Binding ShowPercent}" />

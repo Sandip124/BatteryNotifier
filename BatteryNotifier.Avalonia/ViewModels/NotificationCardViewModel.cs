@@ -17,6 +17,8 @@ public sealed class NotificationCardViewModel : ViewModelBase
 
     public bool ShowPercent { get; }
 
+    public int BatteryLevel { get; }
+
     private readonly Action<bool> _onDismiss;
 
     public NotificationCardViewModel(string title, string message, int batteryLevel, string accentColor, Action<bool> onDismiss)
@@ -24,6 +26,7 @@ public sealed class NotificationCardViewModel : ViewModelBase
         Title = title;
         Message = message;
         ShowPercent = batteryLevel >= 0;
+        BatteryLevel = Math.Clamp(batteryLevel, 0, 100);
         BatteryPercent = batteryLevel >= 0 ? $"{batteryLevel}%" : "";
         AccentColor = accentColor;
         AccentColorValue = Color.Parse(accentColor);
