@@ -142,14 +142,17 @@ public partial class SoundPickerWindow : Window
             vm.SelectedItem = item;
     }
 
-    // Play/pause button auditions the sound on demand, without changing the selection.
+    // Play/pause button auditions the sound and selects it, so hitting Select picks what you heard.
     private void OnPreviewToggleClick(object? sender, RoutedEventArgs e)
     {
-        e.Handled = true; // don't let the row's select handler fire
+        e.Handled = true; // handle here; don't also fire the row's click
 
         if (sender is Button { DataContext: SoundPickerItem item }
             && DataContext is SoundPickerViewModel vm)
+        {
+            vm.SelectedItem = item;
             vm.TogglePreview(item);
+        }
     }
 
     private async void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
