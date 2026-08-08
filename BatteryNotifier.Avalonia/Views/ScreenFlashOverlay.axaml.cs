@@ -220,6 +220,14 @@ public partial class ScreenFlashOverlay : Window
         Hide();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        _flashCts?.Cancel();
+        _flashCts?.Dispose();
+        _flashCts = null;
+        base.OnClosed(e);
+    }
+
     private static Animation CreateFadeAnimation(double from, double to, int durationMs) => new()
     {
         Duration = TimeSpan.FromMilliseconds(durationMs),
