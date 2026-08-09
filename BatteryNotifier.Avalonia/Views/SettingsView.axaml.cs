@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using Avalonia.Animation;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media.Transformation;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Services;
 
@@ -17,6 +19,38 @@ public partial class SettingsView : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+
+        ThemeSegments.SizeChanged += (_, _) => MoveThemeIndicator(CurrentThemeIndex, animate: false);
+    }
+
+    private int CurrentThemeIndex => (DataContext as SettingsViewModel)?.ThemeIndex ?? 1;
+
+    private void MoveThemeIndicator(int index, bool animate)
+    {
+        var segment = index switch
+        {
+            0 => ThemeLight,
+            2 => ThemeDark,
+            _ => ThemeSystem,
+        };
+
+        var width = segment.Bounds.Width;
+        if (width <= 0) return;
+
+        var target = TransformOperations.Parse($"translateX({segment.Bounds.X}px)");
+
+        if (!animate)
+        {
+            var transitions = ThemeIndicator.Transitions;
+            ThemeIndicator.Transitions = null;
+            ThemeIndicator.Width = width;
+            ThemeIndicator.RenderTransform = target;
+            ThemeIndicator.Transitions = transitions;
+            return;
+        }
+
+        ThemeIndicator.Width = width;
+        ThemeIndicator.RenderTransform = target;
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -36,7 +70,10 @@ public partial class SettingsView : UserControl
 
         BuildPositionMap();
         if (DataContext is SettingsViewModel vm)
+        {
             UpdatePositionHighlight(vm.NotificationPosition);
+            MoveThemeIndicator(vm.ThemeIndex, animate: false);
+        }
     }
 
     private void BuildPositionMap()
@@ -54,11 +91,12 @@ public partial class SettingsView : UserControl
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(SettingsViewModel.NotificationPosition) &&
-            sender is SettingsViewModel vm)
-        {
+        if (sender is not SettingsViewModel vm) return;
+
+        if (e.PropertyName == nameof(SettingsViewModel.NotificationPosition))
             UpdatePositionHighlight(vm.NotificationPosition);
-        }
+        else if (e.PropertyName == nameof(SettingsViewModel.ThemeIndex))
+            MoveThemeIndicator(vm.ThemeIndex, animate: true);
     }
 
     private void UpdatePositionHighlight(NotificationPosition active)

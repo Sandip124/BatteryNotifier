@@ -87,6 +87,7 @@ public class RangeSlider : Control
     private const double ThumbWidth = 5;
     private const double ThumbHeight = 22;
     private const double ThumbCornerRadius = 2.5;
+    private const double ThumbPressShrink = 4; // height reduction while a thumb is held
     private const double ThumbGap = 5;
     private const double ThumbEdgeGap = ThumbWidth / 2 + ThumbGap; // clearance between a thumb and adjacent track
     private const double InsideCornerRadius = 2;
@@ -172,6 +173,7 @@ public class RangeSlider : Control
 
     private enum DragTarget { None, Lower, Upper, Single }
     private DragTarget _dragTarget;
+    private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -182,6 +184,7 @@ public class RangeSlider : Control
         {
             e.Pointer.Capture(this);
             UpdateFromPointer(pos.X);
+            InvalidateVisual(); // show the "held" thumb cue
             e.Handled = true;
         }
     }
@@ -189,11 +192,16 @@ public class RangeSlider : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        var pos = e.GetPosition(this);
+
         if (_dragTarget != DragTarget.None)
         {
-            UpdateFromPointer(e.GetPosition(this).X);
+            UpdateFromPointer(pos.X);
             e.Handled = true;
+            return;
         }
+
+        Cursor = GetHoveredThumb(pos.X, pos.Y) != DragTarget.None ? HandCursor : null;
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -203,8 +211,38 @@ public class RangeSlider : Control
         {
             _dragTarget = DragTarget.None;
             e.Pointer.Capture(null);
+            InvalidateVisual(); // restore full-height thumb
             e.Handled = true;
         }
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        Cursor = null;
+    }
+
+    /// <summary>Nearest thumb within the hit radius of the pointer, else None (for the hover cursor).</summary>
+    private DragTarget GetHoveredThumb(double x, double y)
+    {
+        GetThumbRange(out var left, out var right);
+        var range = Maximum - Minimum;
+        if (range <= 0) return DragTarget.None;
+
+        var centerY = Bounds.Height / 2;
+        double Dist(double val)
+        {
+            var tx = Lerp((val - Minimum) / range, left, right);
+            return Math.Sqrt((x - tx) * (x - tx) + (y - centerY) * (y - centerY));
+        }
+
+        if (!IsRange)
+            return Dist(Value) <= ThumbHitRadius ? DragTarget.Single : DragTarget.None;
+
+        var dl = Dist(LowerValue);
+        var du = Dist(UpperValue);
+        if (Math.Min(dl, du) > ThumbHitRadius) return DragTarget.None;
+        return dl <= du ? DragTarget.Lower : DragTarget.Upper;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -290,6 +328,10 @@ public class RangeSlider : Control
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
 
+        // Paint the full bounds transparent so the whole control is hit-testable — otherwise only
+        // the drawn pixels (track / thumbs / dots) receive clicks, leaving dead gaps between them.
+        context.FillRectangle(Brushes.Transparent, new Rect(0, 0, w, h));
+
         var range = Maximum - Minimum;
         if (range <= 0) return;
 
@@ -326,8 +368,11 @@ public class RangeSlider : Control
 
         DrawTickDots(context, rangeLeft, rangeRight, centerY, loFrac, hiFrac);
 
-        if (hasLowerThumb) DrawThumb(context, loX, centerY);
-        DrawThumb(context, hiX, centerY);
+        if (hasLowerThumb)
+            DrawThumb(context, loX, centerY, pressed: _dragTarget == DragTarget.Lower);
+
+        var hiTarget = hasLowerThumb ? DragTarget.Upper : DragTarget.Single;
+        DrawThumb(context, hiX, centerY, pressed: _dragTarget == hiTarget);
     }
 
     private static double Lerp(double frac, double left, double right) => left + frac * (right - left);
@@ -370,9 +415,12 @@ public class RangeSlider : Control
         }
     }
 
-    private void DrawThumb(DrawingContext context, double x, double centerY)
+    private void DrawThumb(DrawingContext context, double x, double centerY, bool pressed = false)
     {
-        var rect = new Rect(x - ThumbWidth / 2, centerY - ThumbHeight / 2, ThumbWidth, ThumbHeight);
+        // Slightly shorter thumb while held — a subtle "pressed" cue. The clickable area is the
+        // virtual ThumbHitRadius, so shrinking the visual doesn't affect grabbing it.
+        var height = pressed ? ThumbHeight - ThumbPressShrink : ThumbHeight;
+        var rect = new Rect(x - ThumbWidth / 2, centerY - height / 2, ThumbWidth, height);
         context.DrawRectangle(new SolidColorBrush(_palette.Thumb), null, rect, ThumbCornerRadius, ThumbCornerRadius);
     }
 

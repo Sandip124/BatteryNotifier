@@ -269,7 +269,8 @@ public sealed class AppSettings
             LowerBound = 80,
             UpperBound = 100,
             IsEnabled = true,
-            Sound = "builtin:Harp"
+            Sound = "builtin:Harp",
+            FlashColor = "#5FC08A"
         },
         new BatteryAlert
         {
@@ -278,7 +279,8 @@ public sealed class AppSettings
             LowerBound = 0,
             UpperBound = 25,
             IsEnabled = true,
-            Sound = "builtin:Klaxon"
+            Sound = "builtin:Klaxon",
+            FlashColor = "#E8574B"
         }
     ];
 

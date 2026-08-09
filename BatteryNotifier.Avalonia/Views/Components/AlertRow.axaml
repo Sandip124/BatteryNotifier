@@ -32,37 +32,68 @@
             <TextBlock Grid.Column="0" Text="{Binding Label}"
                        FontSize="14" FontWeight="SemiBold"
                        Padding="0,2"
+                       VerticalAlignment="Center"
                        IsVisible="{Binding IsDefault}" />
-            <TextBox Grid.Column="0" Text="{Binding Label}"
-                     FontSize="14" FontWeight="SemiBold"
-                     BorderThickness="0" Background="Transparent"
-                     Padding="0,2"
-                     IsVisible="{Binding CanDelete}" />
 
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                <Button Command="{Binding PreviewCommand}"
-                        Theme="{StaticResource SecondaryButton}"
-                        Padding="10,5" CornerRadius="6"
-                        ToolTip.Tip="Preview alert">
-                    <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                        <Panel Width="11" Height="11" VerticalAlignment="Center">
-                            <PathIcon Data="{StaticResource Icon.Play}" Width="11" Height="11"
-                                      Foreground="{DynamicResource AppSubtleText}"
-                                      IsVisible="{Binding !IsPreviewing}" />
-                            <PathIcon Data="{StaticResource Icon.Stop}" Width="11" Height="11"
-                                      Foreground="{DynamicResource AppSubtleText}"
-                                      IsVisible="{Binding IsPreviewing}" />
-                        </Panel>
-                        <TextBlock Text="{Binding PreviewButtonText}" FontSize="11.5"
-                                   Foreground="{DynamicResource AppSubtleText}"
-                                   VerticalAlignment="Center" />
-                    </StackPanel>
+            <!-- Custom alerts: read-only label + pencil to edit (keeps a long title from
+                 stretching the inline input over the tinted card) -->
+            <Grid Grid.Column="0" ColumnDefinitions="Auto,Auto"
+                  VerticalAlignment="Center" Margin="0,0,10,0"
+                  IsVisible="{Binding ShowLabelDisplay}">
+                <TextBlock Grid.Column="0" Text="{Binding Label}"
+                           FontSize="14" FontWeight="SemiBold"
+                           Padding="0,2" MaxWidth="190"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <Button Grid.Column="1" Click="OnEditLabelClick"
+                        Theme="{StaticResource PrimaryButton}"
+                        Width="24" Height="24" Padding="0" CornerRadius="8"
+                        Margin="6,0,0,0"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        ToolTip.Tip="Rename alert">
+                    <PathIcon Data="{StaticResource Icon.Pencil}" Width="11" Height="11"
+                              Foreground="{DynamicResource AppSubtleText}" Opacity="0.7" />
                 </Button>
-                <ToggleSwitch IsChecked="{Binding IsEnabled}"
-                              OnContent="" OffContent=""
-                              Margin="0" Padding="0"
-                              VerticalAlignment="Center" />
-            </StackPanel>
+            </Grid>
+
+            <!-- Custom alerts: inline editor (transparent so it blends with the card) +
+                 a check button so mouse-only users can accept without pressing Enter -->
+            <Grid Grid.Column="0" ColumnDefinitions="Auto,Auto"
+                  VerticalAlignment="Center" Margin="0,0,10,0"
+                  IsVisible="{Binding ShowLabelEditor}">
+                <TextBox x:Name="LabelEditBox" Grid.Column="0" Text="{Binding Label}"
+                         FontSize="14" FontWeight="SemiBold"
+                         BorderThickness="0" Padding="2,2"
+                         Background="Transparent"
+                         Width="190"
+                         MaxLength="50"
+                         LostFocus="OnLabelEditLostFocus"
+                         KeyDown="OnLabelEditKeyDown">
+                    <TextBox.Styles>
+                        <!-- Keep the field transparent in every state, incl. focus/hover -->
+                        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                    </TextBox.Styles>
+                </TextBox>
+                <Button Grid.Column="1" Click="OnConfirmLabelClick"
+                        Theme="{StaticResource PrimaryButton}"
+                        Width="28" Height="28" Padding="0" CornerRadius="8"
+                        Margin="6,0,0,0"
+                        HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                        ToolTip.Tip="Accept">
+                    <PathIcon Data="{StaticResource Icon.Check}" Width="14" Height="14"
+                              Foreground="{DynamicResource AppSubtleText}" Opacity="0.8" />
+                </Button>
+            </Grid>
+
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsEnabled}"
+                          OnContent="" OffContent=""
+                          Margin="0" Padding="0"
+                          VerticalAlignment="Center" />
         </Grid>
 
         <!-- ── Range section ── -->
@@ -94,11 +125,19 @@
             <StackPanel Grid.Column="0" Spacing="4">
                 <TextBlock FontSize="12" Foreground="{DynamicResource AppSubtleText}">Sound</TextBlock>
                 <Button Command="{Binding OpenSoundPickerCommand}"
-                        Theme="{StaticResource SecondaryButton}"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Stretch"
                         Padding="8,6" MinHeight="32"
-                        CornerRadius="6">
+                        CornerRadius="8"
+                        BorderThickness="0"
+                        Background="{DynamicResource AppSecondaryButtonBg}"
+                        BorderBrush="{DynamicResource AppCardBorder}"
+                        Cursor="Hand">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
+                        </Style>
+                    </Button.Styles>
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <PathIcon Grid.Column="0"
                                   Data="{StaticResource Icon.SpeakerHigh}"
@@ -111,45 +150,95 @@
                                    FontSize="11.5"
                                    VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" />
-                        <!-- Right chevron (›) signals this opens a picker dialog, not a dropdown -->
+                        <!-- Up/down caret signals a selectable value -->
                         <PathIcon Grid.Column="2"
-                                  Data="{StaticResource Icon.CaretLeft}"
-                                  Width="8" Height="8"
+                                  Data="{StaticResource Icon.CaretUpDown}"
+                                  Width="11" Height="11"
                                   Foreground="{DynamicResource AppSubtleText}"
-                                  VerticalAlignment="Center"
-                                  RenderTransform="rotate(180deg)" />
+                                  VerticalAlignment="Center" />
                     </Grid>
                 </Button>
             </StackPanel>
 
-            <!-- Flash color picker -->
+            <!-- Flash color palette -->
             <StackPanel Grid.Column="2" Spacing="4">
                 <TextBlock FontSize="12" Foreground="{DynamicResource AppSubtleText}">Flash Color</TextBlock>
-                <ComboBox ItemsSource="{x:Static vm:AlertRowViewModel.FlashColorOptions}"
-                          SelectedItem="{Binding SelectedFlashColorOption}"
-                          HorizontalAlignment="Stretch"
-                          Padding="8,6" MinHeight="32"
-                          CornerRadius="6"
-                          BorderThickness="0"
-                          FontSize="11.5">
-                    <ComboBox.ItemTemplate>
+                <ListBox ItemsSource="{x:Static vm:AlertRowViewModel.FlashColorOptions}"
+                         SelectedItem="{Binding SelectedFlashColorOption}"
+                         MinHeight="32" VerticalAlignment="Center"
+                        Background="Transparent"
+                         Padding="0">
+                    <ListBox.Styles>
+                        <!-- Strip the default list-item chrome so items read as bare swatches -->
+                        <Style Selector="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="Background" Value="Transparent" />
+                            <Setter Property="Cursor" Value="Hand" />
+                        </Style>
+                        <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                        <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                    </ListBox.Styles>
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="7" />
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="vm:FlashColorOption">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Border Width="14" Height="14"
-                                        CornerRadius="7"
+                            <Panel Width="26" Height="26" ToolTip.Tip="{Binding Name}">
+                                <!-- Ring shown on the selected swatch -->
+                                <Border Width="26" Height="26" CornerRadius="13"
+                                        BorderThickness="2"
+                                        BorderBrush="{DynamicResource AppForeground}"
+                                        IsVisible="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+                                <Border Width="19" Height="19" CornerRadius="10"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                         Background="{Binding PreviewBrush}"
                                         BorderThickness="1"
-                                        BorderBrush="{DynamicResource AppCardBorder}"
-                                        VerticalAlignment="Center" />
-                                <TextBlock Text="{Binding Name}"
-                                           VerticalAlignment="Center"
-                                           FontSize="11.5" />
-                            </StackPanel>
+                                        BorderBrush="{DynamicResource AppCardBorder}" />
+                            </Panel>
                         </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </StackPanel>
         </Grid>
+
+        <!-- Divider separating the action from the settings above -->
+        <Border Height="1" Margin="0,4,0,0" Opacity="0.6"
+                Background="{DynamicResource AppCardBorder}" />
+
+        <!-- Preview alert — footer action (toggle: click again to stop) -->
+        <Button Command="{Binding PreviewCommand}"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Center"
+                Padding="10,7" CornerRadius="8"
+                BorderThickness="0"
+                Cursor="Hand"
+                Background="{DynamicResource AppHoverBackground}">
+            <Button.Styles>
+                <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                    <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonBg}" />
+                </Style>
+            </Button.Styles>
+            <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Panel Width="12" Height="12" VerticalAlignment="Center">
+                    <PathIcon Data="{StaticResource Icon.Play}" Width="12" Height="12"
+                              Foreground="{DynamicResource AppAccentForeground}"
+                              IsVisible="{Binding !IsPreviewing}" />
+                    <PathIcon Data="{StaticResource Icon.Stop}" Width="12" Height="12"
+                              Foreground="{DynamicResource AppAccentForeground}"
+                              IsVisible="{Binding IsPreviewing}" />
+                </Panel>
+                <TextBlock Text="{Binding PreviewButtonText}" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AppAccentForeground}"
+                           VerticalAlignment="Center" />
+            </StackPanel>
+        </Button>
 
     </StackPanel>
 

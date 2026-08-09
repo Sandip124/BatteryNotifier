@@ -20,6 +20,7 @@
             <Setter Property="MinWidth" Value="40" />
             <Setter Property="MaxWidth" Value="48" />
             <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Cursor" Value="Hand" />
         </Style>
     </Application.Styles>
 
@@ -34,8 +35,8 @@
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
                     <SolidColorBrush x:Key="AppCardBackground" Color="#161616" />
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#454545" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#565353" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
@@ -71,8 +72,8 @@
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
                     <SolidColorBrush x:Key="AppCardBackground" Color="#161616" />
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#454545" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#565353" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#9c9c9c" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
@@ -108,8 +109,8 @@
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#F5F5F5" />
                     <SolidColorBrush x:Key="AppCardBackground" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#E8E8E8" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#E0E0E0" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#EDEDED" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#DCDCDC" />
                     <SolidColorBrush x:Key="AppForeground" Color="#1A1A1A" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#6B6B6B" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#D0D0D0" />
@@ -151,12 +152,18 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
             <Setter Property="Padding" Value="6" />
-            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
 
             <Setter Property="Template">
                 <ControlTemplate TargetType="Button">
@@ -178,6 +185,9 @@
             <Style Selector="^:pointerover">
                 <Setter Property="Background" Value="{DynamicResource AppHoverBackground}" />
             </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="RenderTransform" Value="scale(0.96)" />
+            </Style>
         </ControlTheme>
 
         <ControlTheme x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
@@ -185,6 +195,10 @@
 
             <Style Selector="^:pointerover">
                 <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
+                <Setter Property="RenderTransform" Value="scale(0.96)" />
             </Style>
         </ControlTheme>
 

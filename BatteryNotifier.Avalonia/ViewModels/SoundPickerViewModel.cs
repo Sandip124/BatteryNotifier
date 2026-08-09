@@ -52,8 +52,14 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
     public List<SoundPickerGroup> FilteredGroups
     {
         get;
-        private set => this.RaiseAndSetIfChanged(ref field, value);
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(HasNoResults));
+        }
     } = [];
+
+    public bool HasNoResults => FilteredGroups.Count == 0;
 
     public SoundPickerViewModel(string? currentSettingsValue, string sectionTitle)
     {

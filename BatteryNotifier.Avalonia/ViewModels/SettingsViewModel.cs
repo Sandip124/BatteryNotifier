@@ -139,7 +139,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             LowerBound = 20,
             UpperBound = 80,
             IsEnabled = true,
-            Sound = "builtin:Harp"
+            Sound = "builtin:Harp",
+            FlashColor = AlertAccent.BlueHex
         };
 
         _settings.Alerts.Add(alert);
@@ -194,6 +195,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IsSystemTheme = true;
         IsLightTheme = false;
         IsDarkTheme = false;
+        this.RaisePropertyChanged(nameof(ThemeIndex));
         if (Application.Current != null)
             Application.Current.RequestedThemeVariant = ThemeVariant.Default;
     }
@@ -205,6 +207,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IsSystemTheme = false;
         IsLightTheme = true;
         IsDarkTheme = false;
+        this.RaisePropertyChanged(nameof(ThemeIndex));
         if (Application.Current != null)
             Application.Current.RequestedThemeVariant = ThemeVariant.Light;
     }
@@ -216,9 +219,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IsSystemTheme = false;
         IsLightTheme = false;
         IsDarkTheme = true;
+        this.RaisePropertyChanged(nameof(ThemeIndex));
         if (Application.Current != null)
             Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
     }
+
+    /// <summary>Segment index for the theme switcher pill: 0 = Light, 1 = System, 2 = Dark.</summary>
+    public int ThemeIndex => IsLightTheme ? 0 : IsDarkTheme ? 2 : 1;
 
     public bool IsSystemTheme
     {

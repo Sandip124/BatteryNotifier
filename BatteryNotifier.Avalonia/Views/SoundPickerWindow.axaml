@@ -19,8 +19,8 @@
         TransparencyLevelHint="AcrylicBlur"
         Background="Transparent">
 
-    <Border ClipToBounds="True" CornerRadius="10"
-            Background="{DynamicResource AppWindowBackground}">
+    <Border ClipToBounds="True"
+            Background="{DynamicResource AppCardBackground}">
     <Grid RowDefinitions="Auto,Auto,*,Auto">
 
         <!-- Header -->
@@ -49,12 +49,20 @@
                      Watermark="Search sounds..."
                      FontSize="12"
                      Padding="8,6"
-                     CornerRadius="6" />
+                     CornerRadius="8" />
         </Border>
 
         <!-- Sound list -->
+        <StackPanel Grid.Row="2" VerticalAlignment="Center" HorizontalAlignment="Center"
+                    Spacing="8" IsVisible="{Binding HasNoResults}">
+            <TextBlock Text="Sound not found." FontSize="13" FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       Foreground="{DynamicResource AppSubtleText}" />
+        </StackPanel>
+
         <ScrollViewer Grid.Row="2" Padding="12,0,12,0"
-                      HorizontalScrollBarVisibility="Disabled">
+                      HorizontalScrollBarVisibility="Disabled"
+                      IsVisible="{Binding !HasNoResults}">
             <ItemsControl ItemsSource="{Binding FilteredGroups}" Margin="0,0,0,12">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:SoundPickerGroup">
@@ -74,7 +82,7 @@
                                                 HorizontalContentAlignment="Stretch"
                                                 Padding="0"
                                                 Margin="0,1"
-                                                CornerRadius="6"
+                                                CornerRadius="8"
                                                 Cursor="Hand"
                                                 Background="Transparent"
                                                 BorderThickness="0"
@@ -82,7 +90,7 @@
                                             <Panel>
                                                 <!-- Selected-row highlight (data-bound) -->
                                                 <Border Background="{DynamicResource AppHoverBackground}"
-                                                        CornerRadius="6"
+                                                        CornerRadius="8"
                                                         IsVisible="{Binding IsSelected}" />
 
                                                 <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" Margin="10,8"
@@ -108,7 +116,7 @@
                                                     <Border Grid.Column="2"
                                                             IsVisible="{Binding IsCurrent}"
                                                             Background="{DynamicResource AppAccentBackground}"
-                                                            CornerRadius="4" Padding="6,2" Margin="4,0"
+                                                            CornerRadius="8" Padding="6,2" Margin="4,0"
                                                             VerticalAlignment="Center">
                                                         <TextBlock Text="Selected"
                                                                    FontSize="10" FontWeight="SemiBold"
@@ -170,7 +178,7 @@
                 <Button Grid.Column="0"
                         Theme="{StaticResource SecondaryButton}"
                         Command="{Binding ImportSoundCommand}"
-                        FontSize="12" Padding="10,6" CornerRadius="6"
+                        FontSize="12" Padding="10,6" CornerRadius="8"
                         HorizontalAlignment="Left"
                         ToolTip.Tip="Import a sound file into your library">
                     <StackPanel Orientation="Horizontal" Spacing="5">
@@ -184,7 +192,7 @@
                         FontSize="12" Padding="14,6"
                         Background="{DynamicResource AppAccentBackground}"
                         Foreground="White"
-                        CornerRadius="6"
+                        CornerRadius="8"
                         BorderThickness="0"
                         Cursor="Hand">
                     <Button.Styles>

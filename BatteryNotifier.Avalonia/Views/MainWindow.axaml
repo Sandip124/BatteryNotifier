@@ -31,7 +31,7 @@
         <Grid RowDefinitions="Auto,*">
 
             <!-- Header (drag handle) — ZIndex keeps it above the ambient glow -->
-            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="8"
+            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="12"
                     ZIndex="1"
                     Background="{DynamicResource AppHeaderBackground}"
                     PointerPressed="TitleBar_PointerPressed">
@@ -171,7 +171,7 @@
                         </Border>
 
                         <!-- Quick Settings -->
-                        <Border Grid.Row="2" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                        <Border Grid.Row="2" CornerRadius="12" BorderThickness="0" ClipToBounds="True"
                                 Margin="0,6,0,0"
                                 BorderBrush="{DynamicResource AppCardBorder}"
                                 Background="{DynamicResource AppCardBackground}">

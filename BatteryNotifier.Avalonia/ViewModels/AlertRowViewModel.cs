@@ -35,14 +35,30 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     public bool IsDefault => _alert.Id is "fullbatt" or "lowbatt_";
     public bool CanDelete => !IsDefault;
 
-    /// <summary>Flash color options relevant to battery alert levels.</summary>
+    private bool _isEditingLabel;
+
+    public bool IsEditingLabel
+    {
+        get => _isEditingLabel;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isEditingLabel, value);
+            this.RaisePropertyChanged(nameof(ShowLabelDisplay));
+            this.RaisePropertyChanged(nameof(ShowLabelEditor));
+        }
+    }
+
+    public bool ShowLabelDisplay => CanDelete && !_isEditingLabel;
+    public bool ShowLabelEditor => CanDelete && _isEditingLabel;
+
+    /// <summary>Flash color palette for battery alerts.</summary>
     public static IReadOnlyList<FlashColorOption> FlashColorOptions { get; } =
     [
-        new("Auto", null),
         new("Red", AlertAccent.RedHex),
         new("Amber", AlertAccent.AmberHex),
         new("Green", AlertAccent.GreenHex),
         new("Blue", AlertAccent.BlueHex),
+        new("Purple", AlertAccent.PurpleHex),
     ];
 
     public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; } = new();
@@ -118,6 +134,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         {
             Logger.Information("Alert '{Label}' ({Id}) range changed to {Lower}%–{Upper}%",
                 _label, _alert.Id, _lowerBound, _upperBound);
+            RaiseAccentChanged(); // tone (and thus the auto tint) can shift with the range
         }
 
         _onChanged(rangeChanged);
@@ -155,10 +172,64 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             if (this.RaiseAndSetIfChanged(ref _flashColor, value) != value) return;
             this.RaisePropertyChanged(nameof(HasFlashColor));
             this.RaisePropertyChanged(nameof(SelectedFlashColorOption));
+            RaiseAccentChanged();
         }
     }
 
     public bool HasFlashColor => !string.IsNullOrEmpty(_flashColor);
+
+    // ── Card accent tint (reflects the chosen flash color, else the auto tone) ──
+
+    /// <summary>The card's accent color: the chosen flash color, or the alert's tone color.</summary>
+    public Color AccentColorValue
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(_flashColor))
+            {
+                try { return Color.Parse(_flashColor); }
+                catch { /* fall through to the tone color */ }
+            }
+
+            return _alert.Tone switch
+            {
+                AlertTone.Full => AlertAccent.Green,
+                AlertTone.Low => AlertAccent.Red,
+                _ => Color.Parse("#8A8A8A"),
+            };
+        }
+    }
+
+    /// <summary>Radial accent wash emanating from the top-left header and fading across the card.</summary>
+    public IBrush CardTintBrush
+    {
+        get
+        {
+            var c = AccentColorValue;
+            return new RadialGradientBrush
+            {
+                Center = new RelativePoint(0, 0, RelativeUnit.Relative),
+                GradientOrigin = new RelativePoint(0, 0, RelativeUnit.Relative),
+                RadiusX = new RelativeScalar(1.2, RelativeUnit.Relative),
+                RadiusY = new RelativeScalar(1.2, RelativeUnit.Relative),
+                GradientStops =
+                {
+                    new GradientStop(Color.FromArgb(0x33, c.R, c.G, c.B), 0),
+                    new GradientStop(Color.FromArgb(0x10, c.R, c.G, c.B), 0.5),
+                    new GradientStop(Color.FromArgb(0x00, c.R, c.G, c.B), 1),
+                }
+            };
+        }
+    }
+
+    public IBrush CardBorderBrush => new SolidColorBrush(AccentColorValue, 0.30);
+
+    private void RaiseAccentChanged()
+    {
+        this.RaisePropertyChanged(nameof(AccentColorValue));
+        this.RaisePropertyChanged(nameof(CardTintBrush));
+        this.RaisePropertyChanged(nameof(CardBorderBrush));
+    }
 
     public FlashColorOption SelectedFlashColorOption
     {

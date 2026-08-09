@@ -10,13 +10,15 @@ namespace BatteryNotifier.Avalonia;
 /// </summary>
 internal static class AlertAccent
 {
-    public const string RedHex = "#D32F2F";
-    public const string AmberHex = "#F57A00";
-    public const string GreenHex = "#388E3C";
-    public const string BlueHex = "#0288D1";
+    public const string RedHex = "#E8574B";
+    public const string AmberHex = "#F5A64B";
+    public const string GreenHex = "#5FC08A";
+    public const string BlueHex = "#7B9CF0";
+    public const string PurpleHex = "#B584F2";
 
     public static readonly Color Red = Color.Parse(RedHex);
     public static readonly Color Amber = Color.Parse(AmberHex);
     public static readonly Color Green = Color.Parse(GreenHex);
     public static readonly Color Blue = Color.Parse(BlueHex);
+    public static readonly Color Purple = Color.Parse(PurpleHex);
 }

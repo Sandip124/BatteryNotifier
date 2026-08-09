@@ -18,7 +18,7 @@
         Background="Transparent">
 
     <Border ClipToBounds="True" CornerRadius="10"
-            Background="{DynamicResource AppWindowBackground}"
+            Background="{DynamicResource AppCardBackground}"
             BorderThickness="1" BorderBrush="{DynamicResource AppCardBorder}">
         <StackPanel Margin="18" Spacing="10">
             <TextBlock Name="TitleText"

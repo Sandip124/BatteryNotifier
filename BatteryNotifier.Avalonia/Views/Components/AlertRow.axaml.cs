@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -36,6 +37,41 @@ public partial class AlertRow : UserControl
 
         if (confirmed)
             vm.DeleteCommand.Execute().Subscribe();
+    }
+
+    // Reveal the inline editor and focus it with the text selected.
+    private void OnEditLabelClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not AlertRowViewModel vm) return;
+
+        vm.IsEditingLabel = true;
+        var box = this.FindControl<TextBox>("LabelEditBox");
+        Dispatcher.UIThread.Post(() =>
+        {
+            box?.Focus();
+            box?.SelectAll();
+        }, DispatcherPriority.Input);
+    }
+
+    private void OnLabelEditLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is AlertRowViewModel vm)
+            vm.IsEditingLabel = false;
+    }
+
+    private void OnConfirmLabelClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is AlertRowViewModel vm)
+            vm.IsEditingLabel = false;
+    }
+
+    private void OnLabelEditKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Escape && DataContext is AlertRowViewModel vm)
+        {
+            vm.IsEditingLabel = false;
+            e.Handled = true;
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)
