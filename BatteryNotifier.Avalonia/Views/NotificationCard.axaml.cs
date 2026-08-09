@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
@@ -18,8 +19,10 @@ public partial class NotificationCard : Window
     private const int SlideOffsetPx = 12;            // distance the card slides toward its edge
 
     private static readonly TimeSpan AnimOutDuration = TimeSpan.FromMilliseconds(300);
-    private static readonly TimeSpan AnimStartDelay = TimeSpan.FromMilliseconds(16);   // ~1 frame, lets transitions apply
     private static readonly TimeSpan ProgressTickInterval = TimeSpan.FromMilliseconds(30);
+    // Ignore clicks right after the card appears so an in-flight click doesn't dismiss it unseen.
+    private static readonly TimeSpan ClickSettleDelay = TimeSpan.FromMilliseconds(450);
+    private const double HoverHighlightOpacity = 0.05;
 
     private static readonly TransformOperations Visible = TransformOperations.Parse("scale(1,1) translate(0px,0px)");
     // Hidden state emanates from the docked corner; recomputed per position by SetAnchor.
@@ -73,13 +76,18 @@ public partial class NotificationCard : Window
         ApplyAccentWash();
 
         // CardBorder starts hidden (opacity 0, scaled, offset — set in XAML / SetAnchor).
-        // Flipping to the visible state one frame later triggers the transitions.
-        DispatcherTimer.RunOnce(() =>
-        {
-            CardBorder.Opacity = 1;
-            CardBorder.RenderTransform = Visible;
-            StartCountdown();
-        }, AnimStartDelay);
+
+        CardBorder.Opacity = 0;
+        CardBorder.RenderTransform = _hidden;
+
+        Dispatcher.UIThread.Post(() =>
+            Dispatcher.UIThread.Post(() =>
+            {
+                CardBorder.Opacity = 1;
+                CardBorder.RenderTransform = Visible;
+                StartCountdown();
+            }, DispatcherPriority.Render),
+            DispatcherPriority.Render);
     }
 
     private void StartCountdown()
@@ -143,6 +151,20 @@ public partial class NotificationCard : Window
 
     private void DismissButton_Click(object? sender,
         global::Avalonia.Interactivity.RoutedEventArgs e) => Dismiss(userInitiated: true);
+
+    private void Card_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_isDismissing) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (_showTime != default && DateTime.UtcNow - _showTime < ClickSettleDelay) return;
+        Dismiss(userInitiated: true);
+    }
+
+    private void Card_PointerEntered(object? sender, PointerEventArgs e) =>
+        HoverOverlay.Opacity = HoverHighlightOpacity;
+
+    private void Card_PointerExited(object? sender, PointerEventArgs e) =>
+        HoverOverlay.Opacity = 0;
 
     private void SetAboveFlashOverlay()
     {
