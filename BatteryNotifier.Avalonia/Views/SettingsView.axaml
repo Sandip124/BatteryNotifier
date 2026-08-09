@@ -18,6 +18,12 @@
             <Setter Property="Background" Value="Transparent" />
         </Style>
 
+        <Style Selector="Border.sep">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource AppSeparator}" />
+            <Setter Property="Margin" Value="12,1" />
+        </Style>
+
     </UserControl.Styles>
 
     <Grid RowDefinitions="Auto,*">
@@ -56,8 +62,8 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Grid.Row="1" Padding="12,8">
-                            <StackPanel Spacing="8">
+                        <Border Grid.Row="1" Padding="12,6">
+                            <StackPanel Spacing="4">
 
                                 <!-- Theme -->
                                 <Grid ColumnDefinitions="*,Auto">
@@ -105,6 +111,8 @@
                                     </Border>
                                 </Grid>
 
+                                <Border Classes="sep" Margin="0,1" />
+
                                 <!-- Launch at Startup -->
                                 <Grid ColumnDefinitions="*,42">
                                     <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Launch at system startup</TextBlock>
@@ -113,6 +121,8 @@
                                                   OnContent="" OffContent=""
                                                   Margin="0" Padding="0" />
                                 </Grid>
+
+                                <Border Classes="sep" Margin="0,1" />
 
                                 <!-- Auto check for updates -->
                                 <Grid ColumnDefinitions="*,42">
@@ -138,7 +148,7 @@
                         </Border>
 
                         <!-- Position picker — monitor with position grid -->
-                        <Border Padding="12,6">
+                        <Border Padding="12,5">
                             <StackPanel Spacing="6">
                                 <TextBlock FontSize="12" Foreground="{DynamicResource AppSubtleText}">Notification Position</TextBlock>
 
@@ -250,8 +260,10 @@
                             </StackPanel>
                         </Border>
 
+                        <Border Classes="sep" />
+
                         <!-- Screen flash toggle -->
-                        <Border Padding="12,6,12,10">
+                        <Border Padding="12,6">
                             <Grid ColumnDefinitions="*,42">
                                 <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Screen flash on notification</TextBlock>
                                 <ToggleSwitch Grid.Column="1"
@@ -261,8 +273,10 @@
                             </Grid>
                         </Border>
 
+                        <Border Classes="sep" />
+
                         <!-- AC power status change alerts toggle -->
-                        <Border Padding="12,6,12,10">
+                        <Border Padding="12,6">
                             <Grid ColumnDefinitions="*,42">
                                 <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">AC power-status alerts</TextBlock>
                                 <ToggleSwitch Grid.Column="1"
@@ -272,8 +286,10 @@
                             </Grid>
                         </Border>
 
+                        <Border Classes="sep" />
+
                         <!-- Alert volume -->
-                        <Border Padding="12,6,12,10">
+                        <Border Padding="12,6">
                             <StackPanel Spacing="6">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="13">Alert volume</TextBlock>

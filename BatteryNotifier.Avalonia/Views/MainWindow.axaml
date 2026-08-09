@@ -196,8 +196,11 @@
                                     </Grid>
                                 </Border>
 
+                                <Border Height="1" Margin="12,1"
+                                        Background="{DynamicResource AppSeparator}" />
+
                                 <!-- Low Battery notification -->
-                                <Border Padding="12,4,12,8">
+                                <Border Padding="12,4,12,6">
                                     <Grid ColumnDefinitions="Auto,*,42">
                                         <PathIcon Grid.Column="0"
                                                   Data="{StaticResource Icon.BatteryLowFill}"
