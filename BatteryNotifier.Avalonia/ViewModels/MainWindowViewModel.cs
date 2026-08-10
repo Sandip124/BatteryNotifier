@@ -131,9 +131,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 Dispatcher.UIThread.Post(RefreshTimeRemainingPhrase);
             }
         }
-        catch (OperationCanceledException ex)
+        catch (OperationCanceledException)
         {
-            Logger.Debug(ex,"RunPhraseCycle Operation is cancelled.");
+            Logger.Verbose("Phrase cycle stopped.");
         }
     }
 
