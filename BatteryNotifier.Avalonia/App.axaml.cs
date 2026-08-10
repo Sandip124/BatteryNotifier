@@ -89,13 +89,13 @@ public class App : Application
             desktop.MainWindow.Hide();
             MacOSDockIconHelper.HideDockIcon();
 
+            WriteDisplayDiagnostics(mainWindow);
+
             // Start in efficiency mode since window is hidden
             EfficiencyModeService.Instance.EnableEfficiency();
 
             // Hide to tray on window close (not actually close).
-            // Skip if a child dialog (About, Sound Picker) is open — closing the dialog
-            // can propagate a Closing event to the owner on Windows, which would
-            // unexpectedly hide the main window while the user is still in Settings.
+
             desktop.MainWindow.Closing += (_, args) =>
             {
                 args.Cancel = true;
@@ -126,6 +126,18 @@ public class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    private static void WriteDisplayDiagnostics(Window window)
+    {
+        try
+        {
+            Core.Diagnostics.SystemDiagnostics.WriteReport(DiagnosticsCommand.DisplaysFrom(window));
+        }
+        catch (Exception ex)
+        {
+            BatteryNotifierAppLogger.ForContext(nameof(App)).Warning(ex, "Failed to add display info to diagnostics");
+        }
+    }
+
     private static void CheckForPreviousCrash()
     {
         var crashDetails = CrashReporter.DetectPreviousCrash();
@@ -133,8 +145,7 @@ public class App : Application
 
         try
         {
-            // Show as independent window — main window is hidden at startup
-            // so it can't be used as a modal owner.
+
             var dialog = new Window
             {
                 Title = $"{Core.Constants.AppName} — Crash Detected",
@@ -184,7 +195,6 @@ public class App : Application
             Margin = new Thickness(0, 8, 0, 0)
         };
 
-        // Close helper — TopLevel.GetTopLevel works where VisualRoot is protected
         static void CloseParentWindow(Button? btn)
         {
             if (btn != null && TopLevel.GetTopLevel(btn) is Window w) w.Close();

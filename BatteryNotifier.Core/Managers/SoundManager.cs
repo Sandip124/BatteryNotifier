@@ -11,12 +11,22 @@ namespace BatteryNotifier.Core.Managers
     /// <summary>
     /// Cross-platform audio playback.
     /// - macOS: afplay subprocess (ArgumentList for injection safety)
-    /// - Non-Windows: SoundFlow (MiniAudio backend)
-    /// - Windows: SoundFlow (MiniAudio backend)
+    /// - Linux: paplay / pw-play / aplay / mpv / ffplay subprocess
+    /// - Windows: NAudio (WaveOutEvent + AudioFileReader)
     /// </summary>
     public class SoundManager : IDisposable
     {
         private const int DefaultPlayDurationMs = 30000;
+
+        /// <summary>
+        /// True only if the WINDOWS symbol was defined at build time (NAudio path compiled in).
+        /// Surfaced in diagnostics so a Windows build missing sound support is obvious.
+        /// </summary>
+#if WINDOWS
+        public const bool WindowsAudioCompiled = true;
+#else
+        public const bool WindowsAudioCompiled = false;
+#endif
 
         private readonly ILogger _logger;
         private readonly Lock _playLock = new();
@@ -83,7 +93,12 @@ namespace BatteryNotifier.Core.Managers
         private string? ResolveSoundPath(string? source)
         {
             var resolvedPath = BuiltInSounds.Resolve(source);
-            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return null;
+            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath))
+            {
+                _logger.Warning("Sound source did not resolve to an existing file: source={Source} resolved={Resolved}",
+                    source, resolvedPath);
+                return null;
+            }
 
             // Canonicalize path — on macOS /var is a symlink to /private/var,
             // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
@@ -130,6 +145,11 @@ namespace BatteryNotifier.Core.Managers
 
         private void PlaySound(string source, bool loop, int durationMs, int volumePercent, CancellationToken token)
         {
+            _logger.Information(
+                "PlaySound: source={Source} loop={Loop} durMs={Dur} vol={Vol} os=[mac={Mac} win={Win} linux={Linux}] windowsAudioCompiled={WinAudio}",
+                source, loop, durationMs, volumePercent,
+                OperatingSystem.IsMacOS(), OperatingSystem.IsWindows(), OperatingSystem.IsLinux(), WindowsAudioCompiled);
+
             if (OperatingSystem.IsMacOS())
                 PlayWithSubprocess("afplay", null, source, loop, durationMs, volumePercent, token);
 #if WINDOWS
@@ -319,13 +339,16 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 #else
-        // ── Linux: try SoundFlow, fall back to subprocess ──────────────────────────
+        // ── Linux: subprocess playback ──────────────────────────
 
         private void PlayOnLinux(string source, bool loop, int durationMs, int volumePercent, CancellationToken token)
         {
             var (command, extraArgs) = FindLinuxAudioCommand(source);
             if (command != null)
+            {
+                _logger.Information("Linux audio player: {Command} {Args} for {Source}", command, extraArgs, source);
                 PlayWithSubprocess(command, extraArgs, source, loop, durationMs, volumePercent, token);
+            }
             else
                 _logger.Warning("No audio playback command found on Linux (tried paplay, pw-play, aplay, mpv, ffplay)");
         }

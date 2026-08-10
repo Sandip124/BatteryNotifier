@@ -256,12 +256,11 @@ public sealed class BatteryMonitorService : IDisposable
     {
         if (ShouldSuppressNotifications(currentStatus))
         {
-            _logger.Information("Notification suppressed: external display detected (charger must stay connected)");
+            _logger.Information("Notification suppressed: macOS clamshell mode (lid closed) — charger must stay connected");
             return;
         }
 
-        // AlertEvaluationService decides *whether* an alert should fire now (entry, rapid drop,
-        // or its severity-capped re-notify interval); this method just delivers what it returns.
+
         var triggered = AlertEvaluationService.Instance.EvaluateAlerts(
             AppSettings.Instance.Alerts, currentLevel, currentStatus.PowerLineStatus);
 
@@ -341,10 +340,28 @@ public sealed class BatteryMonitorService : IDisposable
         if (!OperatingSystem.IsMacOS()) return false;
         if (status.PowerLineStatus != BatteryPowerLineStatus.Online) return false;
 
-        return HasExternalDisplay();
+        // Only suppress in clamshell mode (lid closed)
+        return IsClamshellMode();
     }
 
-    private static bool HasExternalDisplay()
+    /// <summary>macOS clamshell (lid-closed) detection via ioreg AppleClamshellState.</summary>
+    internal static bool IsClamshellMode()
+    {
+        if (!OperatingSystem.IsMacOS()) return false;
+        try
+        {
+            var output = ProcessRunner.Run("ioreg", "-r", "-k", "AppleClamshellState", "-d", "4");
+            return !string.IsNullOrEmpty(output)
+                && output.Contains("\"AppleClamshellState\" = Yes", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Debug(ex, "Clamshell detection failed");
+            return false;
+        }
+    }
+
+    internal static bool HasExternalDisplay()
     {
         try
         {
@@ -428,7 +445,6 @@ public sealed class BatteryMonitorService : IDisposable
         _powerEventWatcher = null;
 
         // Clean up macOS Darwin notify resources.
-        // Closing the fd unblocks the read() call in MacPowerNotifyLoop.
         if (_macNotifyToken >= 0)
         {
             notify_cancel(_macNotifyToken);

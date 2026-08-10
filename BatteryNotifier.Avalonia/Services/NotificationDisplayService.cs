@@ -216,12 +216,15 @@ public sealed class NotificationDisplayService
 
         foreach (var screen in all)
         {
-            _flashOverlays.Add(new ScreenFlashOverlay
+            var overlay = new ScreenFlashOverlay
             {
                 Width = screen.Bounds.Width / screen.Scaling,
                 Height = screen.Bounds.Height / screen.Scaling,
                 Position = screen.Bounds.Position
-            });
+            };
+            _flashOverlays.Add(overlay);
+            Logger.Information("Flash overlay created: {Width}x{Height} pos {Pos} scaling {Scaling}",
+                overlay.Width, overlay.Height, overlay.Position, screen.Scaling);
         }
 
         _flashScreenSignature = signature;

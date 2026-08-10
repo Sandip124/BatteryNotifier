@@ -359,17 +359,31 @@ public partial class ScreenFlashOverlay : Window
 
     private void ConfigureLinuxOverlay()
     {
+        var log = BatteryNotifierAppLogger.ForContext<ScreenFlashOverlay>();
         var xWindow = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
-        if (xWindow == IntPtr.Zero) return;
+        var wayland = Environment.GetEnvironmentVariable("WAYLAND_DISPLAY");
+
+        if (xWindow == IntPtr.Zero)
+        {
+            log.Warning("Linux overlay: no X11 window handle (Wayland={Wayland}) — click-through not applied; glow may not size/show correctly",
+                wayland);
+            return;
+        }
 
         var display = XOpenDisplay(IntPtr.Zero);
-        if (display == IntPtr.Zero) return;
+        if (display == IntPtr.Zero)
+        {
+            log.Warning("Linux overlay: XOpenDisplay failed (Wayland={Wayland}) — no XShape click-through", wayland);
+            return;
+        }
 
         try
         {
             // Set an empty input shape — all mouse events pass through
             XShapeCombineRectangles(display, xWindow, ShapeInput,
                 0, 0, IntPtr.Zero, 0, ShapeSet, 0);
+            log.Information("Linux overlay: XShape click-through applied at {Width}x{Height} pos {Pos} (Wayland={Wayland})",
+                Width, Height, Position, wayland);
         }
         finally
         {
