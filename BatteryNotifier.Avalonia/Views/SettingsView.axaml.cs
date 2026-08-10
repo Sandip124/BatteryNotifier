@@ -4,6 +4,7 @@ using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Services;
 
@@ -20,6 +21,8 @@ public partial class SettingsView : UserControl
         DataContextChanged += OnDataContextChanged;
 
         ThemeSegments.SizeChanged += (_, _) => MoveThemeIndicator(CurrentThemeIndex, animate: false);
+
+        Loaded += (_, _) => Dispatcher.UIThread.Post(SettingsScroll.ScrollToHome, DispatcherPriority.Background);
     }
 
     private int CurrentThemeIndex => (DataContext as SettingsViewModel)?.ThemeIndex ?? 1;

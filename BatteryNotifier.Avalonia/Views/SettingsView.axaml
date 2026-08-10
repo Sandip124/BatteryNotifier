@@ -48,7 +48,7 @@
             </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" Padding="0,10,0,0">
+        <ScrollViewer x:Name="SettingsScroll" Grid.Row="1" Padding="0,10,0,0">
             <StackPanel Spacing="10" Margin="10,0,10,40">
 
                 <!-- Appearance & Behaviour -->
