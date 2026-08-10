@@ -13,6 +13,9 @@ using BatteryNotifier.Core.Models;
 
 namespace BatteryNotifier.Avalonia.Views;
 
+// _flashCts is disposed via the Window lifecycle (OnClosed + on every reuse/stop), not IDisposable.
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1001:Types that own disposable fields should be disposable",
+    Justification = "Window manages _flashCts through OnClosed and reuse, not via IDisposable.")]
 public partial class ScreenFlashOverlay : Window
 {
     private CancellationTokenSource? _flashCts;
@@ -282,7 +285,7 @@ public partial class ScreenFlashOverlay : Window
         // canJoinAllSpaces | stationary | ignoresCycle | fullScreenAuxiliary
         const long collectionBehavior = (1 << 0) | (1 << 4) | (1 << 6) | (1 << 8);
         objc_msgSend_IntPtr(nsWindow, sel_registerName("setCollectionBehavior:"),
-            (IntPtr)collectionBehavior);
+            unchecked((IntPtr)collectionBehavior)); // small bitmask — cannot overflow
 
         // Exclude from screen capture (sharingType = .none = 0)
         objc_msgSend_IntPtr(nsWindow, sel_registerName("setSharingType:"), IntPtr.Zero);

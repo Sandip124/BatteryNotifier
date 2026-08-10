@@ -68,7 +68,6 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
         _allGroups = BuildGroups();
         MarkCurrent();
 
-        // Pre-highlight the saved sound so the Select button is enabled without a click.
         if (!string.IsNullOrEmpty(currentSettingsValue))
         {
             SelectedItem = _allGroups
@@ -91,14 +90,12 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
             var fileName = CustomSoundsLibrary.Import(path);
             if (fileName == null) return;
 
-            // Rebuild groups to include the new import
             _allGroups = BuildGroups();
             MarkCurrent();
             ApplyFilter(SearchText);
 
-            // Auto-select the newly imported sound
             var settingsValue = CustomSoundsLibrary.ToSettingsValue(fileName);
-            FlashSequenceLibrary.Instance.Invalidate(settingsValue); // in case the name was reused
+            FlashSequenceLibrary.Instance.Invalidate(settingsValue); 
             if (AppSettings.Instance.ScreenFlashEnabled)
                 FlashSequenceLibrary.Instance.EnsureGenerated(settingsValue);
             SelectedItem = _allGroups
@@ -157,9 +154,7 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Toggles preview playback for the item on demand (from its play/pause button). Playing a new
-    /// item stops the previous one. Selection is intentionally left untouched — auditioning a sound
-    /// does not change the current selection.
+    /// Toggles preview playback for the item on demand (from its play/pause button)
     /// </summary>
     public void TogglePreview(SoundPickerItem item)
     {
@@ -169,7 +164,6 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
             return;
         }
 
-        // Stop whatever is currently playing, then start this one.
         StopPreview();
 
         _playingItem = item;
@@ -185,7 +179,6 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
         }
         finally
         {
-            // Back on the UI thread: clear the playing flag if this item is still the active one.
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (_playingItem == item)
@@ -205,7 +198,6 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
         var source = item.SettingsValue;
         if (string.IsNullOrEmpty(source)) return;
 
-        // Built-in tones are short — preview with a cap. Other sounds play in full.
         bool isShortTone = BuiltInSounds.IsBuiltIn(source);
         int previewMs = isShortTone ? 5000 : 60_000;
         await _soundManager.PlaySoundAsync(source, loop: false, durationMs: previewMs).ConfigureAwait(false);

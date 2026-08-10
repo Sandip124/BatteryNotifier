@@ -6,7 +6,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
-using BatteryNotifier.Avalonia.Views;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
 

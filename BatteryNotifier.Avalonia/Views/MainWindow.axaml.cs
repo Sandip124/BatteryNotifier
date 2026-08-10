@@ -26,8 +26,8 @@ public partial class MainWindow : Window
 
     private static Transitions MakeSettingsTransitions(Easing easing) => new()
     {
-        new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = SettingsAnimDuration, Easing = easing },
-        new DoubleTransition { Property = Visual.OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
+        new TransformOperationsTransition { Property = RenderTransformProperty, Duration = SettingsAnimDuration, Easing = easing },
+        new DoubleTransition { Property = OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
     };
 
     private readonly Debouncer _positionSaveDebouncer = new();

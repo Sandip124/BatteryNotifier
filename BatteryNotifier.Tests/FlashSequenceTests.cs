@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Text.Json;
 using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;

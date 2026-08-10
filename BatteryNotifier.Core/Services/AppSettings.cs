@@ -46,7 +46,7 @@ public sealed class AppSettings
 
     // Screen flash for Avalonia-native notifications
     public bool ScreenFlashEnabled { get; set; } = true;
-
+    
     /// <summary>Alert sound volume, 0–100. 0 = muted (no sound played).</summary>
     public int AlertVolume { get; set; } = 100;
 
@@ -264,7 +264,7 @@ public sealed class AppSettings
     [
         new BatteryAlert
         {
-            Id = "fullbatt",
+            Id = BatteryAlert.FullBatteryId,
             Label = "Full Battery",
             LowerBound = 80,
             UpperBound = 100,
@@ -274,7 +274,7 @@ public sealed class AppSettings
         },
         new BatteryAlert
         {
-            Id = "lowbatt_",
+            Id = BatteryAlert.LowBatteryId,
             Label = "Low Battery",
             LowerBound = 0,
             UpperBound = 25,

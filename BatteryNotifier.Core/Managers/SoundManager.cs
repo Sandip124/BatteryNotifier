@@ -331,8 +331,8 @@ namespace BatteryNotifier.Core.Managers
         }
 
         // Cached available commands — detected once, reused for all playback
-        private static (string cmd, string[]? args)? _linuxWavPlayer;
-        private static (string cmd, string[]? args)? _linuxCompressedPlayer;
+        private static (string? cmd, string[]? args)? _linuxWavPlayer;
+        private static (string? cmd, string[]? args)? _linuxCompressedPlayer;
         private static bool _linuxAudioScanned;
 
         private static (string? command, string[]? extraArgs) FindLinuxAudioCommand(string source)

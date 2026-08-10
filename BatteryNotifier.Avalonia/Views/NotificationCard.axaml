@@ -39,14 +39,12 @@
 
         <Grid Cursor="Hand">
 
-            <!-- Content layer -->
             <Panel>
-                <!-- Subtle accent color wash — left to right -->
+                <!-- Accent color wash, fading left to right -->
                 <Border x:Name="AccentWash" CornerRadius="16,16,0,0" Opacity="0.1" />
 
                 <Grid ColumnDefinitions="*,Auto">
                     <Grid Grid.Column="0" ColumnDefinitions="Auto,10,*" Margin="14,10,8,8">
-                        <!-- Battery percentage — glass badge -->
                         <controls:GlassBadge Grid.Column="0"
                                 Width="58" Height="34"
                                 Text="{Binding BatteryPercent}"
@@ -55,7 +53,6 @@
                                 VerticalAlignment="Center"
                                 IsVisible="{Binding ShowPercent}" />
 
-                        <!-- Title + message -->
                         <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
                             <TextBlock Text="{Binding Title}"
                                        FontSize="15" FontWeight="SemiBold"

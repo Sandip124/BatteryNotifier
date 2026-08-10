@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.Globalization;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;

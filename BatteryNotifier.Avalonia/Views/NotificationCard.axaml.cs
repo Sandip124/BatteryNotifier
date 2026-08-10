@@ -75,11 +75,11 @@ public partial class NotificationCard : Window
         SetAboveFlashOverlay();
         ApplyAccentWash();
 
-        // CardBorder starts hidden (opacity 0, scaled, offset — set in XAML / SetAnchor).
-
         CardBorder.Opacity = 0;
         CardBorder.RenderTransform = _hidden;
 
+        // Flip to visible only after the hidden frame renders (two render hops), so the
+        // slide/scale transition animates instead of snapping when the UI thread is busy.
         Dispatcher.UIThread.Post(() =>
             Dispatcher.UIThread.Post(() =>
             {

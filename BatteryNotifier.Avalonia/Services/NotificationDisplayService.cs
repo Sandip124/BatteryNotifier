@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -165,7 +164,7 @@ public sealed class NotificationDisplayService
     private static string ColorToHex(Color c) => $"#{c.R:X2}{c.G:X2}{c.B:X2}";
 
     private void ShowScreenFlash(Color color, FlashSequence? sequence,
-        int durationMs = Core.Constants.NotificationDurationMs)
+        int durationMs = Constants.NotificationDurationMs)
     {
         try
         {

@@ -1,4 +1,6 @@
+using System.Globalization;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Utils;
 
 namespace BatteryNotifier.Core.Services;
 
@@ -193,18 +195,13 @@ public static class NotificationTemplates
             "Battery level is {0}% ({1} alert).",
             "Heads up: battery at {0}% — {1} range.",
         };
-        var msg = templates[Random.Shared.Next(templates.Length)];
-        return string.Format(msg, currentLevel, alert.Label);
+        var msg = Variety.Pick(templates);
+        return string.Format(CultureInfo.CurrentCulture, msg, currentLevel, alert.Label);
     }
 
     private static string PickMessage(string[][] templates, int escalation, int level)
     {
-        // Clamp escalation to available tiers
-        var tierIndex = Math.Min(escalation, templates.Length - 1);
-        var tier = templates[tierIndex];
-
-        // Pick a random message from the tier for variety
-        var messageIndex = Random.Shared.Next(tier.Length);
-        return string.Format(tier[messageIndex], level);
+        var tier = templates[Math.Min(escalation, templates.Length - 1)];
+        return string.Format(CultureInfo.CurrentCulture, Variety.Pick(tier), level);
     }
 }

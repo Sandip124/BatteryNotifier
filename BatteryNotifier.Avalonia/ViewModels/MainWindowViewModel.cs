@@ -1,49 +1,41 @@
 using System;
-using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Linq;
 using System.Reactive;
-using System.Reactive.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
-using Avalonia.Platform;
 using Avalonia.Threading;
 using BatteryNotifier.Core;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Store;
+using BatteryNotifier.Core.Utils;
+using BatteryNotifier.Avalonia.Utils;
 using ReactiveUI;
+using Serilog;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
 
 public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 {
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext(nameof(MainWindowViewModel));
+
+    private const string FullBatteryAsset = "FullBattery.png";
+    private const string SufficientAsset = "Sufficient.png";
+    private const string LowBatteryAsset = "LowBattery.png";
+
     private readonly AppSettings _settings = AppSettings.Instance;
 
     private bool _disposed;
-
-    /// <summary>True when the main window is visible to the user.</summary>
     private bool _isWindowVisible;
-
-    /// <summary>Set when a battery update arrives while the window is hidden.</summary>
     private bool _pendingRefresh;
-
-    /// <summary>Timer for cycling funny phrases — only runs while window is visible.</summary>
     private CancellationTokenSource? _phraseCts;
-
-    /// <summary>Whether we've already checked for Accessibility permission on macOS.</summary>
     private bool _accessibilityChecked;
-
-    /// <summary>Timer for polling DND state changes — only runs while window is visible.</summary>
     private CancellationTokenSource? _dndCts;
-
-    /// <summary>Cancels any in-progress typewriter animation.</summary>
-    private CancellationTokenSource? _typewriterCts;
 
     public MainWindowViewModel()
     {
@@ -55,36 +47,28 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         _inlineNotifications.StateChanged += OnInlineNotificationStateChanged;
 
-        // Initialize the Darwin notification monitor for Focus/DND changes (macOS only, no-op elsewhere)
         SystemStateDetector.InitializeFocusMonitor();
-
-        // Access BatteryMonitorService FIRST — its constructor does a synchronous
-        // initial check that populates BatteryManagerStore, so the store has real
-        // values before RefreshBatteryStatus() reads them.
+        
         try
         {
             BatteryMonitorService.Instance.BatteryStatusChanged += OnBatteryStatusChanged;
             BatteryMonitorService.Instance.PowerLineStatusChanged += OnPowerLineStatusChanged;
         }
-        catch { /* Battery monitoring not available on this platform */ }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Battery monitoring unavailable on this platform — status updates disabled");
+        }
 
-        // Subscribe to health updates for the compact bar
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
 
-        // Instant UI update when notifications are paused/resumed from tray
         NotificationService.Instance.PausedChanged += OnPausedChanged;
 
-        // Start recording battery history (charge sparkline + wear trend)
         _ = BatteryHistoryService.Instance;
 
-        // Initial populate — window may or may not be visible yet
         RefreshBatteryStatus();
     }
-
-    // ── Visibility-aware UI updates ──────────────────────────────
-
+    
     /// <summary>
-    /// Called by MainWindow when it becomes visible or hidden.
     /// Controls whether UI updates are processed or deferred.
     /// </summary>
     public void OnWindowVisibilityChanged(bool isVisible)
@@ -93,36 +77,27 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         if (isVisible)
         {
-            // Immediately fetch fresh battery state (catches charger plug/unplug while hidden)
             try { BatteryMonitorService.Instance.ForceCheck(); }
-            catch { /* Battery monitoring not available */ }
+            catch (Exception ex) { Logger.Debug(ex, "ForceCheck failed — battery monitoring unavailable"); }
 
-            // Catch up on any missed battery updates
             if (_pendingRefresh)
             {
                 _pendingRefresh = false;
             }
             RefreshBatteryStatus();
 
-            // Check DND state and start monitoring for changes
             RefreshDndStatus();
             StartDndMonitor();
 
-            // One-time check: prompt for Accessibility on macOS if needed for DND detection
             CheckAccessibilityPermission();
 
-            // Show greeting and start phrase cycling
-            StatusMessage = PickStatusMessage(
-                BatteryManagerStore.Instance.BatteryState,
-                BatteryManagerStore.Instance.IsCharging);
+            StatusMessage = BatteryPhrases.StatusMessage(BatteryManagerStore.Instance.BatteryState, BatteryManagerStore.Instance.IsCharging);
             StartPhraseCycling();
         }
         else
         {
-            // Window hidden — stop all UI timers
             StopDndMonitor();
             StopPhraseCycling();
-            CancelTypewriter();
             StatusMessage = string.Empty;
         }
 
@@ -147,81 +122,28 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         try
         {
-            // Show greeting for 5 seconds, then clear it
             await Task.Delay(5000, ct).ConfigureAwait(false);
             Dispatcher.UIThread.Post(() => StatusMessage = string.Empty);
 
-            // Cycle the time remaining phrase every 2 minutes (only funny phrases, not real estimates)
             using var timer = new PeriodicTimer(TimeSpan.FromMinutes(2));
             while (await timer.WaitForNextTickAsync(ct).ConfigureAwait(false))
             {
                 Dispatcher.UIThread.Post(RefreshTimeRemainingPhrase);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            // Window was hidden — expected
+            Logger.Debug(ex,"RunPhraseCycle Operation is cancelled.");
         }
     }
 
-    /// <summary>
-    /// Refreshes the time remaining text. Real estimates are shown instantly.
-    /// Funny phrases use a typewriter animation with thinking dots.
-    /// </summary>
+    /// <summary>Real estimate when available, otherwise a playful placeholder phrase.</summary>
     private void RefreshTimeRemainingPhrase()
     {
         var store = BatteryManagerStore.Instance;
-        if (store.BatteryLifeRemaining > 0)
-        {
-            CancelTypewriter();
-            TimeRemaining = FormatTimeRemaining(store);
-        }
-        else
-        {
-            _ = TypewritePhrase(PickBatteryPhrase());
-        }
-    }
-
-    private void CancelTypewriter()
-    {
-        _typewriterCts?.Cancel();
-        _typewriterCts?.Dispose();
-        _typewriterCts = null;
-    }
-
-    private async Task TypewritePhrase(string phrase)
-    {
-        CancelTypewriter();
-        var cts = new CancellationTokenSource();
-        _typewriterCts = cts;
-        var ct = cts.Token;
-
-        try
-        {
-            // Phase 1: Thinking dots animation
-            for (int cycle = 0; cycle < 2; cycle++)
-            {
-                for (int dots = 1; dots <= 3; dots++)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    Dispatcher.UIThread.Post(() => TimeRemaining = new string('.', dots));
-                    await Task.Delay(300, ct).ConfigureAwait(false);
-                }
-            }
-
-            // Phase 2: Type out the phrase character by character
-            for (int i = 1; i <= phrase.Length; i++)
-            {
-                ct.ThrowIfCancellationRequested();
-                var partial = phrase[..i];
-                Dispatcher.UIThread.Post(() => TimeRemaining = partial);
-                await Task.Delay(35, ct).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            // New phrase or real estimate replaced us — expected
-        }
+        TimeRemaining = store.BatteryLifeRemaining > 0
+            ? BatteryStatusText.FormatTimeRemaining(store)
+            : BatteryPhrases.BatteryPhrase(IsCharging);
     }
 
     private void OnBatteryStatusChanged(object? sender, BatteryStatusEventArgs e)
@@ -257,115 +179,23 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         BatteryPercentage = store.BatteryLifePercent;
         IsCharging = store.IsCharging || store.IsPluggedIn;
 
-        if (store.HasNoBattery)
-            BatteryStatus = "No Battery";
-        else if (store.IsUnknown)
-            BatteryStatus = "Unknown";
-        else if (store.IsCharging)
-            BatteryStatus = "Charging";
-        else if (store.IsPluggedIn)
-            BatteryStatus = "Plugged In";
-        else
-            BatteryStatus = "Discharging";
+        BatteryStatus = BatteryStatusText.StatusLabel(store);
 
-        if (store.BatteryLifeRemaining > 0)
-        {
-            CancelTypewriter();
-            TimeRemaining = FormatTimeRemaining(store);
-        }
-        else
-        {
-            _ = TypewritePhrase(PickBatteryPhrase());
-        }
+        TimeRemaining = store.BatteryLifeRemaining > 0
+            ? BatteryStatusText.FormatTimeRemaining(store)
+            : BatteryPhrases.BatteryPhrase(IsCharging);
 
-        StatusLine = BuildStatusLine(store);
+        StatusLine = BatteryStatusText.BuildStatusLine(store);
 
         var assetName = store.BatteryState switch
         {
-            BatteryState.Full => "FullBattery.png",
-            BatteryState.Adequate => "FullBattery.png",
-            BatteryState.Sufficient => "Sufficient.png",
-            BatteryState.Low => "LowBattery.png",
-            BatteryState.Critical => "LowBattery.png",
-            _ => "Sufficient.png"
+            BatteryState.Full or BatteryState.Adequate => FullBatteryAsset,
+            BatteryState.Sufficient => SufficientAsset,
+            BatteryState.Low or BatteryState.Critical => LowBatteryAsset,
+            _ => SufficientAsset
         };
 
-        BatteryImage = LoadAsset(assetName);
-    }
-
-    /// <summary>
-    /// Builds a single contextual line combining status, time, and charge tip.
-    /// Examples: "Charging · 1h 23m to full" / "2h 15m remaining" / "Unplug — 80% reached"
-    /// </summary>
-    private static string BuildStatusLine(BatteryManagerStore store)
-    {
-        if (store.HasNoBattery || store.IsUnknown) return string.Empty;
-
-        var pct = (int)store.BatteryLifePercent;
-        var time = FormatTimeShort(store);
-
-        return (store.IsCharging || store.IsPluggedIn)
-            ? ChargingStatusLine(pct, time)
-            : DischargingStatusLine(pct, time);
-    }
-
-    private static string ChargingStatusLine(int pct, string? time)
-    {
-        if (pct >= 80) return "Unplug now — extend battery lifespan";
-        if (pct >= 70) return WithTime(time, "to full · Unplug at 80%", "Unplug at 80% for longevity");
-        if (pct >= 50) return WithTime(time, "to full", "Optimal range is 20–80%");
-        return WithTime(time, "to full", "Charging — avoid draining below 20%");
-    }
-
-    private static string DischargingStatusLine(int pct, string? time)
-    {
-        if (pct <= 5) return WithTime(time, "left · Plug in now", "Critical — plug in now");
-        if (pct <= 20) return WithTime(time, "left · Plug in soon", "Low — plug in soon");
-        if (pct <= 50) return WithTime(time, "remaining", "Keep above 20% for battery health");
-        return WithTime(time, "remaining", "Battery in good shape");
-    }
-
-    private static string WithTime(string? time, string suffix, string fallback) =>
-        time != null ? $"{time} {suffix}" : fallback;
-
-    private static string? FormatTimeShort(BatteryManagerStore store)
-    {
-        if (store.BatteryLifeRemaining <= 0) return null;
-        var ts = store.BatteryLifeRemainingInSeconds;
-        var h = (int)ts.TotalHours;
-        return h > 0 ? $"{h}h {ts.Minutes}m" : $"{ts.Minutes}m";
-    }
-
-    private static string FormatTimeRemaining(BatteryManagerStore store)
-    {
-        var ts = store.BatteryLifeRemainingInSeconds;
-        var hours = (int)ts.TotalHours;
-        var mins = ts.Minutes;
-
-        var timeStr = hours > 0 ? $"{hours}h {mins}m" : $"{mins}m";
-
-        return store.IsCharging
-            ? $"{timeStr} to full charge"
-            : $"{timeStr} of battery remaining";
-    }
-
-    private static readonly ConcurrentDictionary<string, Bitmap?> _bitmapCache = new();
-
-    private static Bitmap? LoadAsset(string fileName)
-    {
-        return _bitmapCache.GetOrAdd(fileName, static key =>
-        {
-            try
-            {
-                var uri = AssetUris.ForAsset(key);
-                using var stream = AssetLoader.Open(uri);
-                return new Bitmap(stream);
-            }
-            catch
-            {
-                return null;
-            }
-        });
+        BatteryImage = ResourceHelper.LoadBitmap(assetName);
     }
 
     // ── Properties ───────────────────────────────────────────────
@@ -406,27 +236,12 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
 
-    public string AlertsSummary
-    {
-        get
-        {
-            var alerts = _settings.Alerts;
-            var active = alerts.Count(a => a.IsEnabled);
-            return active switch
-            {
-                0 => "No alerts active",
-                1 => "1 alert active",
-                _ => $"{active} alerts active"
-            };
-        }
-    }
-
     public bool FullBatteryAlertEnabled
     {
-        get => _settings.Alerts.Find(a => a.Id == "fullbatt")?.IsEnabled ?? true;
+        get => _settings.Alerts.Find(a => a.Id == BatteryAlert.FullBatteryId)?.IsEnabled ?? true;
         set
         {
-            var alert = _settings.Alerts.Find(a => a.Id == "fullbatt");
+            var alert = _settings.Alerts.Find(a => a.Id == BatteryAlert.FullBatteryId);
             if (alert != null)
             {
                 alert.IsEnabled = value;
@@ -438,10 +253,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     public bool LowBatteryAlertEnabled
     {
-        get => _settings.Alerts.Find(a => a.Id == "lowbatt_")?.IsEnabled ?? true;
+        get => _settings.Alerts.Find(a => a.Id == BatteryAlert.LowBatteryId)?.IsEnabled ?? true;
         set
         {
-            var alert = _settings.Alerts.Find(a => a.Id == "lowbatt_");
+            var alert = _settings.Alerts.Find(a => a.Id == BatteryAlert.LowBatteryId);
             if (alert != null)
             {
                 alert.IsEnabled = value;
@@ -477,56 +292,24 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private static global::Avalonia.Media.Geometry? _iconCheck;
-    private static global::Avalonia.Media.Geometry? _iconHeart;
-    private static global::Avalonia.Media.Geometry? _iconWarn;
-    private static global::Avalonia.Media.Geometry? _iconSpinner;
-
-    private static global::Avalonia.Media.Geometry? ResolveIcon(string key)
-    {
-        var app = Application.Current;
-        if (app?.Resources.TryGetResource(key, null, out var res) == true
-            && res is global::Avalonia.Media.Geometry geo)
-            return geo;
-        // Try merged dictionaries
-        foreach (var dict in app?.Resources.MergedDictionaries ?? [])
-            if (dict.TryGetResource(key, null, out var r) && r is global::Avalonia.Media.Geometry g)
-                return g;
-        return null;
-    }
-
     public static global::Avalonia.Media.Geometry? HealthIcon
     {
         get
         {
             var health = BatteryHealthService.Instance.LatestHealth;
-            // No reading yet → spinner. Reading done but no data → neutral heart (not the spinner,
-            // which would imply it's still checking).
-            if (health == null) return _iconSpinner ??= ResolveIcon("Icon.Spinner");
+            if (health == null) return ResourceHelper.ResolveGeometry("Icon.Spinner");
             return health.HealthStatus switch
             {
-                MetricStatus.Good => _iconCheck ??= ResolveIcon("Icon.CheckFat"),
-                MetricStatus.Fair => _iconHeart ??= ResolveIcon("Icon.HeartFill"),
-                MetricStatus.Poor => _iconWarn ??= ResolveIcon("Icon.ExclamationMarkFill"),
-                _ => _iconHeart ??= ResolveIcon("Icon.HeartFill")
+                MetricStatus.Good => ResourceHelper.ResolveGeometry("Icon.CheckFat"),
+                MetricStatus.Fair => ResourceHelper.ResolveGeometry("Icon.HeartFill"),
+                MetricStatus.Poor => ResourceHelper.ResolveGeometry("Icon.ExclamationMarkFill"),
+                _ => ResourceHelper.ResolveGeometry("Icon.HeartFill")
             };
         }
     }
 
-    public static string HealthAccentColor
-    {
-        get
-        {
-            var health = BatteryHealthService.Instance.LatestHealth;
-            return health?.HealthStatus switch
-            {
-                MetricStatus.Good => "#388E3C",
-                MetricStatus.Fair => "#F9A825",
-                MetricStatus.Poor => "#D32F2F",
-                _ => "#808080"
-            };
-        }
-    }
+    public static string HealthAccentColor =>
+        HealthColors.ForHealth(BatteryHealthService.Instance.LatestHealth?.HealthStatus ?? MetricStatus.Unavailable);
 
     public SettingsViewModel? CurrentView
     {
@@ -543,14 +326,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public static string Version => Constants.ApplicationVersion;
 
     // ── DND status ───────────────────────────────────────────────
-
-    private static readonly string[] DndMessages =
-    [
-        "Do Not Disturb is on — notifications are paused.",
-        "Focus mode active — notifications won't show.",
-        "DND enabled — you won't see battery alerts.",
-        "Notifications silenced by Do Not Disturb.",
-    ];
 
     public bool IsDndActive
     {
@@ -583,20 +358,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
             var remaining = resumesAt - DateTime.UtcNow;
             if (remaining < TimeSpan.Zero) remaining = TimeSpan.Zero;
-            return $"Notifications paused · {FormatRemaining(remaining)} remaining";
+            return $"Notifications paused · {TimeFormat.Countdown(remaining)} remaining";
         }
-    }
-
-    /// <summary>"1h 5m" / "1h" / "5m" — minutes shown only when non-zero (whole hours drop the "0m").</summary>
-    private static string FormatRemaining(TimeSpan d)
-    {
-        var totalMinutes = (int)Math.Ceiling(d.TotalMinutes);
-        var hours = totalMinutes / 60;
-        var minutes = totalMinutes % 60;
-
-        if (hours > 0)
-            return minutes > 0 ? $"{hours}h {minutes}m" : $"{hours}h";
-        return $"{minutes}m";
     }
 
     public ReactiveCommand<Unit, Unit> ResumeNotificationsCommand { get; } =
@@ -637,10 +400,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     {
         var svc = NotificationService.Instance;
 
-        // Deadline reached — resume now (the service's own check is otherwise lazy).
         if (svc.PauseResumesAt is { } resumesAt && DateTime.UtcNow >= resumesAt)
         {
-            svc.ResumeNotifications(); // → OnPausedChanged → UpdatePauseCountdown disposes this timer
+            svc.ResumeNotifications(); 
             return false;
         }
 
@@ -679,9 +441,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     /// <summary>
     /// Monitors DND state changes while the window is visible.
-    /// Checks Darwin notify every 1s (free memory read) — triggers instant refresh on
-    /// older macOS where the notification fires. Every 5s, does a full refresh regardless
-    /// as a fallback for Tahoe+ where Darwin notify for DND was removed.
     /// </summary>
     private async Task RunDndMonitorAsync(CancellationToken ct)
     {
@@ -716,10 +475,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// Recomputes DND/fullscreen suppression off the UI thread. GetSuppressionState() spawns
-    /// subprocesses (osascript/defaults/plutil) that can block for up to their 3s timeout, so it
-    /// must never run on the UI thread — doing so froze rendering and made scrolling stutter.
-    /// Only the resulting boolean is marshalled back to update the UI.
+    /// Recomputes DND/fullscreen suppression off the UI thread.
     /// </summary>
     private void RefreshDndStatus()
     {
@@ -744,9 +500,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         if (active == IsDndActive) return;
 
         IsDndActive = active;
-        DndMessage = active
-            ? DndMessages[Random.Shared.Next(DndMessages.Length)]
-            : string.Empty;
+        DndMessage = active ? BatteryPhrases.DndMessage() : string.Empty;
         this.RaisePropertyChanged(nameof(ShowPausedBanner));
     }
 
@@ -755,9 +509,8 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         get;
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
-
-    // ── Inline notification (state lives in Core's InlineNotificationManager) ──
-
+    
+    
     private readonly InlineNotificationManager _inlineNotifications = InlineNotificationManager.Instance;
 
     public string InlineNotificationMessage => _inlineNotifications.Message;
@@ -785,102 +538,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             this.RaisePropertyChanged(nameof(IsInlineWarning));
             this.RaisePropertyChanged(nameof(IsInlineError));
         });
-    }
-
-    // ── Funny phrases & greetings ────────────────────────────────
-
-    private static readonly string[] ChargingPhrases =
-    [
-        "Charging — estimating time to full...",
-        "Plugged in — calculating charge time...",
-        "Charging up — estimate available soon",
-        "Power connected — charging in progress",
-    ];
-
-    private static readonly string[] DischargingPhrases =
-    [
-        "On battery — estimating time remaining...",
-        "Running on battery power",
-        "Unplugged — calculating battery life...",
-        "On battery — estimate available soon",
-    ];
-
-    private string PickBatteryPhrase()
-    {
-        var pool = IsCharging ? ChargingPhrases : DischargingPhrases;
-        return pool[Random.Shared.Next(pool.Length)];
-    }
-
-    private static readonly string[] GreetingsFull =
-    [
-        "Your battery is vibing at 100%.",
-        "Fully juiced! Time to unplug.",
-        "Battery's living its best life.",
-        "All topped up. You're golden!",
-        "Full tank energy right here."
-    ];
-
-    private static readonly string[] GreetingsAdequate =
-    [
-        "Battery's looking great today!",
-        "Smooth sailing ahead.",
-        "You've got plenty of juice.",
-        "All systems go. Carry on!",
-        "Battery says: 'I'm chilling.'"
-    ];
-
-    private static readonly string[] GreetingsSufficient =
-    [
-        "Still going strong!",
-        "Halfway there, keep cruising.",
-        "Battery's holding steady.",
-        "Not bad, not bad at all.",
-        "Doing just fine over here."
-    ];
-
-    private static readonly string[] GreetingsLow =
-    [
-        "Getting a bit thirsty...",
-        "Maybe find a charger soon?",
-        "Battery's sending SOS vibes.",
-        "Running on fumes here!",
-        "A charger would be nice right about now."
-    ];
-
-    private static readonly string[] GreetingsCritical =
-    [
-        "MAYDAY! Plug in, plug in!",
-        "Battery's on life support.",
-        "We're in the danger zone!",
-        "This is not a drill. Charge me!",
-        "Counting down... find power NOW."
-    ];
-
-    private static readonly string[] GreetingsCharging =
-    [
-        "Charging up! Sit tight.",
-        "Nom nom nom... delicious electricity.",
-        "Sipping on some sweet power.",
-        "Refueling in progress...",
-        "Getting stronger by the minute!"
-    ];
-
-    private static string PickStatusMessage(BatteryState state, bool isCharging)
-    {
-        if (isCharging)
-            return GreetingsCharging[Random.Shared.Next(GreetingsCharging.Length)];
-
-        var pool = state switch
-        {
-            BatteryState.Full => GreetingsFull,
-            BatteryState.Adequate => GreetingsAdequate,
-            BatteryState.Sufficient => GreetingsSufficient,
-            BatteryState.Low => GreetingsLow,
-            BatteryState.Critical => GreetingsCritical,
-            _ => GreetingsAdequate
-        };
-
-        return pool[Random.Shared.Next(pool.Length)];
     }
 
     // ── Commands ─────────────────────────────────────────────────
@@ -952,16 +609,13 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         var old = CurrentView;
         if (old == null) return;
 
-        // Trigger close animation while content is still visible
         SettingsCloseRequested?.Invoke();
 
-        // Wait for animation to finish, then clear content and dispose
         await Task.Delay(250).ConfigureAwait(false);
         Dispatcher.UIThread.Post(() =>
         {
             CurrentView = null;
             old.Dispose();
-            this.RaisePropertyChanged(nameof(AlertsSummary));
             this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
             this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
         });
@@ -973,7 +627,6 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         StopDndMonitor();
         StopPhraseCycling();
         _pauseCountdown?.Dispose();
-        CancelTypewriter();
         CurrentView?.Dispose();
         HealthDashboard.Dispose();
         BatteryMonitorService.Instance.BatteryStatusChanged -= OnBatteryStatusChanged;

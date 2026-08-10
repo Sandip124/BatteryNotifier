@@ -5,7 +5,7 @@ using System.Threading;
 using Avalonia.Threading;
 using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Services;
-using BatteryNotifier.Core.Store;
+using BatteryNotifier.Core.Utils;
 using ReactiveUI;
 
 namespace BatteryNotifier.Avalonia.ViewModels;
@@ -16,7 +16,6 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
     private DateTime _lastUpdated = DateTime.UtcNow;
     private Timer? _displayTimer;
 
-    // Cached last-known-good values — shown when current data is unavailable
     private BatteryHealthInfo? _cachedHealth;
 
     public ReactiveCommand<Unit, Unit> RefreshCommand { get; }
@@ -28,7 +27,6 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         BatteryHealthService.Instance.HealthUpdated += OnHealthUpdated;
         UpdateFromHealth(BatteryHealthService.Instance.LatestHealth);
 
-        // Subscribe to history updates
         BatteryHistoryService.Instance.ChargeHistoryUpdated += OnChargeHistoryUpdated;
         BatteryHistoryService.Instance.WearHistoryUpdated += OnWearHistoryUpdated;
         RefreshHistoryData();
@@ -134,23 +132,17 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
 
     private BatteryHealthInfo MergeWithCache(BatteryHealthInfo? info)
     {
-        var fresh = info ?? new BatteryHealthInfo();
-        var cached = _cachedHealth;
-
-        if (cached == null)
-        {
-            _cachedHealth = fresh;
-            return fresh;
-        }
+        if (_cachedHealth is not { } cached)
+            return _cachedHealth = info ?? new BatteryHealthInfo();
 
         if (info != null)
         {
-            if (info.HealthPercent.HasValue) cached.HealthPercent = info.HealthPercent;
-            if (info.CycleCount.HasValue) cached.CycleCount = info.CycleCount;
-            if (info.DesignCycleCount.HasValue) cached.DesignCycleCount = info.DesignCycleCount;
-            if (info.TemperatureCelsius.HasValue) cached.TemperatureCelsius = info.TemperatureCelsius;
-            if (info.VoltageVolts.HasValue) cached.VoltageVolts = info.VoltageVolts;
-            if (info.PowerRateWatts.HasValue) cached.PowerRateWatts = info.PowerRateWatts;
+            cached.HealthPercent = info.HealthPercent ?? cached.HealthPercent;
+            cached.CycleCount = info.CycleCount ?? cached.CycleCount;
+            cached.DesignCycleCount = info.DesignCycleCount ?? cached.DesignCycleCount;
+            cached.TemperatureCelsius = info.TemperatureCelsius ?? cached.TemperatureCelsius;
+            cached.VoltageVolts = info.VoltageVolts ?? cached.VoltageVolts;
+            cached.PowerRateWatts = info.PowerRateWatts ?? cached.PowerRateWatts;
         }
 
         return cached;
@@ -226,29 +218,9 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         private set => this.RaiseAndSetIfChanged(ref field, value);
     } = "...";
 
-    public string HealthColor => HealthStatus switch
-    {
-        MetricStatus.Good => "#388E3C",
-        MetricStatus.Fair => "#F57A00",
-        MetricStatus.Poor => "#D32F2F",
-        _ => "#8A8A8A"
-    };
-
-    public string TemperatureColor => TemperatureStatus switch
-    {
-        MetricStatus.Good => "#0288D1",  // cool blue
-        MetricStatus.Fair => "#F57A00",  // warm amber
-        MetricStatus.Poor => "#D32F2F",  // hot red
-        _ => "#8A8A8A"
-    };
-
-    public string TemperatureStatusText => TemperatureStatus switch
-    {
-        MetricStatus.Good => "Normal",
-        MetricStatus.Fair => "Warm",
-        MetricStatus.Poor => "Too Hot",
-        _ => "Not supported"
-    };
+    public string HealthColor => HealthColors.ForHealth(HealthStatus);
+    public string TemperatureColor => HealthColors.ForTemperature(TemperatureStatus);
+    public string TemperatureStatusText => HealthColors.TemperatureText(TemperatureStatus);
 
     public MetricStatus HealthStatus
     {
@@ -268,16 +240,7 @@ public sealed class HealthDashboardViewModel : ViewModelBase, IDisposable
         private set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public string LastUpdatedDisplay
-    {
-        get
-        {
-            var elapsed = DateTime.UtcNow - _lastUpdated;
-            if (elapsed.TotalSeconds < 10) return "Just now";
-            if (elapsed.TotalMinutes < 1) return $"{(int)elapsed.TotalSeconds}s ago";
-            return $"{(int)elapsed.TotalMinutes}m ago";
-        }
-    }
+    public string LastUpdatedDisplay => TimeFormat.Ago(DateTime.UtcNow - _lastUpdated);
 
     // ── Battery History ─────────────────────────────────────────
 

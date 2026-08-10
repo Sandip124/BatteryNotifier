@@ -32,7 +32,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     private string? _flashColor;
 
     public string Id => _alert.Id;
-    public bool IsDefault => _alert.Id is "fullbatt" or "lowbatt_";
+    public bool IsDefault => _alert.Id is BatteryAlert.FullBatteryId or BatteryAlert.LowBatteryId;
     public bool CanDelete => !IsDefault;
 
     private bool _isEditingLabel;
@@ -94,7 +94,6 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         PreviewCommand = ReactiveCommand.Create(TogglePreview);
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
 
-        // Auto-save on property changes (throttled for sliders)
         this.WhenAnyValue(x => x.IsEnabled)
             .Skip(1)
             .Subscribe(_ => SyncAndSave())
@@ -134,7 +133,7 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         {
             Logger.Information("Alert '{Label}' ({Id}) range changed to {Lower}%–{Upper}%",
                 _label, _alert.Id, _lowerBound, _upperBound);
-            RaiseAccentChanged(); // tone (and thus the auto tint) can shift with the range
+            RaiseAccentChanged(); 
         }
 
         _onChanged(rangeChanged);
@@ -177,18 +176,14 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     }
 
     public bool HasFlashColor => !string.IsNullOrEmpty(_flashColor);
-
-    // ── Card accent tint (reflects the chosen flash color, else the auto tone) ──
-
-    /// <summary>The card's accent color: the chosen flash color, or the alert's tone color.</summary>
+    
     public Color AccentColorValue
     {
         get
         {
             if (!string.IsNullOrEmpty(_flashColor))
             {
-                try { return Color.Parse(_flashColor); }
-                catch { /* fall through to the tone color */ }
+                return Color.Parse(_flashColor);
             }
 
             return _alert.Tone switch
@@ -288,11 +283,11 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
 
         if (IsPreviewing)
         {
-            displayService.DismissAll(); // stops card + sound + flash; Closed handler clears IsPreviewing
+            displayService.DismissAll();
             return;
         }
 
-        var notification = new Core.Services.NotificationMessageEventArgs
+        var notification = new NotificationMessageEventArgs
         {
             Message = $"Preview — {_label} ({_lowerBound}%–{_upperBound}%)",
             Tag = _alert.Id
@@ -302,8 +297,6 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         displayService.ShowNotification(notification, _alert, playSound: true,
             onClosed: () => IsPreviewing = false);
     }
-
-    public BatteryAlert GetAlert() => _alert;
 
     public void Dispose()
     {
@@ -323,24 +316,9 @@ public sealed class FlashColorOption
     {
         Name = name;
         Hex = hex;
-        PreviewBrush = hex != null
-            ? new SolidColorBrush(Color.Parse(hex))
-            : new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                // "Auto" swatch previews the accent palette as a gradient.
-                GradientStops =
-                {
-                    new GradientStop(AlertAccent.Red, 0),
-                    new GradientStop(AlertAccent.Amber, 0.33),
-                    new GradientStop(AlertAccent.Green, 0.66),
-                    new GradientStop(AlertAccent.Blue, 1),
-                }
-            };
+        PreviewBrush = new SolidColorBrush(hex != null ? Color.Parse(hex) : Colors.Transparent);
     }
 
-    // Equality by Hex so ComboBox SelectedItem matching works
     public override bool Equals(object? obj) => obj is FlashColorOption o &&
         string.Equals(Hex, o.Hex, StringComparison.OrdinalIgnoreCase);
     public override int GetHashCode() => (Hex?.ToUpperInvariant() ?? "").GetHashCode();

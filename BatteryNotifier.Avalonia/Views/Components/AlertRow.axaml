@@ -35,8 +35,7 @@
                        VerticalAlignment="Center"
                        IsVisible="{Binding IsDefault}" />
 
-            <!-- Custom alerts: read-only label + pencil to edit (keeps a long title from
-                 stretching the inline input over the tinted card) -->
+            <!-- Custom alerts: read-only label + pencil (avoids a long title stretching the input) -->
             <Grid Grid.Column="0" ColumnDefinitions="Auto,Auto"
                   VerticalAlignment="Center" Margin="0,0,10,0"
                   IsVisible="{Binding ShowLabelDisplay}">
@@ -56,8 +55,7 @@
                 </Button>
             </Grid>
 
-            <!-- Custom alerts: inline editor (transparent so it blends with the card) +
-                 a check button so mouse-only users can accept without pressing Enter -->
+            <!-- Custom alerts: inline editor + check button (accept without pressing Enter) -->
             <Grid Grid.Column="0" ColumnDefinitions="Auto,Auto"
                   VerticalAlignment="Center" Margin="0,0,10,0"
                   IsVisible="{Binding ShowLabelEditor}">

@@ -5,6 +5,10 @@ public enum AlertTone { Neutral, Low, Full }
 
 public sealed class BatteryAlert
 {
+    /// <summary>Fixed ids of the two built-in (non-deletable) default alerts.</summary>
+    public const string FullBatteryId = "fullbatt";
+    public const string LowBatteryId = "lowbatt_";
+
     public string Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
     public string Label { get; set; } = string.Empty;
     public int LowerBound { get; set; }
