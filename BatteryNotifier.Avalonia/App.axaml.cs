@@ -83,10 +83,18 @@ public class App : Application
             // Initialize tray icon
             _trayIconService = new TrayIconService();
             _trayIconService.Initialize();
-
-            // App always starts hidden in tray — user opens via tray icon "Show Window".
-            desktop.MainWindow.ShowInTaskbar = false;
-            desktop.MainWindow.Hide();
+            
+            if (OperatingSystem.IsLinux())
+            {
+                desktop.MainWindow.ShowInTaskbar = true;
+                if (AppSettings.Instance.StartMinimized)
+                    desktop.MainWindow.WindowState = WindowState.Minimized;
+            }
+            else
+            {
+                desktop.MainWindow.ShowInTaskbar = false;
+                desktop.MainWindow.Hide();
+            }
             MacOSDockIconHelper.HideDockIcon();
 
             WriteDisplayDiagnostics(mainWindow);
