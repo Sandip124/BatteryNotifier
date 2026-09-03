@@ -1,6 +1,7 @@
 using System;
 using System.Reactive;
 using Avalonia.Media;
+using BatteryNotifier.Core.Models;
 using ReactiveUI;
 
 namespace BatteryNotifier.Avalonia.ViewModels;

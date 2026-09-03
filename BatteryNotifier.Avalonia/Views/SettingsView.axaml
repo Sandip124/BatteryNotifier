@@ -52,17 +52,12 @@
             <StackPanel Spacing="10" Margin="10,0,10,40">
 
                 <!-- Appearance & Behaviour -->
-                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                        Background="{DynamicResource AppCardBackground}">
-                    <Grid RowDefinitions="Auto,*" ColumnDefinitions="*">
-                        <Border Grid.Row="0" Padding="12,10,12,4">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                             <TextBlock Margin="0,0,0,0" FontSize="12" FontWeight="Normal"
-                                           Foreground="{DynamicResource AppSubtleText}">APPEARANCE &amp; BEHAVIOUR</TextBlock>
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Row="1" Padding="12,6">
+                <StackPanel Spacing="6">
+                    <TextBlock Margin="4,0,0,0" FontSize="12" FontWeight="Normal"
+                               Foreground="{DynamicResource AppSubtleText}">APPEARANCE &amp; BEHAVIOUR</TextBlock>
+                    <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                            Background="{DynamicResource AppCardBackground}">
+                        <Border Padding="12,6">
                             <StackPanel Spacing="4">
 
                                 <!-- Theme -->
@@ -135,18 +130,16 @@
 
                             </StackPanel>
                         </Border>
-                    </Grid>
-                </Border>
+                    </Border>
+                </StackPanel>
 
                 <!-- Notification Display -->
-                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                        Background="{DynamicResource AppCardBackground}">
+                <StackPanel Spacing="6">
+                    <TextBlock Margin="4,0,0,0" FontSize="12" FontWeight="Normal"
+                               Foreground="{DynamicResource AppSubtleText}">NOTIFICATION DISPLAY</TextBlock>
+                    <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                            Background="{DynamicResource AppCardBackground}">
                     <StackPanel>
-                        <Border Padding="12,10,12,4">
-                            <TextBlock FontSize="12" FontWeight="Normal"
-                                       Foreground="{DynamicResource AppSubtleText}">NOTIFICATION DISPLAY</TextBlock>
-                        </Border>
-
                         <!-- Position picker — monitor with position grid -->
                         <Border Padding="12,5">
                             <StackPanel Spacing="6">
@@ -311,57 +304,55 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </Border>
+                    </Border>
+                </StackPanel>
 
                 <!-- Battery Alerts -->
-                <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                        Background="{DynamicResource AppCardBackground}">
-                    <Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*">
-                        <Border Grid.Row="0" Padding="12,10,12,4">
-                            <TextBlock FontSize="12" FontWeight="Normal"
-                                       Foreground="{DynamicResource AppSubtleText}">BATTERY ALERTS</TextBlock>
-                        </Border>
+                <StackPanel Spacing="6">
+                    <TextBlock Margin="4,0,0,0" FontSize="12" FontWeight="Normal"
+                               Foreground="{DynamicResource AppSubtleText}">BATTERY ALERTS</TextBlock>
+                    <Border CornerRadius="12" BorderThickness="1" ClipToBounds="True"
+                            Background="{DynamicResource AppCardBackground}">
+                        <Grid RowDefinitions="*,Auto" ColumnDefinitions="*">
+                            <Border Grid.Row="0" Padding="12,8,12,8">
+                                <ItemsControl ItemsSource="{Binding Alerts}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,4" CornerRadius="12"
+                                                    ClipToBounds="True"
+                                                    BorderThickness="1"
+                                                    BorderBrush="{DynamicResource AppCardBorder}"
+                                                    Background="{DynamicResource AppCardBackground}">
+                                                <Panel>
+                                                    <Border Padding="8">
+                                                        <components:AlertRow />
+                                                    </Border>
+                                                </Panel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
 
-                        <Border Grid.Row="1" Padding="12,4,12,8">
-                            <ItemsControl ItemsSource="{Binding Alerts}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Margin="0,4" CornerRadius="12"
-                                                ClipToBounds="True"
-                                                BorderThickness="1"
-                                                BorderBrush="{Binding CardBorderBrush}"
-                                                Background="{DynamicResource AppCardBackground}">
-                                            <Panel>
-                                                <!-- Radial accent wash from the top-left header -->
-                                                <Border Background="{Binding CardTintBrush}" />
-                                                <Border Padding="8">
-                                                    <components:AlertRow />
-                                                </Border>
-                                            </Panel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                        </Border>
-
-                        <Border Grid.Row="2" Padding="12,0,12,10">
-                            <Button Command="{Binding AddAlertCommand}"
-                                    Theme="{StaticResource SecondaryButton}"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Center"
-                                    Padding="8,6"
-                                    IsVisible="{Binding CanAddAlert}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <PathIcon Data="{StaticResource Icon.Plus}"
-                                              Width="12" Height="12"
-                                              Foreground="{DynamicResource AppForeground}" />
-                                    <TextBlock FontSize="12" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource AppForeground}">Add Custom Alert</TextBlock>
-                                </StackPanel>
-                            </Button>
-                        </Border>
-                    </Grid>
-                </Border>
+                            <Border Grid.Row="1" Padding="12,0,12,10">
+                                <Button Command="{Binding AddAlertCommand}"
+                                        Theme="{StaticResource SecondaryButton}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center"
+                                        Padding="8,6"
+                                        IsVisible="{Binding CanAddAlert}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <PathIcon Data="{StaticResource Icon.Plus}"
+                                                  Width="12" Height="12"
+                                                  Foreground="{DynamicResource AppForeground}" />
+                                        <TextBlock FontSize="12" VerticalAlignment="Center"
+                                                   Foreground="{DynamicResource AppForeground}">Add Custom Alert</TextBlock>
+                                    </StackPanel>
+                                </Button>
+                            </Border>
+                        </Grid>
+                    </Border>
+                </StackPanel>
 
             </StackPanel>
         </ScrollViewer>

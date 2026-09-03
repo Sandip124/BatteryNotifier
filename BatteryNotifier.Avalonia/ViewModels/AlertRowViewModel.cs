@@ -194,36 +194,10 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             };
         }
     }
-
-    /// <summary>Radial accent wash emanating from the top-left header and fading across the card.</summary>
-    public IBrush CardTintBrush
-    {
-        get
-        {
-            var c = AccentColorValue;
-            return new RadialGradientBrush
-            {
-                Center = new RelativePoint(0, 0, RelativeUnit.Relative),
-                GradientOrigin = new RelativePoint(0, 0, RelativeUnit.Relative),
-                RadiusX = new RelativeScalar(1.2, RelativeUnit.Relative),
-                RadiusY = new RelativeScalar(1.2, RelativeUnit.Relative),
-                GradientStops =
-                {
-                    new GradientStop(Color.FromArgb(0x33, c.R, c.G, c.B), 0),
-                    new GradientStop(Color.FromArgb(0x10, c.R, c.G, c.B), 0.5),
-                    new GradientStop(Color.FromArgb(0x00, c.R, c.G, c.B), 1),
-                }
-            };
-        }
-    }
-
-    public IBrush CardBorderBrush => new SolidColorBrush(AccentColorValue, 0.30);
-
+    
     private void RaiseAccentChanged()
     {
         this.RaisePropertyChanged(nameof(AccentColorValue));
-        this.RaisePropertyChanged(nameof(CardTintBrush));
-        this.RaisePropertyChanged(nameof(CardBorderBrush));
     }
 
     public FlashColorOption SelectedFlashColorOption
@@ -234,7 +208,6 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         set => FlashColor = value.Hex;
     }
 
-    public string RangeDescription => $"{LowerBound}% – {UpperBound}%";
 
     public string SoundDisplayName
     {

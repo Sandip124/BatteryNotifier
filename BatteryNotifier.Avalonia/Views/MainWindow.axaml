@@ -171,14 +171,13 @@
                         </Border>
 
                         <!-- Quick Settings -->
-                        <Border Grid.Row="2" CornerRadius="12" BorderThickness="0" ClipToBounds="True"
-                                Margin="0,6,0,0"
-                                BorderBrush="{DynamicResource AppCardBorder}"
-                                Background="{DynamicResource AppCardBackground}">
+                        <StackPanel Grid.Row="2" Margin="0,6,0,0" Spacing="6">
+                            <TextBlock Margin="4,0,0,0" FontSize="12" FontWeight="Normal"
+                                       Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
+                            <Border CornerRadius="12" BorderThickness="0" ClipToBounds="True"
+                                    BorderBrush="{DynamicResource AppCardBorder}"
+                                    Background="{DynamicResource AppCardBackground}">
                             <StackPanel>
-                                <TextBlock Padding="12,10,12,4" FontSize="12" FontWeight="Normal"
-                                           Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
-
                                 <!-- Full Battery notification -->
                                 <Border Padding="12,4">
                                     <Grid ColumnDefinitions="Auto,*,42">
@@ -216,7 +215,8 @@
                                     </Grid>
                                 </Border>
                             </StackPanel>
-                        </Border>
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>

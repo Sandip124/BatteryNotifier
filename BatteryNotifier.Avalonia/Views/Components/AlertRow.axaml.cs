@@ -129,7 +129,11 @@ public partial class AlertRow : UserControl
                             rootPanel.Children.Remove(backdrop);
                         });
                     }
-                    (ownerWindow as MainWindow)?.ScheduleAutoHideCheck();
+                    if (ownerWindow is MainWindow main)
+                    {
+                        main.NotifyShown();
+                        main.ScheduleAutoHideCheck();
+                    }
                 }
             });
         }
