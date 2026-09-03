@@ -16,6 +16,9 @@ public partial class SoundPickerWindow : Window
 
     private bool _suppressLightDismiss;
     private TaskCompletionSource<SoundPickerItem?>? _tcs;
+    
+    private static readonly TimeSpan ShowSettleTime = TimeSpan.FromMilliseconds(450);
+    private DateTime _suppressDismissUntil;
 
     public SoundPickerWindow()
     {
@@ -46,6 +49,7 @@ public partial class SoundPickerWindow : Window
             Position = new global::Avalonia.PixelPoint(x, y);
         }
 
+        _suppressDismissUntil = DateTime.UtcNow + ShowSettleTime;
         Show(owner);
         return _tcs.Task;
     }
@@ -60,6 +64,17 @@ public partial class SoundPickerWindow : Window
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
         if (_suppressLightDismiss) return;
+
+        if (DateTime.UtcNow < _suppressDismissUntil)
+        {
+            global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+            {
+                if (!_suppressLightDismiss && !IsActive && _tcs is { Task.IsCompleted: false })
+                    CloseWithResult(null);
+            }, TimeSpan.FromMilliseconds(150));
+            return;
+        }
+
         CloseWithResult(null);
     }
 
