@@ -15,6 +15,7 @@ public partial class SoundPickerWindow : Window
     private IDisposable? _browseSub;
 
     private bool _suppressLightDismiss;
+    private bool _isClosing;
     private TaskCompletionSource<SoundPickerItem?>? _tcs;
     
     private static readonly TimeSpan ShowSettleTime = TimeSpan.FromMilliseconds(450);
@@ -38,7 +39,7 @@ public partial class SoundPickerWindow : Window
     /// </summary>
     public Task<SoundPickerItem?> ShowLightDismiss(Window owner)
     {
-        _tcs = new TaskCompletionSource<SoundPickerItem?>();
+        _tcs = new TaskCompletionSource<SoundPickerItem?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // Position relative to owner center
         if (owner.Position.X > 0 || owner.Position.Y > 0)
@@ -56,6 +57,11 @@ public partial class SoundPickerWindow : Window
 
     private void CloseWithResult(SoundPickerItem? result)
     {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        Deactivated -= OnWindowDeactivated;
+
         if (_tcs != null && !_tcs.Task.IsCompleted)
             _tcs.TrySetResult(result);
         Close();
@@ -63,13 +69,13 @@ public partial class SoundPickerWindow : Window
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
-        if (_suppressLightDismiss) return;
+        if (_suppressLightDismiss || _isClosing) return;
 
         if (DateTime.UtcNow < _suppressDismissUntil)
         {
             global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>
             {
-                if (!_suppressLightDismiss && !IsActive && _tcs is { Task.IsCompleted: false })
+                if (!_suppressLightDismiss && !_isClosing && !IsActive && _tcs is { Task.IsCompleted: false })
                     CloseWithResult(null);
             }, TimeSpan.FromMilliseconds(150));
             return;
@@ -81,7 +87,6 @@ public partial class SoundPickerWindow : Window
     protected override void OnOpened(EventArgs e)
     {
         base.OnOpened(e);
-        // Focus the search box on open so the user can start typing to search immediately.
         global::Avalonia.Threading.Dispatcher.UIThread.Post(() => SearchBox?.Focus());
     }
 
@@ -96,8 +101,6 @@ public partial class SoundPickerWindow : Window
         base.OnKeyDown(e);
     }
 
-    // If focus has drifted off the search box (e.g. onto a row), route typed characters
-    // back into the search so "just start typing" always searches.
     protected override void OnTextInput(TextInputEventArgs e)
     {
         if (SearchBox is { IsFocused: false } box && !string.IsNullOrEmpty(e.Text))
@@ -171,7 +174,7 @@ public partial class SoundPickerWindow : Window
 
     private async void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
     {
-        e.Handled = true; // Prevent the parent button's OnSoundItemClick from firing
+        e.Handled = true; 
 
         if (sender is not Button { DataContext: SoundPickerItem item }) return;
         if (DataContext is not SoundPickerViewModel vm) return;
@@ -220,7 +223,6 @@ public partial class SoundPickerWindow : Window
     {
         base.OnClosed(e);
 
-        // Ensure TCS is resolved if window closed by other means
         _tcs?.TrySetResult(null);
 
         _selectSub?.Dispose();
