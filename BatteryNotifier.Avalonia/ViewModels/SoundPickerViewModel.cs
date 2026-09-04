@@ -30,6 +30,8 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
 
     public Interaction<Unit, string?> BrowseFileInteraction { get; } = new();
 
+    private const int SelectButtonNameMaxLength = 16;
+
     public SoundPickerItem? SelectedItem
     {
         get;
@@ -40,8 +42,19 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
             field = value;
             if (value != null) value.IsSelected = true;
             this.RaisePropertyChanged();
+            this.RaisePropertyChanged(nameof(SelectButtonText));
         }
     }
+
+    /// <summary>Plain "Select" until a sound is clicked, then "Select '&lt;name&gt;'" (truncated).</summary>
+    public string SelectButtonText => SelectedItem is { } item
+        ? $"Select '{TruncateName(item.DisplayName)}'"
+        : "Select";
+
+    private static string TruncateName(string name) =>
+        name.Length <= SelectButtonNameMaxLength
+            ? name
+            : name[..(SelectButtonNameMaxLength - 1)] + "…";
 
     public string? SearchText
     {
@@ -67,14 +80,6 @@ public sealed class SoundPickerViewModel : ViewModelBase, IDisposable
         _currentSettingsValue = currentSettingsValue;
         _allGroups = BuildGroups();
         MarkCurrent();
-
-        if (!string.IsNullOrEmpty(currentSettingsValue))
-        {
-            SelectedItem = _allGroups
-                .SelectMany(g => g.Items)
-                .FirstOrDefault(i => string.Equals(i.SettingsValue, currentSettingsValue, StringComparison.Ordinal));
-        }
-
         ApplyFilter(null);
 
         var canSelect = this.WhenAnyValue(x => x.SelectedItem)
