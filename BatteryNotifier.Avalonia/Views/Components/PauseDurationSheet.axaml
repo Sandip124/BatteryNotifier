@@ -51,7 +51,6 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="models:PauseOption">
                             <Button Content="{Binding Label}"
-                                    Theme="{StaticResource SecondaryButton}"
                                     HorizontalAlignment="Stretch"
                                     HorizontalContentAlignment="Left"
                                     Padding="12,10" FontSize="13.5"

@@ -37,8 +37,12 @@
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
                     <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#454545" />
                     <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#565353" />
-                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#171717" />
-                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSoundItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSoundItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSelectBoxBg" Color="#262626" />
+                    <SolidColorBrush x:Key="AppSelectBoxHoverBg" Color="#303030" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
@@ -79,8 +83,12 @@
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
                     <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#454545" />
                     <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#565353" />
-                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#171717" />
-                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSoundItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSoundItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSelectBoxBg" Color="#262626" />
+                    <SolidColorBrush x:Key="AppSelectBoxHoverBg" Color="#303030" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#9c9c9c" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
@@ -123,6 +131,10 @@
                     <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#DCDCDC" />
                     <SolidColorBrush x:Key="AppSheetItemBg" Color="#EDEDED" />
                     <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#DCDCDC" />
+                    <SolidColorBrush x:Key="AppSoundItemBg" Color="#F2F2F2" />
+                    <SolidColorBrush x:Key="AppSoundItemHoverBg" Color="#E6E6E6" />
+                    <SolidColorBrush x:Key="AppSelectBoxBg" Color="#EDEDED" />
+                    <SolidColorBrush x:Key="AppSelectBoxHoverBg" Color="#DCDCDC" />
                     <SolidColorBrush x:Key="AppForeground" Color="#1A1A1A" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#6B6B6B" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#D0D0D0" />

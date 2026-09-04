@@ -189,12 +189,12 @@
                                         Padding="8,6" MinHeight="32"
                                         CornerRadius="8"
                                         BorderThickness="0"
-                                        Background="{DynamicResource AppSecondaryButtonBg}"
+                                        Background="{DynamicResource AppSelectBoxBg}"
                                         BorderBrush="{DynamicResource AppCardBorder}"
                                         Cursor="Hand">
                                     <Button.Styles>
                                         <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-                                            <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
+                                            <Setter Property="Background" Value="{DynamicResource AppSelectBoxHoverBg}" />
                                         </Style>
                                     </Button.Styles>
                                     <Grid ColumnDefinitions="Auto,*,Auto">
