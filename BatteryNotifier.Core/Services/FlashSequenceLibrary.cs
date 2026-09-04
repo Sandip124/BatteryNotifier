@@ -138,8 +138,9 @@ public sealed class FlashSequenceLibrary
     }
 
     // Bump when the envelope algorithm/resolution — or a source sound's generation — changes so
-    // persisted sequences regenerate. (v3: built-in tones are now repeat-filled to a single pass.)
-    private const string CacheVersion = "v3";
+    // persisted sequences regenerate. (v3: built-in tones repeat-filled to a single pass. v4: MP3
+    // decoded via NLayer instead of ffmpeg — invalidates stale "not analyzable" MP3 results.)
+    private const string CacheVersion = "v4";
 
     /// <summary>Signature that invalidates the cache when the underlying sound (or algorithm) changes.</summary>
     private static string ComputeSignature(string settingsValue)

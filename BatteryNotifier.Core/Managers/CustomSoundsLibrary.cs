@@ -1,3 +1,5 @@
+using BatteryNotifier.Core.Utils;
+
 namespace BatteryNotifier.Core.Managers;
 
 /// <summary>
@@ -11,8 +13,6 @@ public static class CustomSoundsLibrary
 
     private static readonly HashSet<string> AllowedExtensions =
         new(StringComparer.OrdinalIgnoreCase) { ".wav", ".mp3", ".m4a", ".wma", ".ogg", ".flac", ".aac" };
-
-    private const long MaxFileSizeBytes = 50 * 1024 * 1024;
 
     private static readonly string SoundsDir = Path.Combine(
         Constants.AppDataDirectory, "sounds");
@@ -113,12 +113,8 @@ public static class CustomSoundsLibrary
 
     private static bool ValidateSourceFile(string path)
     {
-        if (!Path.IsPathRooted(path))
+        if (!FileSafety.TryCanonicalize(path, out var canonical))
             return false;
-
-        string canonical;
-        try { canonical = Path.GetFullPath(path); }
-        catch { return false; }
 
         var ext = Path.GetExtension(canonical);
         if (string.IsNullOrEmpty(ext) || !AllowedExtensions.Contains(ext))
@@ -127,9 +123,7 @@ public static class CustomSoundsLibrary
         try
         {
             var info = new FileInfo(canonical);
-            if (!info.Exists || info.Length > MaxFileSizeBytes)
-                return false;
-            if (info.LinkTarget != null)
+            if (!info.Exists || FileSafety.ExceedsMaxSize(info) || FileSafety.IsSymlink(info))
                 return false;
         }
         catch { return false; }

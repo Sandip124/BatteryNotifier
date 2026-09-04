@@ -2,16 +2,17 @@ using System.Diagnostics;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Core.Services;
 
 /// <summary>
 /// Builds a <see cref="FlashSequence"/> — a smoothed loudness envelope — from a sound file so the
-/// screen flash reflects the sound (louder → brighter). WAV is parsed directly in managed code, so
-/// the built-in tones react on every OS with no external tool. Other formats are first decoded to
-/// WAV with a system tool (<c>afconvert</c> on macOS, <c>ffmpeg</c> on Linux/Windows). If decoding
-/// isn't available the method returns <c>null</c> and the caller falls back to the default pulse.
+/// screen flash reflects the sound (louder → brighter). WAV is parsed directly and MP3 via NLayer,
+/// both pure-managed with no external tool needed. Rarer custom-import formats (m4a/wma/ogg/flac/
+/// aac) fall back to a system decoder (<c>afconvert</c> on macOS, <c>ffmpeg</c> elsewhere) and
+/// return <c>null</c> — default pulse — if none is installed.
 /// </summary>
 public static class FlashSequenceGenerator
 {
@@ -32,24 +33,31 @@ public static class FlashSequenceGenerator
             if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 return null;
 
-            string? tempWav = null;
+            if (path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+            {
+                var (samples, sampleRate) = AudioDecode.ReadWavMono(path);
+                return samples.Length == 0 ? null : BuildSequence(samples, sampleRate);
+            }
+
+            if (path.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
+            {
+                // Cap matches the envelope's own length cap — no point decoding audio it'll discard.
+                var (samples, sampleRate) = AudioDecode.ReadMp3Mono(path, MaxFrames * FrameIntervalMs);
+                return samples.Length == 0 ? null : BuildSequence(samples, sampleRate);
+            }
+
+            var tempWav = DecodeToWav(path);
+            if (tempWav == null)
+                return null;
+
             try
             {
-                var wavPath = path;
-                if (!path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
-                {
-                    tempWav = DecodeToWav(path);
-                    if (tempWav == null)
-                        return null; // no decoder available → caller uses the default pulse
-                    wavPath = tempWav;
-                }
-
-                var (samples, sampleRate) = ReadWavMono(wavPath);
+                var (samples, sampleRate) = AudioDecode.ReadWavMono(tempWav);
                 return samples.Length == 0 ? null : BuildSequence(samples, sampleRate);
             }
             finally
             {
-                if (tempWav != null) TryDelete(tempWav);
+                TryDelete(tempWav);
             }
         }
         catch (Exception ex)
@@ -67,7 +75,6 @@ public static class FlashSequenceGenerator
         Directory.CreateDirectory(cacheDir);
         var dest = Path.Combine(cacheDir, Guid.NewGuid().ToString("N") + ".wav");
 
-        // macOS ships afconvert; Linux/Windows rely on ffmpeg (graceful fallback if absent).
         bool ok = OperatingSystem.IsMacOS()
             ? RunDecoder("afconvert", "-f", "WAVE", "-d", "LEI16", source, dest)
             : RunDecoder("ffmpeg", "-y", "-loglevel", "error", "-i", source, "-ac", "1", "-ar", "22050", dest);
@@ -93,7 +100,6 @@ public static class FlashSequenceGenerator
             process.StartInfo = psi;
             process.Start();
 
-            // Drain both pipes so a chatty tool can't deadlock on a full buffer.
             _ = process.StandardOutput.ReadToEndAsync();
             _ = process.StandardError.ReadToEndAsync();
 
@@ -116,69 +122,6 @@ public static class FlashSequenceGenerator
         try { File.Delete(path); }
         catch (IOException ex) { Logger.Debug(ex, "Could not delete temp decode file {Path}", path); }
         catch (UnauthorizedAccessException ex) { Logger.Debug(ex, "Could not delete temp decode file {Path}", path); }
-    }
-
-    // ── WAV parsing (16-bit PCM, any channel count → mono) ────────
-
-    private static (float[] Samples, int SampleRate) ReadWavMono(string path)
-    {
-        using var fs = File.OpenRead(path);
-        using var reader = new BinaryReader(fs);
-
-        if (new string(reader.ReadChars(4)) != "RIFF") return ([], 0);
-        reader.ReadInt32();                                   // overall size
-        if (new string(reader.ReadChars(4)) != "WAVE") return ([], 0);
-
-        short audioFormat = 0, channels = 0, bitsPerSample = 0;
-        int sampleRate = 0;
-        byte[]? data = null;
-
-        while (fs.Position + 8 <= fs.Length)
-        {
-            var chunkId = new string(reader.ReadChars(4));
-            int chunkSize = reader.ReadInt32();
-            if (chunkSize < 0 || fs.Position + chunkSize > fs.Length + 1) break;
-
-            if (chunkId == "fmt ")
-            {
-                audioFormat = reader.ReadInt16();
-                channels = reader.ReadInt16();
-                sampleRate = reader.ReadInt32();
-                reader.ReadInt32();                           // byte rate
-                reader.ReadInt16();                           // block align
-                bitsPerSample = reader.ReadInt16();
-                if (chunkSize > 16) reader.ReadBytes(chunkSize - 16); // fmt extension
-            }
-            else if (chunkId == "data")
-            {
-                data = reader.ReadBytes(chunkSize);
-            }
-            else
-            {
-                reader.ReadBytes(chunkSize);                  // skip unknown chunk
-            }
-
-            if ((chunkSize & 1) == 1 && fs.Position < fs.Length)
-                reader.ReadByte();                            // chunks are word-aligned
-        }
-
-        if (data == null || sampleRate <= 0 || channels <= 0 || audioFormat != 1 || bitsPerSample != 16)
-            return ([], 0);
-
-        int frameCount = data.Length / (2 * channels);
-        var mono = new float[frameCount];
-        int idx = 0;
-        for (int f = 0; f < frameCount; f++)
-        {
-            int sum = 0;
-            for (int c = 0; c < channels; c++)
-            {
-                sum += (short)(data[idx] | (data[idx + 1] << 8));
-                idx += 2;
-            }
-            mono[f] = sum / channels / 32768f;
-        }
-        return (mono, sampleRate);
     }
 
     // ── Envelope: RMS windows → peak-pool to frames → smooth → normalize ──

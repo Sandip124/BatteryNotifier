@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Core.Services;
@@ -215,22 +216,9 @@ public sealed class AppSettings
         if (path.StartsWith("bundled:", StringComparison.Ordinal))
             return path;
 
-        // Normalize to canonical form (resolves / vs \ on Windows, .., etc.)
-        string canonical;
-        try
-        {
-            canonical = Path.GetFullPath(path);
-        }
-        catch
-        {
-            return null;
-        }
-
-        // Must be an absolute path after normalization
-        if (!Path.IsPathRooted(canonical))
-            return null;
-
-        return canonical;
+        // Normalize to canonical form (resolves / vs \ on Windows, .., etc.) and require it
+        // to still be an absolute path afterward.
+        return FileSafety.TryCanonicalize(path, out var canonical) ? canonical : null;
     }
 
     private void MigrateToAlerts()
