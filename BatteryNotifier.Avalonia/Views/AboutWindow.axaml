@@ -5,7 +5,7 @@
         mc:Ignorable="d"
         x:Class="BatteryNotifier.Avalonia.Views.AboutWindow"
         Title="About BatteryNotifier"
-        Width="280" Height="280"
+        Width="280" Height="316"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
         SystemDecorations="Full"
@@ -56,11 +56,36 @@
                            FontSize="12"
                            TextAlignment="Center"
                            Foreground="{DynamicResource AppSubtleText}" />
-                <TextBlock x:Name="UpdateStatusText"
-                           FontSize="11"
-                           TextAlignment="Center"
-                           Foreground="{DynamicResource AppSubtleText}"
-                           IsVisible="False" />
+                <StackPanel Orientation="Horizontal" Spacing="5"
+                            HorizontalAlignment="Center" IsVisible="False"
+                            x:Name="UpdateRow">
+                    <!-- Spinning cue while checking for updates -->
+                    <PathIcon x:Name="UpdateSpinner"
+                              Data="{StaticResource Icon.Spinner}"
+                              Width="11" Height="11"
+                              VerticalAlignment="Center"
+                              Foreground="{DynamicResource AppSubtleText}"
+                              RenderTransform="rotate(0)">
+                        <PathIcon.Styles>
+                            <Style Selector="PathIcon#UpdateSpinner">
+                                <Style.Animations>
+                                    <Animation Duration="0:0:0.9" IterationCount="INFINITE">
+                                        <KeyFrame Cue="0%">
+                                            <Setter Property="RotateTransform.Angle" Value="0.0" />
+                                        </KeyFrame>
+                                        <KeyFrame Cue="100%">
+                                            <Setter Property="RotateTransform.Angle" Value="360.0" />
+                                        </KeyFrame>
+                                    </Animation>
+                                </Style.Animations>
+                            </Style>
+                        </PathIcon.Styles>
+                    </PathIcon>
+                    <TextBlock x:Name="UpdateStatusText"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               Foreground="{DynamicResource AppSubtleText}" />
+                </StackPanel>
             </StackPanel>
 
             <!-- Description -->
@@ -89,6 +114,16 @@
                               Width="13" Height="13" VerticalAlignment="Center" />
                     <TextBlock Text="View on GitHub" VerticalAlignment="Center" />
                 </StackPanel>
+            </Button>
+
+            <Button Theme="{StaticResource SecondaryButton}"
+                    x:Name="DiagnosticsButton"
+                    FontSize="11" Padding="10,6"
+                    HorizontalAlignment="Center"
+                    Margin="0,2,0,0"
+                    Foreground="{DynamicResource AppSubtleText}"
+                    ToolTip.Tip="Save a system report and open its folder to attach to a bug report">
+                <TextBlock Text="Generate diagnostic report" VerticalAlignment="Center" />
             </Button>
         </StackPanel>
     </Grid>

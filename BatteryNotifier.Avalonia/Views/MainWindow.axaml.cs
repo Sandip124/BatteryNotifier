@@ -8,7 +8,9 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media.Transformation;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Utils;
@@ -24,8 +26,8 @@ public partial class MainWindow : Window
 
     private static Transitions MakeSettingsTransitions(Easing easing) => new()
     {
-        new TransformOperationsTransition { Property = Visual.RenderTransformProperty, Duration = SettingsAnimDuration, Easing = easing },
-        new DoubleTransition { Property = Visual.OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
+        new TransformOperationsTransition { Property = RenderTransformProperty, Duration = SettingsAnimDuration, Easing = easing },
+        new DoubleTransition { Property = OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
     };
 
     private readonly Debouncer _positionSaveDebouncer = new();
@@ -34,9 +36,17 @@ public partial class MainWindow : Window
     private MainWindowViewModel? _subscribedMainVm;
     private bool _isSettingsAnimating;
 
+    private const int AutoHideGraceMs = 150;
+    private static readonly TimeSpan ShowSettleTime = TimeSpan.FromMilliseconds(500);
+    private DateTime _suppressAutoHideUntil;
+    private bool _autoHidePending;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // Auto-hide like a taskbar/menu-bar flyout
+        Deactivated += (_, _) => ScheduleAutoHideCheck();
 
         // Linux WMs (GNOME, KDE) ignore ExtendClientAreaToDecorationsHint and draw
         // their own title bar with min/max/close buttons. Remove decorations entirely
@@ -127,6 +137,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Logo_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        e.Handled = true; // don't also start a window drag via the title bar's handler
+        TrayIconService.OpenAbout();
+    }
+
     private void HealthBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)
@@ -215,6 +232,69 @@ public partial class MainWindow : Window
             SettingsContent.IsVisible = false;
             _isSettingsAnimating = false;
         }, SettingsAnimDuration);
+    }
+
+    // ── Flyout-style auto-hide ─────────────────────────────────────
+
+    /// <summary>
+    /// Schedules a deferred re-check of whether the window should auto-hide.
+    /// </summary>
+    public void ScheduleAutoHideCheck()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(ScheduleAutoHideCheck);
+            return;
+        }
+
+        if (_autoHidePending) return;
+        _autoHidePending = true;
+        DispatcherTimer.RunOnce(EvaluateAutoHide, TimeSpan.FromMilliseconds(AutoHideGraceMs));
+    }
+
+    /// <summary>
+    /// Call immediately after programmatically showing the window so the brief
+    /// activation settle (a stray Deactivated during Show) doesn't hide it again.
+    /// </summary>
+    public void NotifyShown() => _suppressAutoHideUntil = DateTime.UtcNow + ShowSettleTime;
+
+    private void EvaluateAutoHide()
+    {
+        _autoHidePending = false;
+
+        if (!IsVisible || IsActive) return;                          
+        if (DateTime.UtcNow < _suppressAutoHideUntil)                
+        {
+            ScheduleAutoHideCheck();
+            return;
+        }
+        if (OwnedWindows.Count > 0) return;                          
+
+        var appFocused = AppFocusTracker.IsApplicationFocused();
+        if (appFocused == true) return;                             
+        if (appFocused == null && AnyAppWindowActive()) return;    
+
+        HideToTray();
+    }
+
+    private static bool AnyAppWindowActive()
+    {
+        if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
+            return false;
+
+        foreach (var w in desktop.Windows)
+            if (w.IsActive) return true;
+        return false;
+    }
+
+    /// <summary>
+    /// Hides the window to the tray and restores efficiency mode
+    /// </summary>
+    public void HideToTray()
+    {
+        Hide();
+        MacOSDockIconHelper.HideDockIcon();
+        EfficiencyModeService.Instance.EnableEfficiency();
     }
 
     protected override void OnClosed(EventArgs e)

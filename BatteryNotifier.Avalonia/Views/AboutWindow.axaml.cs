@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using BatteryNotifier.Core;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Services;
 
 namespace BatteryNotifier.Avalonia.Views;
@@ -25,6 +26,7 @@ public partial class AboutWindow : Window
 
         CloseButton.Click += (_, _) => Close();
         ViewSourceButton.Click += OnViewSource;
+        DiagnosticsButton.Click += (_, _) => Services.DiagnosticsCommand.Generate();
     }
 
     /// <summary>
@@ -40,9 +42,9 @@ public partial class AboutWindow : Window
     {
         base.OnOpened(e);
 
-        // Auto-check for updates (Chrome-style)
+        UpdateRow.IsVisible = true;
+        UpdateSpinner.IsVisible = true;
         UpdateStatusText.Text = "Checking for updates...";
-        UpdateStatusText.IsVisible = true;
 
         try
         {
@@ -50,6 +52,7 @@ public partial class AboutWindow : Window
 
             Dispatcher.UIThread.Post(() =>
             {
+                UpdateSpinner.IsVisible = false; 
                 switch (result.Status)
                 {
                     case CheckStatus.UpdateAvailable when result.Release != null:
@@ -60,16 +63,18 @@ public partial class AboutWindow : Window
                         break;
                     case CheckStatus.UpToDate:
                         UpdateStatusText.Text = "You're on the latest version";
+                        DispatcherTimer.RunOnce(() => UpdateRow.IsVisible = false, TimeSpan.FromSeconds(3));
                         break;
                     default:
-                        UpdateStatusText.IsVisible = false;
+                        UpdateRow.IsVisible = false;
                         break;
                 }
             });
         }
-        catch
+        catch (Exception ex)
         {
-            Dispatcher.UIThread.Post(() => UpdateStatusText.IsVisible = false);
+            BatteryNotifierAppLogger.ForContext<AboutWindow>().Debug(ex, "Update check failed");
+            Dispatcher.UIThread.Post(() => UpdateRow.IsVisible = false);
         }
     }
 

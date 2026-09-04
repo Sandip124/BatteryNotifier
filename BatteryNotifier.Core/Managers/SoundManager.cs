@@ -1,8 +1,11 @@
 using System.Diagnostics;
+using System.Globalization;
 using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 #if WINDOWS
 using NAudio.Wave;
+using NLayer.NAudioSupport;
 #endif
 
 namespace BatteryNotifier.Core.Managers
@@ -10,12 +13,22 @@ namespace BatteryNotifier.Core.Managers
     /// <summary>
     /// Cross-platform audio playback.
     /// - macOS: afplay subprocess (ArgumentList for injection safety)
-    /// - Non-Windows: SoundFlow (MiniAudio backend)
-    /// - Windows: SoundFlow (MiniAudio backend)
+    /// - Linux: paplay / pw-play / aplay / mpv / ffplay subprocess
+    /// - Windows: NAudio (WaveOutEvent + AudioFileReader)
     /// </summary>
     public class SoundManager : IDisposable
     {
         private const int DefaultPlayDurationMs = 30000;
+
+        /// <summary>
+        /// True only if the WINDOWS symbol was defined at build time (NAudio path compiled in).
+        /// Surfaced in diagnostics so a Windows build missing sound support is obvious.
+        /// </summary>
+#if WINDOWS
+        public const bool WindowsAudioCompiled = true;
+#else
+        public const bool WindowsAudioCompiled = false;
+#endif
 
         private readonly ILogger _logger;
         private readonly Lock _playLock = new();
@@ -29,31 +42,45 @@ namespace BatteryNotifier.Core.Managers
             _logger = BatteryNotifierAppLogger.ForContext<SoundManager>();
         }
 
+        /// <param name="onStarted">
+        /// Fired exactly once: the moment audio actually starts, or immediately if it never does
+        /// (muted, invalid file, error). Lets a caller sync UI to real playback start.
+        /// </param>
         public async Task PlaySoundAsync(string? source, bool loop = false,
-            int durationMs = DefaultPlayDurationMs)
+            int durationMs = DefaultPlayDurationMs, int volumePercent = 100, Action? onStarted = null)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(SoundManager));
 
-            var resolvedPath = ResolveSoundPath(source);
-            if (resolvedPath == null) return;
-
-            if (!ValidateSoundFile(resolvedPath)) return;
-
-            CancellationToken token;
-            lock (_playLock)
+            var startedFired = 0;
+            void FireStarted()
             {
-                if (_isPlaying) return;
-                _isPlaying = true;
-
-                _cancellationTokenSource?.CancelAsync();
-                _cancellationTokenSource?.Dispose();
-                _cancellationTokenSource = new CancellationTokenSource();
-                token = _cancellationTokenSource.Token;
+                if (Interlocked.Exchange(ref startedFired, 1) == 0)
+                    onStarted?.Invoke();
             }
 
             try
             {
-                await Task.Run(() => PlaySound(resolvedPath, loop, durationMs, token), token).ConfigureAwait(false);
+                if (volumePercent <= 0) return;
+                volumePercent = Math.Min(volumePercent, 100);
+
+                var resolvedPath = ResolveSoundPath(source);
+                if (resolvedPath == null) return;
+
+                if (!ValidateSoundFile(resolvedPath)) return;
+
+                CancellationToken token;
+                lock (_playLock)
+                {
+                    if (_isPlaying) return;
+                    _isPlaying = true;
+
+                    _cancellationTokenSource?.CancelAsync();
+                    _cancellationTokenSource?.Dispose();
+                    _cancellationTokenSource = new CancellationTokenSource();
+                    token = _cancellationTokenSource.Token;
+                }
+
+                await Task.Run(() => PlaySound(resolvedPath, loop, durationMs, volumePercent, token, FireStarted), token).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -65,6 +92,7 @@ namespace BatteryNotifier.Core.Managers
             }
             finally
             {
+                FireStarted();
                 lock (_playLock)
                 {
                     _isPlaying = false;
@@ -78,27 +106,22 @@ namespace BatteryNotifier.Core.Managers
         private string? ResolveSoundPath(string? source)
         {
             var resolvedPath = BuiltInSounds.Resolve(source);
-            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath)) return null;
-
-            // Canonicalize path — on macOS /var is a symlink to /private/var,
-            // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
-            try
+            if (string.IsNullOrEmpty(resolvedPath) || !File.Exists(resolvedPath))
             {
-                resolvedPath = Path.GetFullPath(resolvedPath);
-            }
-            catch
-            {
-                _logger.Warning("Failed to canonicalize sound file path: {Path}", resolvedPath);
+                _logger.Warning("Sound source did not resolve to an existing file: source={Source} resolved={Resolved}",
+                    source, resolvedPath);
                 return null;
             }
 
-            if (!Path.IsPathRooted(resolvedPath) || !File.Exists(resolvedPath))
+            // Canonicalize path — on macOS /var is a symlink to /private/var,
+            // so GetTempPath() returns /var/... but GetFullPath() resolves to /private/var/...
+            if (!FileSafety.TryCanonicalize(resolvedPath, out var canonical) || !File.Exists(canonical))
             {
                 _logger.Warning("Rejected invalid sound file path: {Path}", resolvedPath);
                 return null;
             }
 
-            return resolvedPath;
+            return canonical;
         }
 
         /// <summary>
@@ -108,13 +131,13 @@ namespace BatteryNotifier.Core.Managers
         {
             var fileInfo = new FileInfo(path);
 
-            if (fileInfo.LinkTarget != null)
+            if (FileSafety.IsSymlink(fileInfo))
             {
                 _logger.Warning("Rejected symlink sound file path: {Path}", path);
                 return false;
             }
 
-            if (fileInfo.Length > 50 * 1024 * 1024)
+            if (FileSafety.ExceedsMaxSize(fileInfo))
             {
                 _logger.Warning("Rejected oversized sound file ({Size} bytes): {Path}", fileInfo.Length, path);
                 return false;
@@ -123,33 +146,45 @@ namespace BatteryNotifier.Core.Managers
             return true;
         }
 
-        private void PlaySound(string source, bool loop, int durationMs, CancellationToken token)
+        private void PlaySound(string source, bool loop, int durationMs, int volumePercent, CancellationToken token, Action onStarted)
         {
+            _logger.Information(
+                "PlaySound: source={Source} loop={Loop} durMs={Dur} vol={Vol} os=[mac={Mac} win={Win} linux={Linux}] windowsAudioCompiled={WinAudio}",
+                source, loop, durationMs, volumePercent,
+                OperatingSystem.IsMacOS(), OperatingSystem.IsWindows(), OperatingSystem.IsLinux(), WindowsAudioCompiled);
+
             if (OperatingSystem.IsMacOS())
-                PlayWithSubprocess("afplay", null, source, loop, durationMs, token);
+                PlayWithSubprocess("afplay", null, source, loop, durationMs, volumePercent, token, onStarted);
 #if WINDOWS
             else if (OperatingSystem.IsWindows())
-                PlayWithNAudio(source, loop, durationMs, token);
+                PlayWithNAudio(source, loop, durationMs, volumePercent, token, onStarted);
 #else
             else if (OperatingSystem.IsLinux())
-                PlayOnLinux(source, loop, durationMs, token);
+                PlayOnLinux(source, loop, durationMs, volumePercent, token, onStarted);
 #endif
             else
+            {
                 _logger.Warning("Unsupported platform for sound playback");
+                onStarted();
+            }
         }
 
         // ── Subprocess playback (macOS + Linux) ──────────────────────
 
         private void PlayWithSubprocess(string command, string[]? extraArgs, string source,
-            bool loop, int durationMs, CancellationToken token)
+            bool loop, int durationMs, int volumePercent, CancellationToken token, Action onStarted)
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(durationMs);
+            var firstAttempt = true;
 
             do
             {
                 token.ThrowIfCancellationRequested();
 
-                if (!RunSubprocessOnce(command, extraArgs, source, deadline, token))
+                var startedSignal = firstAttempt ? onStarted : null;
+                firstAttempt = false;
+
+                if (!RunSubprocessOnce(command, extraArgs, source, volumePercent, deadline, token, startedSignal))
                     return; // Process failed — don't retry
 
             } while (loop && !token.IsCancellationRequested && DateTime.UtcNow < deadline);
@@ -157,7 +192,7 @@ namespace BatteryNotifier.Core.Managers
 
         /// <summary>Runs one playback subprocess. Returns true if it completed normally.</summary>
         private bool RunSubprocessOnce(string command, string[]? extraArgs, string source,
-            DateTime deadline, CancellationToken token)
+            int volumePercent, DateTime deadline, CancellationToken token, Action? onStarted)
         {
             var psi = new ProcessStartInfo
             {
@@ -173,6 +208,7 @@ namespace BatteryNotifier.Core.Managers
                 foreach (var arg in extraArgs)
                     psi.ArgumentList.Add(arg);
             }
+            AddVolumeArgs(psi, command, volumePercent);
             psi.ArgumentList.Add(source);
 
             using var process = new Process { StartInfo = psi };
@@ -181,6 +217,7 @@ namespace BatteryNotifier.Core.Managers
             try
             {
                 process.Start();
+                onStarted?.Invoke();
                 return WaitForProcessOrCancel(process, deadline, token);
             }
             catch (OperationCanceledException) { throw; }
@@ -208,16 +245,49 @@ namespace BatteryNotifier.Core.Managers
             return true;
         }
 
+        /// <summary>
+        /// Adds the volume flag for the given playback command. No-op at full volume, or for
+        /// commands without volume support (aplay) — those play at full unless muted (0 = skipped).
+        /// </summary>
+        private static void AddVolumeArgs(ProcessStartInfo psi, string command, int volumePercent)
+        {
+            if (volumePercent >= 100) return;
+
+            var linear = volumePercent / 100.0;
+            var inv = CultureInfo.InvariantCulture;
+
+            switch (command)
+            {
+                case "afplay":  // macOS: -v <0.0–1.0+>
+                    psi.ArgumentList.Add("-v");
+                    psi.ArgumentList.Add(linear.ToString("0.###", inv));
+                    break;
+                case "paplay":  // PulseAudio: --volume in 0–65536 (65536 = 100%)
+                    psi.ArgumentList.Add($"--volume={(int)Math.Round(linear * 65536)}");
+                    break;
+                case "pw-play": // PipeWire: --volume as a linear factor (1.0 = unmodified)
+                    psi.ArgumentList.Add($"--volume={linear.ToString("0.###", inv)}");
+                    break;
+                case "mpv":     // --volume in 0–100
+                    psi.ArgumentList.Add($"--volume={volumePercent.ToString(inv)}");
+                    break;
+                case "ffplay":  // -volume in 0–100
+                    psi.ArgumentList.Add("-volume");
+                    psi.ArgumentList.Add(volumePercent.ToString(inv));
+                    break;
+            }
+        }
+
 #if WINDOWS
         // ── Windows: NAudio (WaveOutEvent + AudioFileReader) ──────────
 
         private WaveOutEvent? _naudioDevice;
-        private AudioFileReader? _naudioReader;
+        private WaveStream? _naudioReader;
 
-        private void PlayWithNAudio(string source, bool loop, int durationMs, CancellationToken token)
+        private void PlayWithNAudio(string source, bool loop, int durationMs, int volumePercent, CancellationToken token, Action onStarted)
         {
-            using var reader = new AudioFileReader(source);
-            using var device = new WaveOutEvent();
+            using var reader = CreateReaderStream(source);
+            using var device = new WaveOutEvent { Volume = volumePercent / 100f };
             using var playbackDone = new ManualResetEventSlim(false);
 
             WaveStream inputStream = loop ? new LoopStream(reader) : reader;
@@ -231,6 +301,7 @@ namespace BatteryNotifier.Core.Managers
             _naudioDevice = device;
             _naudioReader = reader;
             device.Play();
+            onStarted();
 
             try
             {
@@ -244,6 +315,24 @@ namespace BatteryNotifier.Core.Managers
                 _naudioReader = null;
                 if (loop) inputStream.Dispose();
             }
+        }
+
+        /// <summary>
+        /// MP3 goes through NAudio's <see cref="Mp3FileReaderBase"/> with an NLayer (pure-managed)
+        /// frame decompressor rather than <see cref="AudioFileReader"/>'s default MediaFoundationReader
+        /// for that extension, which throws TypeLoadException under this app's self-contained/
+        /// single-file publish (Media Foundation COM activation breaks there). Everything else
+        /// still goes through AudioFileReader.
+        /// </summary>
+        private static WaveStream CreateReaderStream(string source)
+        {
+            if (source.EndsWith(".mp3", StringComparison.OrdinalIgnoreCase))
+            {
+                var builder = new Mp3FileReaderBase.FrameDecompressorBuilder(wf => new Mp3FrameDecompressor(wf));
+                return new Mp3FileReaderBase(source, builder);
+            }
+
+            return new AudioFileReader(source);
         }
 
         /// <summary>
@@ -280,20 +369,26 @@ namespace BatteryNotifier.Core.Managers
             }
         }
 #else
-        // ── Linux: try SoundFlow, fall back to subprocess ──────────────────────────
+        // ── Linux: subprocess playback ──────────────────────────
 
-        private void PlayOnLinux(string source, bool loop, int durationMs, CancellationToken token)
+        private void PlayOnLinux(string source, bool loop, int durationMs, int volumePercent, CancellationToken token, Action onStarted)
         {
             var (command, extraArgs) = FindLinuxAudioCommand(source);
             if (command != null)
-                PlayWithSubprocess(command, extraArgs, source, loop, durationMs, token);
+            {
+                _logger.Information("Linux audio player: {Command} {Args} for {Source}", command, extraArgs, source);
+                PlayWithSubprocess(command, extraArgs, source, loop, durationMs, volumePercent, token, onStarted);
+            }
             else
+            {
                 _logger.Warning("No audio playback command found on Linux (tried paplay, pw-play, aplay, mpv, ffplay)");
+                onStarted();
+            }
         }
 
         // Cached available commands — detected once, reused for all playback
-        private static (string cmd, string[]? args)? _linuxWavPlayer;
-        private static (string cmd, string[]? args)? _linuxCompressedPlayer;
+        private static (string? cmd, string[]? args)? _linuxWavPlayer;
+        private static (string? cmd, string[]? args)? _linuxCompressedPlayer;
         private static bool _linuxAudioScanned;
 
         private static (string? command, string[]? extraArgs) FindLinuxAudioCommand(string source)

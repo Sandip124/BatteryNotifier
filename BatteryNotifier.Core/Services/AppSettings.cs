@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Utils;
 using Serilog;
 
 namespace BatteryNotifier.Core.Services;
@@ -46,6 +47,14 @@ public sealed class AppSettings
 
     // Screen flash for Avalonia-native notifications
     public bool ScreenFlashEnabled { get; set; } = true;
+    
+    /// <summary>Alert sound volume, 0–100. 0 = muted (no sound played).</summary>
+    public int AlertVolume { get; set; } = 100;
+
+    /// <summary>
+    /// Alerts setting for charger plugged in or out
+    /// </summary>
+    public bool AcAlerts { get; set; } = true;
 
     // Notification card position on screen
     public NotificationPosition NotificationPosition { get; set; } = NotificationPosition.TopCenter;
@@ -120,6 +129,9 @@ public sealed class AppSettings
                 LaunchAtStartup = settings.LaunchAtStartup;
                 AutoCheckForUpdates = settings.AutoCheckForUpdates;
                 ScreenFlashEnabled = settings.ScreenFlashEnabled;
+                AlertVolume = Math.Clamp(settings.AlertVolume, 0, 100);
+                AcAlerts = settings.AcAlerts;
+                NotificationPosition = settings.NotificationPosition;
                 SettingsVersion = settings.SettingsVersion;
                 Alerts = settings.Alerts ?? new List<BatteryAlert>();
                 AppId = settings.AppId;
@@ -204,22 +216,9 @@ public sealed class AppSettings
         if (path.StartsWith("bundled:", StringComparison.Ordinal))
             return path;
 
-        // Normalize to canonical form (resolves / vs \ on Windows, .., etc.)
-        string canonical;
-        try
-        {
-            canonical = Path.GetFullPath(path);
-        }
-        catch
-        {
-            return null;
-        }
-
-        // Must be an absolute path after normalization
-        if (!Path.IsPathRooted(canonical))
-            return null;
-
-        return canonical;
+        // Normalize to canonical form (resolves / vs \ on Windows, .., etc.) and require it
+        // to still be an absolute path afterward.
+        return FileSafety.TryCanonicalize(path, out var canonical) ? canonical : null;
     }
 
     private void MigrateToAlerts()
@@ -253,21 +252,23 @@ public sealed class AppSettings
     [
         new BatteryAlert
         {
-            Id = "fullbatt",
+            Id = BatteryAlert.FullBatteryId,
             Label = "Full Battery",
             LowerBound = 80,
             UpperBound = 100,
             IsEnabled = true,
-            Sound = "builtin:Harp"
+            Sound = "builtin:Harp",
+            FlashColor = "#5FC08A"
         },
         new BatteryAlert
         {
-            Id = "lowbatt_",
+            Id = BatteryAlert.LowBatteryId,
             Label = "Low Battery",
             LowerBound = 0,
             UpperBound = 25,
             IsEnabled = true,
-            Sound = "builtin:Klaxon"
+            Sound = "builtin:Klaxon",
+            FlashColor = "#E8574B"
         }
     ];
 
@@ -286,6 +287,9 @@ public sealed class AppSettings
         LaunchAtStartup = true;
         AutoCheckForUpdates = true;
         ScreenFlashEnabled = true;
+        AlertVolume = 100;
+        AcAlerts = true;
+        NotificationPosition = NotificationPosition.TopCenter;
         Alerts = CreateDefaultAlerts();
         SettingsVersion = 2;
         // AppId intentionally preserved — unique per install

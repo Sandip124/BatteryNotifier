@@ -20,6 +20,7 @@
             <Setter Property="MinWidth" Value="40" />
             <Setter Property="MaxWidth" Value="48" />
             <Setter Property="ClipToBounds" Value="True" />
+            <Setter Property="Cursor" Value="Hand" />
         </Style>
     </Application.Styles>
 
@@ -34,34 +35,69 @@
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
                     <SolidColorBrush x:Key="AppCardBackground" Color="#161616" />
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#454545" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#565353" />
+                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSoundItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSoundItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSelectBoxBg" Color="#262626" />
+                    <SolidColorBrush x:Key="AppSelectBoxHoverBg" Color="#303030" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#8A8A8A" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="AppSeparator" Color="#1E1E1E" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="{DynamicResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AppAccentBackground" Color="{DynamicResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0161616" />
+                    <SolidColorBrush x:Key="AppWarningForeground" Color="#FF9800" />
+                    <SolidColorBrush x:Key="AppWarningBackground" Color="#2EFF9800" />
                     <LinearGradientBrush x:Key="NotificationCardBorder" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Color="#45FFFFFF" Offset="0" />
                         <GradientStop Color="#18FFFFFF" Offset="0.5" />
                         <GradientStop Color="#08FFFFFF" Offset="1" />
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#0C0C0C</Color>
+
+                    <!-- Match Fluent TextBox / ComboBox to the app theme (subtle border, app colors) -->
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#2A2A2A" />
 
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Dark">
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#0C0C0C" />
                     <SolidColorBrush x:Key="AppCardBackground" Color="#161616" />
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#1E1E1E" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#373737" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#4B4848" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#454545" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#565353" />
+                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSoundItemBg" Color="#1A1A1A" />
+                    <SolidColorBrush x:Key="AppSoundItemHoverBg" Color="#1E1E1E" />
+                    <SolidColorBrush x:Key="AppSelectBoxBg" Color="#262626" />
+                    <SolidColorBrush x:Key="AppSelectBoxHoverBg" Color="#303030" />
                     <SolidColorBrush x:Key="AppForeground" Color="#F0F0F0" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#9c9c9c" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="AppSeparator" Color="#1E1E1E" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="{DynamicResource SystemAccentColorLight1}" />
                     <SolidColorBrush x:Key="AppAccentBackground" Color="{DynamicResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0161616" />
+                    <SolidColorBrush x:Key="AppWarningForeground" Color="#FF9800" />
+                    <SolidColorBrush x:Key="AppWarningBackground" Color="#2EFF9800" />
                     <LinearGradientBrush x:Key="NotificationCardBorder" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Color="#45FFFFFF" Offset="0" />
                         <GradientStop Color="#18FFFFFF" Offset="0.5" />
@@ -69,25 +105,69 @@
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#0C0C0C</Color>
 
+                    <!-- Match Fluent TextBox / ComboBox to the app theme (subtle border, app colors) -->
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#161616" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#4B4848" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#373737" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#2A2A2A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3A3A3A" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#161616" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#2A2A2A" />
+
                 </ResourceDictionary>
                 <ResourceDictionary x:Key="Light">
                     <SolidColorBrush x:Key="AppWindowBackground" Color="#F5F5F5" />
                     <SolidColorBrush x:Key="AppCardBackground" Color="#FFFFFF" />
                     <SolidColorBrush x:Key="AppHoverBackground" Color="#E8E8E8" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#E0E0E0" />
-                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonBg" Color="#EDEDED" />
+                    <SolidColorBrush x:Key="AppSecondaryButtonHoverBg" Color="#DCDCDC" />
+                    <SolidColorBrush x:Key="AppSheetItemBg" Color="#EDEDED" />
+                    <SolidColorBrush x:Key="AppSheetItemHoverBg" Color="#DCDCDC" />
+                    <SolidColorBrush x:Key="AppSoundItemBg" Color="#F2F2F2" />
+                    <SolidColorBrush x:Key="AppSoundItemHoverBg" Color="#E6E6E6" />
+                    <SolidColorBrush x:Key="AppSelectBoxBg" Color="#EDEDED" />
+                    <SolidColorBrush x:Key="AppSelectBoxHoverBg" Color="#DCDCDC" />
                     <SolidColorBrush x:Key="AppForeground" Color="#1A1A1A" />
                     <SolidColorBrush x:Key="AppSubtleText" Color="#6B6B6B" />
                     <SolidColorBrush x:Key="AppCardBorder" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="AppSeparator" Color="#EAEAEA" />
                     <SolidColorBrush x:Key="AppAccentForeground" Color="{DynamicResource SystemAccentColorDark1}" />
                     <SolidColorBrush x:Key="AppAccentBackground" Color="{DynamicResource SystemAccentColor}" />
                     <SolidColorBrush x:Key="AppHeaderBackground" Color="#B0F0F0F0" />
+                    <!-- Darker amber + a solid pale tint (not a translucent overlay) so text stays readable on a light window background -->
+                    <SolidColorBrush x:Key="AppWarningForeground" Color="#9A5300" />
+                    <SolidColorBrush x:Key="AppWarningBackground" Color="#FFF3E0" />
                     <LinearGradientBrush x:Key="NotificationCardBorder" StartPoint="0%,0%" EndPoint="0%,100%">
                         <GradientStop Color="#30000000" Offset="0" />
                         <GradientStop Color="#15000000" Offset="0.5" />
                         <GradientStop Color="#25000000" Offset="1" />
                     </LinearGradientBrush>
                     <Color x:Key="NotificationAcrylicTint">#F5F5F5</Color>
+
+                    <!-- Match Fluent TextBox / ComboBox to the app theme (subtle border, app colors) -->
+                    <SolidColorBrush x:Key="TextControlBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#B8B8B8" />
+                    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="{DynamicResource SystemAccentColor}" />
+                    <SolidColorBrush x:Key="ComboBoxBackground" Color="#E0E0E0" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="ComboBoxBackgroundFocused" Color="#E0E0E0" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#D0D0D0" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#B8B8B8" />
+                    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#B8B8B8" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FFFFFF" />
+                    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#D0D0D0" />
 
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
@@ -100,12 +180,18 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="Foreground" Value="{DynamicResource AppForeground}" />
             <Setter Property="Padding" Value="6" />
-            <Setter Property="CornerRadius" Value="4" />
+            <Setter Property="CornerRadius" Value="8" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="HorizontalAlignment" Value="Left" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+            <Setter Property="Transitions">
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.09" Easing="CubicEaseOut" />
+                </Transitions>
+            </Setter>
 
             <Setter Property="Template">
                 <ControlTemplate TargetType="Button">
@@ -127,6 +213,9 @@
             <Style Selector="^:pointerover">
                 <Setter Property="Background" Value="{DynamicResource AppHoverBackground}" />
             </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="RenderTransform" Value="scale(0.96)" />
+            </Style>
         </ControlTheme>
 
         <ControlTheme x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
@@ -134,6 +223,10 @@
 
             <Style Selector="^:pointerover">
                 <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource AppSecondaryButtonHoverBg}" />
+                <Setter Property="RenderTransform" Value="scale(0.96)" />
             </Style>
         </ControlTheme>
 

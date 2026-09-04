@@ -3,6 +3,12 @@ using Serilog;
 
 namespace BatteryNotifier.Core.Services;
 
+/// <summary>
+/// Generic notification <b>delivery pipe</b>. It does not decide <i>when</i> an alert should fire —
+/// that lives in <see cref="AlertEvaluationService"/>. This layer only: drops non-critical
+/// notifications while the user has paused; coalesces rapid-fire bursts within a 2 s window (keeping
+/// the latest per tag); and emits surviving notifications by priority via <see cref="NotificationReceived"/>.
+/// </summary>
 public sealed class NotificationService : IDisposable
 {
     private static readonly Lazy<NotificationService> _instance =
@@ -14,10 +20,6 @@ public sealed class NotificationService : IDisposable
 
     private readonly PriorityQueue<NotificationMessageEventArgs, int> _notificationQueue;
     private readonly object _queueLock = new();
-
-    private readonly Dictionary<string, NotificationTracker> _trackers =
-        new Dictionary<string, NotificationTracker>(StringComparer.OrdinalIgnoreCase);
-    private readonly object _trackersLock = new object();
 
     private readonly Dictionary<string, NotificationMessageEventArgs> _pendingNotifications =
         new Dictionary<string, NotificationMessageEventArgs>(StringComparer.OrdinalIgnoreCase);
@@ -34,23 +36,6 @@ public sealed class NotificationService : IDisposable
     private bool _disposed;
     private volatile bool _paused;
 
-    private static readonly TimeSpan[] BackoffIntervals =
-    [
-        TimeSpan.Zero,
-        TimeSpan.FromMinutes(2),
-        TimeSpan.FromMinutes(5),
-        TimeSpan.FromMinutes(10),
-        TimeSpan.FromMinutes(15),
-        TimeSpan.FromMinutes(30),
-        TimeSpan.FromMinutes(45)
-    ];
-
-    private const int MaxNotificationsBeforeSilence = 7;
-
-    // Duolingo "recovering arm" concept: after this duration of silence,
-    // the tracker auto-resets so the user gets a fresh reminder cycle.
-    private static readonly TimeSpan RecoveryInterval = TimeSpan.FromHours(2);
-
     public event EventHandler<NotificationMessageEventArgs>? NotificationReceived;
 
     private NotificationService()
@@ -60,31 +45,40 @@ public sealed class NotificationService : IDisposable
 
     // ── Pause / Resume ────────────────────────────────────────
 
-    private static readonly TimeSpan PauseAutoResumeAfter = TimeSpan.FromHours(2);
     private DateTime _pausedAt;
+    private TimeSpan? _pauseDuration; // null = paused until manually resumed
 
     public event Action<bool>? PausedChanged;
 
-    public void PauseNotifications()
+    /// <summary>Pauses non-critical notifications. <paramref name="duration"/> null = until manually resumed.</summary>
+    public void PauseNotifications(TimeSpan? duration)
     {
         _paused = true;
         _pausedAt = DateTime.UtcNow;
+        _pauseDuration = duration;
         PausedChanged?.Invoke(true);
     }
 
     public void ResumeNotifications()
     {
         _paused = false;
+        _pauseDuration = null;
         PausedChanged?.Invoke(false);
     }
 
     public bool IsPaused => _paused;
 
+    /// <summary>Duration the current pause will last, or null if paused until manually resumed.</summary>
+    public TimeSpan? PauseDuration => _pauseDuration;
+
+    /// <summary>When the current timed pause will auto-resume (UTC), or null if indefinite/not paused.</summary>
+    public DateTime? PauseResumesAt => _paused && _pauseDuration is { } d ? _pausedAt + d : null;
+
     private void AutoResumeIfExpired()
     {
-        if (_paused && (DateTime.UtcNow - _pausedAt) >= PauseAutoResumeAfter)
+        if (_paused && _pauseDuration is { } duration && (DateTime.UtcNow - _pausedAt) >= duration)
         {
-            Logger.Information("Auto-resuming notifications after {Duration}", PauseAutoResumeAfter);
+            Logger.Information("Auto-resuming notifications after {Duration}", duration);
             ResumeNotifications();
         }
     }
@@ -104,11 +98,12 @@ public sealed class NotificationService : IDisposable
         PublishNotification(notification);
     }
 
+    /// <summary>Queues a notification for delivery, applying pause, throttle-coalescing, and priority.</summary>
     public void PublishNotification(NotificationMessageEventArgs notification)
     {
         AutoResumeIfExpired();
 
-        // Inline notifications bypass backoff — they're in-app only
+        // Inline notifications are in-app only — deliver immediately.
         if (notification.Type == NotificationType.Inline)
         {
             EnqueueAndEmit(notification);
@@ -124,64 +119,14 @@ public sealed class NotificationService : IDisposable
 
         var tag = notification.Tag ?? "default";
 
-        lock (_trackersLock)
-        {
-            if (!_trackers.TryGetValue(tag, out var tracker))
-            {
-                tracker = new NotificationTracker();
-                _trackers[tag] = tracker;
-            }
-
-            // Critical notifications bypass backoff and silencing entirely
-            var isCritical = notification.Priority >= NotificationPriority.Critical;
-
-            // Auto-recover after RecoveryInterval (Duolingo "recovering arm" concept)
-            if (tracker.IsSilenced && (DateTime.UtcNow - tracker.LastNotificationTime) >= RecoveryInterval)
-            {
-                tracker.Count = 0;
-                tracker.IsSilenced = false;
-            }
-
-            if (tracker.IsSilenced && !isCritical)
-            {
-                Logger.Debug("Notification silenced for tag {Tag} (reached max {Max} notifications, will recover after {Recovery})",
-                    tag, MaxNotificationsBeforeSilence, RecoveryInterval);
-                return;
-            }
-
-            // Check backoff interval
-            var backoffIndex = Math.Min(tracker.Count, BackoffIntervals.Length - 1);
-            var requiredDelay = BackoffIntervals[backoffIndex];
-            var elapsed = DateTime.UtcNow - tracker.LastNotificationTime;
-
-            if (tracker.Count > 0 && elapsed < requiredDelay && !isCritical)
-            {
-                Logger.Debug("Notification for tag {Tag} held back by backoff (elapsed {Elapsed}, required {Required})",
-                    tag, elapsed, requiredDelay);
-                return;
-            }
-
-            // Increment and check cap
-            tracker.Count++;
-            tracker.LastNotificationTime = DateTime.UtcNow;
-
-            if (tracker.Count >= MaxNotificationsBeforeSilence)
-                tracker.IsSilenced = true;
-        }
-
-        // Apply throttle for rapid-fire prevention
+        // Coalesce rapid-fire bursts within the throttle window (keeps the latest per tag),
+        // except critical which always goes straight through.
         DateTime lastTime;
         lock (_lastNotificationTimeLock) { lastTime = _lastNotificationTime; }
-        var now = DateTime.UtcNow;
-        var timeSinceLastNotification = now - lastTime;
 
-        if (timeSinceLastNotification < ThrottleInterval && notification.Priority < NotificationPriority.Critical)
+        if (DateTime.UtcNow - lastTime < ThrottleInterval && notification.Priority < NotificationPriority.Critical)
         {
-            lock (_pendingLock)
-            {
-                var key = tag;
-                _pendingNotifications[key] = notification;
-            }
+            lock (_pendingLock) { _pendingNotifications[tag] = notification; }
             ScheduleFlush();
             return;
         }
@@ -190,42 +135,14 @@ public sealed class NotificationService : IDisposable
     }
 
     /// <summary>
-    /// Reset notification tracking for a specific tag. Called when battery state changes
-    /// (charger plugged/unplugged) so notifications can fire eagerly again.
-    /// </summary>
-    public void ResetTracker(string tag)
-    {
-        lock (_trackersLock)
-        {
-            _trackers.Remove(tag);
-        }
-    }
-
-    /// <summary>
-    /// Returns how many notifications have been sent for a tag (0 if none).
-    /// Used by callers to pick escalation-appropriate message templates.
-    /// </summary>
-    public int GetEscalationCount(string tag)
-    {
-        lock (_trackersLock)
-        {
-            return _trackers.TryGetValue(tag, out var tracker) ? tracker.Count : 0;
-        }
-    }
-
-    /// <summary>
-    /// Reset all notification trackers and discard any queued pending notifications.
-    /// Called on significant state changes (e.g. charger plugged/unplugged) so that
-    /// stale notifications (like "unplug charger") are never delivered after the
-    /// state they refer to has already changed.
+    /// Discards any queued/pending notifications. Called on significant state changes
+    /// (e.g. charger plugged/unplugged) so stale notifications (like "unplug charger") are
+    /// never delivered after the state they refer to has already changed. The escalation
+    /// cycle itself is reset separately via <see cref="AlertEvaluationService.ResetAll"/>.
     /// </summary>
     public void ResetAllTrackers()
     {
-        lock (_trackersLock)
-        {
-            _trackers.Clear();
-        }
-
+        ClearNotifications();
         ClearPendingNotifications();
     }
 
@@ -267,17 +184,9 @@ public sealed class NotificationService : IDisposable
         {
             if (_pendingNotifications.Count == 0) return;
 
-            NotificationMessageEventArgs? highest = null;
-            foreach (var n in _pendingNotifications.Values)
-            {
-                if (highest == null || n.Priority > highest.Priority)
-                    highest = n;
-            }
-
+            var highest = _pendingNotifications.Values.MaxBy(n => n.Priority);
             if (highest != null)
-            {
                 EnqueueAndEmit(highest);
-            }
 
             _pendingNotifications.Clear();
         }
@@ -337,23 +246,8 @@ public sealed class NotificationService : IDisposable
         ClearNotifications();
         ClearPendingNotifications();
 
-        lock (_trackersLock)
-        {
-            _trackers.Clear();
-        }
-
         NotificationReceived = null;
     }
-}
-
-/// <summary>
-/// Tracks per-tag notification state for escalating backoff.
-/// </summary>
-internal sealed class NotificationTracker
-{
-    public int Count { get; set; }
-    public DateTime LastNotificationTime { get; set; } = DateTime.MinValue;
-    public bool IsSilenced { get; set; }
 }
 
 #pragma warning disable CA1710 // Kept as NotificationMessage for domain clarity

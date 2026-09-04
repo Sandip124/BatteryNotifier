@@ -20,8 +20,12 @@
             Margin="8"
             ClipToBounds="True"
             Opacity="0"
+            Cursor="Hand"
+            PointerPressed="Card_PointerPressed"
+            PointerEntered="Card_PointerEntered"
+            PointerExited="Card_PointerExited"
             RenderTransformOrigin="0.5,0"
-            RenderTransform="scale(0.9,0.9) translateY(-12px)">
+            RenderTransform="scale(0.9,0.9) translate(0px,-12px)">
         <Border.Transitions>
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.35" Easing="CubicEaseOut" />
@@ -33,51 +37,59 @@
             </Transitions>
         </Border.Transitions>
 
-        <Grid RowDefinitions="*,Auto">
+        <Grid Cursor="Hand">
 
-            <!-- Content layer -->
-            <Panel Grid.Row="0">
-                <!-- Subtle accent color wash — left to right -->
+            <Panel>
+                <!-- Accent color wash, fading left to right -->
                 <Border x:Name="AccentWash" CornerRadius="16,16,0,0" Opacity="0.1" />
 
-                <Grid ColumnDefinitions="Auto,12,*,Auto" Margin="14,10,14,8">
-                    <!-- Battery percentage — glass badge -->
-                    <controls:GlassBadge Grid.Column="0"
-                            Width="72" Height="40"
-                            Text="{Binding BatteryPercent}"
-                            AccentColor="{Binding AccentColorValue}"
-                            VerticalAlignment="Center"
-                            IsVisible="{Binding ShowPercent}" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto,10,*" Margin="14,10,8,8">
+                        <controls:GlassBadge Grid.Column="0"
+                                Width="58" Height="34"
+                                Text="{Binding BatteryPercent}"
+                                Percent="{Binding BatteryLevel}"
+                                AccentColor="{Binding AccentColorValue}"
+                                VerticalAlignment="Center"
+                                IsVisible="{Binding ShowPercent}" />
 
-                    <!-- Title + message -->
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
-                        <TextBlock Text="{Binding Title}"
-                                   FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AppForeground}" />
-                        <TextBlock Text="{Binding Message}"
-                                   FontSize="11.5" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource AppSubtleText}"
-                                   MaxLines="2"
-                                   TextTrimming="CharacterEllipsis" />
-                    </StackPanel>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding Title}"
+                                       FontSize="15" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AppForeground}" />
+                            <TextBlock Text="{Binding Message}"
+                                       FontSize="11.5" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource AppSubtleText}"
+                                       MaxLines="2"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
 
-                    <!-- Dismiss X button -->
-                    <Button Grid.Column="3"
+                    <Button Grid.Column="1"
                             Click="DismissButton_Click"
                             Theme="{StaticResource PrimaryButton}"
-                            Padding="6"
-                            VerticalAlignment="Top"
-                            Margin="-2,-2,0,0"
-                            ToolTip.Tip="Dismiss"
+                            Width="40" Height="38"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0"
+                            CornerRadius="10"
+                            Padding="0"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center"
                             Cursor="Hand">
-                        <PathIcon Data="{StaticResource Icon.X}" Width="10" Height="10"
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#12888888" />
+                            </Style>
+                        </Button.Styles>
+                        <PathIcon Data="{StaticResource Icon.X}" Width="12" Height="12"
                                   Foreground="{DynamicResource AppSubtleText}" />
                     </Button>
                 </Grid>
             </Panel>
 
-            <!-- Countdown progress bar -->
-            <Border Grid.Row="1" Height="3"
+
+            <Border Height="3" VerticalAlignment="Bottom"
+                    Background="Transparent"
                     CornerRadius="0,0,16,16"
                     ClipToBounds="True">
                 <Border x:Name="ProgressBar"
@@ -85,6 +97,16 @@
                         HorizontalAlignment="Left"
                         CornerRadius="0,0,0,16"
                         Opacity="0.6" />
+            </Border>
+
+            <Border x:Name="HoverOverlay"
+                    Background="{DynamicResource AppForeground}"
+                    IsHitTestVisible="False" Opacity="0">
+                <Border.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+                    </Transitions>
+                </Border.Transitions>
             </Border>
 
         </Grid>

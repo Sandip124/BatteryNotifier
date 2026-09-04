@@ -85,7 +85,7 @@ public static class StartupManager
                 Directory.CreateDirectory(launchAgentsDir);
             }
 
-            var plistPath = Path.Combine(launchAgentsDir, $"com.{AppName.ToLower()}.plist");
+            var plistPath = Path.Combine(launchAgentsDir, $"com.{AppName.ToLowerInvariant()}.plist");
 
             if (enabled)
             {
@@ -94,7 +94,7 @@ public static class StartupManager
 <plist version=""1.0"">
 <dict>
     <key>Label</key>
-    <string>com.{AppName.ToLower()}</string>
+    <string>com.{AppName.ToLowerInvariant()}</string>
     <key>ProgramArguments</key>
     <array>
         <string>{executablePath}</string>
@@ -202,7 +202,7 @@ public static class StartupManager
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 "Library", "LaunchAgents");
 
-            var plistPath = Path.Combine(launchAgentsDir, $"com.{AppName.ToLower()}.plist");
+            var plistPath = Path.Combine(launchAgentsDir, $"com.{AppName.ToLowerInvariant()}.plist");
             return File.Exists(plistPath);
         }
         catch

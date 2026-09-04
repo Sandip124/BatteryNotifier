@@ -14,32 +14,40 @@
         <!-- Mark assembly as trim-compatible -->
         <IsTrimmable>true</IsTrimmable>
     </PropertyGroup>
+    
+    <PropertyGroup>
+        <IsWindowsTarget Condition="$([MSBuild]::IsOSPlatform('Windows')) OR $(RuntimeIdentifier.StartsWith('win'))">true</IsWindowsTarget>
+    </PropertyGroup>
 
     <ItemGroup>
         <InternalsVisibleTo Include="BatteryNotifier.Tests" />
     </ItemGroup>
 
     <!-- Define WINDOWS constant when targeting Windows so NAudio/WMI code compiles conditionally -->
-    <PropertyGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
+    <PropertyGroup Condition="'$(IsWindowsTarget)' == 'true'">
         <DefineConstants>$(DefineConstants);WINDOWS</DefineConstants>
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Serilog" Version="4.3.0" />
+        <PackageReference Include="NLayer" Version="2.0.0" />
+        <PackageReference Include="NLayer.NAudioSupport" Version="2.0.0" />
+        <PackageReference Include="Serilog" Version="4.4.0" />
         <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
         <PackageReference Include="Serilog.Sinks.Debug" Version="3.0.0" />
         <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     </ItemGroup>
 
     <!-- Windows-only: WMI for battery info, shortcuts, DPAPI, NAudio for sound -->
-    <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows')) OR '$(RuntimeIdentifier)' == 'win-x64' OR '$(RuntimeIdentifier)' == 'win-arm64'">
+    <ItemGroup Condition="'$(IsWindowsTarget)' == 'true'">
         <PackageReference Include="System.Management" Version="9.0.8" />
         <PackageReference Include="WindowsShortcutFactory" Version="1.2.0" />
         <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.4" />
         <PackageReference Include="NAudio" Version="2.2.1" />
-        <!-- WMI uses reflection heavily — prevent the trimmer from breaking it -->
-        <TrimmerRootAssembly Include="System.Management" />
+        <!-- WMI + NAudio use reflection heavily — preserve->all keeps every member so full trim
+             can't strip the ctors/codecs they resolve dynamically. TrimmerRootAssembly alone
+             only keeps statically-reachable members, which broke the WMI power watcher. -->
+        <TrimmerRootDescriptor Include="ILLink.Descriptors.Windows.xml" />
     </ItemGroup>
 
 </Project>

@@ -25,6 +25,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private bool _launchAtStartup;
     private bool _autoCheckForUpdates;
     private bool _screenFlashEnabled;
+    private bool _acAlerts;
+    private int _alertVolume;
     private NotificationPosition _notificationPosition;
     private bool _disposed;
 
@@ -91,6 +93,27 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
                 _settings.Save();
             })
             .DisposeWith(_disposables);
+
+        this.WhenAnyValue(x => x.AcAlerts)
+            .Skip(1)
+            .Subscribe(enabled =>
+            {
+                _settings.AcAlerts = enabled;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
+
+        // Volume slider fires rapidly while dragging — throttle the encrypted save.
+        this.WhenAnyValue(x => x.AlertVolume)
+            .Skip(1)
+            .Throttle(TimeSpan.FromMilliseconds(400))
+            .ObserveOn(RxApp.MainThreadScheduler)
+            .Subscribe(volume =>
+            {
+                _settings.AlertVolume = volume;
+                _settings.Save();
+            })
+            .DisposeWith(_disposables);
     }
 
     private void LoadAlerts()
@@ -116,7 +139,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             LowerBound = 20,
             UpperBound = 80,
             IsEnabled = true,
-            Sound = "builtin:Harp"
+            Sound = "builtin:Harp",
+            FlashColor = AlertAccent.BlueHex
         };
 
         _settings.Alerts.Add(alert);
@@ -159,6 +183,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _launchAtStartup = _settings.LaunchAtStartup;
         _autoCheckForUpdates = _settings.AutoCheckForUpdates;
         _screenFlashEnabled = _settings.ScreenFlashEnabled;
+        _acAlerts = _settings.AcAlerts;
+        _alertVolume = _settings.AlertVolume;
         _notificationPosition = _settings.NotificationPosition;
     }
 
@@ -169,6 +195,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IsSystemTheme = true;
         IsLightTheme = false;
         IsDarkTheme = false;
+        this.RaisePropertyChanged(nameof(ThemeIndex));
         if (Application.Current != null)
             Application.Current.RequestedThemeVariant = ThemeVariant.Default;
     }
@@ -180,6 +207,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IsSystemTheme = false;
         IsLightTheme = true;
         IsDarkTheme = false;
+        this.RaisePropertyChanged(nameof(ThemeIndex));
         if (Application.Current != null)
             Application.Current.RequestedThemeVariant = ThemeVariant.Light;
     }
@@ -191,9 +219,13 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IsSystemTheme = false;
         IsLightTheme = false;
         IsDarkTheme = true;
+        this.RaisePropertyChanged(nameof(ThemeIndex));
         if (Application.Current != null)
             Application.Current.RequestedThemeVariant = ThemeVariant.Dark;
     }
+
+    /// <summary>Segment index for the theme switcher pill: 0 = Light, 1 = System, 2 = Dark.</summary>
+    public int ThemeIndex => IsLightTheme ? 0 : IsDarkTheme ? 2 : 1;
 
     public bool IsSystemTheme
     {
@@ -230,6 +262,26 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         get => _screenFlashEnabled;
         set => this.RaiseAndSetIfChanged(ref _screenFlashEnabled, value);
     }
+
+    public bool AcAlerts
+    {
+        get => _acAlerts;
+        set => this.RaiseAndSetIfChanged(ref _acAlerts, value);
+    }
+
+    public int AlertVolume
+    {
+        get => _alertVolume;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _alertVolume, value) != value) return;
+            this.RaisePropertyChanged(nameof(AlertVolumeDisplay));
+            this.RaisePropertyChanged(nameof(IsAlertMuted));
+        }
+    }
+
+    public string AlertVolumeDisplay => _alertVolume <= 0 ? "Muted" : $"{_alertVolume}%";
+    public bool IsAlertMuted => _alertVolume <= 0;
 
     public NotificationPosition NotificationPosition
     {

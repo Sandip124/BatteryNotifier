@@ -88,6 +88,10 @@ public static class BuiltInSounds
         return GetOrGenerate(name);
     }
 
+    private const string CacheVersion = "v2";
+    private const double RepeatGapSeconds = 0.35;                          // silence between repeats
+    private const int TargetFillMs = Constants.NotificationDurationMs + 2000; // a touch beyond the window
+
     private static string? GetOrGenerate(string name)
     {
         // Strict lookup — only exact matches from the known generator dictionary.
@@ -96,14 +100,34 @@ public static class BuiltInSounds
             return null;
 
         Directory.CreateDirectory(CacheDir);
-        var path = Path.Combine(CacheDir, $"{name}.wav");
+        var path = Path.Combine(CacheDir, $"{name}.{CacheVersion}.wav");
 
         if (File.Exists(path))
             return path;
 
-        var samples = generator();
+        var samples = RepeatToFill(generator());
         WriteWav(path, samples);
         return path;
+    }
+
+    /// <summary>
+    /// Repeats a short tone (with a fixed silent gap between repeats) until it spans the notification
+    /// window, so playback is a single deterministic pass instead of many re-spawned loops.
+    /// </summary>
+    private static short[] RepeatToFill(short[] tone)
+    {
+        if (tone.Length == 0) return tone;
+
+        int gapSamples = (int)(SampleRate * RepeatGapSeconds);
+        int unit = tone.Length + gapSamples;
+        long targetSamples = (long)SampleRate * TargetFillMs / 1000;
+        int repeats = Math.Max(1, (int)Math.Ceiling((double)targetSamples / unit));
+
+        var result = new short[repeats * unit]; // trailing gap of silence is harmless
+        for (int r = 0; r < repeats; r++)
+            Array.Copy(tone, 0, result, r * unit, tone.Length);
+
+        return result;
     }
 
     // ── Sound Generators ──────────────────────────────────────────

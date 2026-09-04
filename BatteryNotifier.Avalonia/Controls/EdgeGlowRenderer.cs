@@ -6,8 +6,10 @@ using Avalonia.Media;
 namespace BatteryNotifier.Avalonia.Controls;
 
 /// <summary>
-/// Renders an edge glow effect — 4 gradient rectangles at screen edges with transparent interior.
-/// Used by ScreenFlashOverlay for battery notification visual feedback.
+/// Renders an edge glow — four gradient bands fading inward from the (square) screen edges, with
+/// the four corners drawn as radial gradients so the glow's <b>inner</b> edge is rounded while the
+/// outer edge stays flush to the rectangular screen. Corners blend seamlessly with the straight
+/// bands (matching alpha along the shared boundaries). Used by ScreenFlashOverlay.
 /// </summary>
 public class EdgeGlowRenderer : Control
 {
@@ -34,6 +36,13 @@ public class EdgeGlowRenderer : Control
         set => SetValue(GlowThicknessProperty, value);
     }
 
+    // Gradient brushes depend only on GlowColor (their geometry is relative to each drawn rect),
+    // so they're cached and rebuilt only when the color changes — keeping per-frame renders cheap
+    // while GlowThickness animates.
+    private Color _cachedColor;
+    private bool _brushesValid;
+    private IBrush? _top, _bottom, _left, _right, _cornerTL, _cornerTR, _cornerBL, _cornerBR;
+
     public override void Render(DrawingContext context)
     {
         var w = Bounds.Width;
@@ -41,43 +50,69 @@ public class EdgeGlowRenderer : Control
         if (w <= 0 || h <= 0) return;
 
         var t = Math.Min(GlowThickness, Math.Min(w, h) / 3);
-        var baseColor = GlowColor;
-        var transparent = Color.FromArgb(0, baseColor.R, baseColor.G, baseColor.B);
+        if (t <= 0) return;
 
-        // Top edge
-        var topBrush = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(baseColor, 0), new GradientStop(transparent, 1) }
-        };
-        context.DrawRectangle(topBrush, null, new Rect(0, 0, w, t));
+        EnsureBrushes();
 
-        // Bottom edge
-        var bottomBrush = new LinearGradientBrush
+        // Straight bands over the middle spans (corners are drawn separately).
+        if (w - 2 * t > 0)
         {
-            StartPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(baseColor, 0), new GradientStop(transparent, 1) }
-        };
-        context.DrawRectangle(bottomBrush, null, new Rect(0, h - t, w, t));
+            context.DrawRectangle(_top, null, new Rect(t, 0, w - 2 * t, t));
+            context.DrawRectangle(_bottom, null, new Rect(t, h - t, w - 2 * t, t));
+        }
+        if (h - 2 * t > 0)
+        {
+            context.DrawRectangle(_left, null, new Rect(0, t, t, h - 2 * t));
+            context.DrawRectangle(_right, null, new Rect(w - t, t, t, h - 2 * t));
+        }
 
-        // Left edge (full height — overlaps corners for seamless glow)
-        var leftBrush = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(baseColor, 0), new GradientStop(transparent, 1) }
-        };
-        context.DrawRectangle(leftBrush, null, new Rect(0, 0, t, h));
+        // Rounded inner corners: a radial gradient centred at each inner corner (opaque at radius
+        // t → clear at the centre). The arc of radius t forms the rounded inner edge; the region
+        // beyond it (toward the square outer corner) stays fully opaque.
+        context.DrawRectangle(_cornerTL, null, new Rect(0, 0, t, t));
+        context.DrawRectangle(_cornerTR, null, new Rect(w - t, 0, t, t));
+        context.DrawRectangle(_cornerBL, null, new Rect(0, h - t, t, t));
+        context.DrawRectangle(_cornerBR, null, new Rect(w - t, h - t, t, t));
+    }
 
-        // Right edge (full height)
-        var rightBrush = new LinearGradientBrush
+    private void EnsureBrushes()
+    {
+        if (_brushesValid && _cachedColor == GlowColor) return;
+
+        var outer = GlowColor;
+        var inner = Color.FromArgb(0, outer.R, outer.G, outer.B);
+
+        _top = Linear(outer, inner, (0, 0), (0, 1));
+        _bottom = Linear(outer, inner, (0, 1), (0, 0));
+        _left = Linear(outer, inner, (0, 0), (1, 0));
+        _right = Linear(outer, inner, (1, 0), (0, 0));
+        _cornerTL = Corner(outer, inner, (1, 1));
+        _cornerTR = Corner(outer, inner, (0, 1));
+        _cornerBL = Corner(outer, inner, (1, 0));
+        _cornerBR = Corner(outer, inner, (0, 0));
+
+        _cachedColor = outer;
+        _brushesValid = true;
+    }
+
+    private static LinearGradientBrush Linear(Color outer, Color inner,
+        (double x, double y) from, (double x, double y) to) => new()
+    {
+        StartPoint = new RelativePoint(from.x, from.y, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(to.x, to.y, RelativeUnit.Relative),
+        GradientStops = { new GradientStop(outer, 0), new GradientStop(inner, 1) },
+    };
+
+    private static RadialGradientBrush Corner(Color outer, Color inner, (double x, double y) innerCorner)
+    {
+        var center = new RelativePoint(innerCorner.x, innerCorner.y, RelativeUnit.Relative);
+        return new RadialGradientBrush
         {
-            StartPoint = new RelativePoint(1, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            GradientStops = { new GradientStop(baseColor, 0), new GradientStop(transparent, 1) }
+            Center = center,
+            GradientOrigin = center,
+            RadiusX = new RelativeScalar(1, RelativeUnit.Relative),
+            RadiusY = new RelativeScalar(1, RelativeUnit.Relative),
+            GradientStops = { new GradientStop(inner, 0), new GradientStop(outer, 1) },
         };
-        context.DrawRectangle(rightBrush, null, new Rect(w - t, 0, t, h));
     }
 }
