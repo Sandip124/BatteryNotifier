@@ -1,16 +1,21 @@
 using System;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
 
 public partial class AlertRow : UserControl
 {
+    private static readonly TimeSpan BackdropFadeDuration = TimeSpan.FromMilliseconds(140);
+
     private IDisposable? _interactionHandler;
 
     public AlertRow()
@@ -95,6 +100,7 @@ public partial class AlertRow : UserControl
                 // which would reset the ScrollViewer position
                 var rootPanel = FindRootPanel(ownerWindow);
                 Border? backdrop = null;
+                var backdropDismissed = false;
 
                 if (rootPanel != null)
                 {
@@ -108,6 +114,26 @@ public partial class AlertRow : UserControl
                     rootPanel.Children.Add(backdrop);
                 }
 
+                void DismissBackdrop()
+                {
+                    if (backdropDismissed || rootPanel == null || backdrop == null) return;
+                    backdropDismissed = true;
+
+                    var fading = backdrop;
+                    var host = rootPanel;
+                    fading.Transitions =
+                    [
+                        new DoubleTransition
+                        {
+                            Property = OpacityProperty,
+                            Duration = BackdropFadeDuration,
+                            Easing = new CubicEaseOut()
+                        }
+                    ];
+                    fading.Opacity = 0;
+                    DispatcherTimer.RunOnce(() => host.Children.Remove(fading), BackdropFadeDuration);
+                }
+
                 try
                 {
                     var (settingsValue, title) = ctx.Input;
@@ -117,22 +143,29 @@ public partial class AlertRow : UserControl
                         DataContext = pickerVm
                     };
 
+                    if (ownerWindow is MainWindow mainBeforeShow)
+                        mainBeforeShow.NotifyShown();
+
+                    pickerWindow.Closing += (_, _) => DismissBackdrop();
+
                     var result = await pickerWindow.ShowLightDismiss(ownerWindow);
                     ctx.SetOutput(result);
                 }
                 finally
                 {
-                    if (rootPanel != null && backdrop != null)
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            rootPanel.Children.Remove(backdrop);
-                        });
-                    }
+                    DismissBackdrop();
+
                     if (ownerWindow is MainWindow main)
                     {
                         main.NotifyShown();
-                        main.ScheduleAutoHideCheck();
+
+                        DispatcherTimer.RunOnce(() =>
+                        {
+                            if (!main.IsActive && AppFocusTracker.IsApplicationFocused() == true)
+                                main.Activate();
+
+                            main.ScheduleAutoHideCheck();
+                        }, TimeSpan.FromMilliseconds(50));
                     }
                 }
             });
