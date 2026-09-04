@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Avalonia.Views;
@@ -26,9 +27,7 @@ public sealed class NotificationDisplayService
 {
     private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("NotificationDisplayService");
     private readonly List<NotificationCard> _activeCards = new();
-    // Persistent, reused pool of flash overlays (one per screen). Created once and hidden between
-    // flashes so firing a flash is instant (no per-notification window creation) and stays in sync
-    // with the sound. Rebuilt only when the screen layout changes.
+
     private readonly List<ScreenFlashOverlay> _flashOverlays = new();
     private string? _flashScreenSignature;
     private IDisposable? _flashPoolTeardown;
@@ -39,6 +38,7 @@ public sealed class NotificationDisplayService
     private const int CardMargin = 20;
 
     private NotificationManager? _notificationManager;
+    private Screens? _screens;
 
     /// <summary>Current instance, set by TrayIconService on init.</summary>
     public static NotificationDisplayService? Current { get; private set; }
@@ -48,11 +48,44 @@ public sealed class NotificationDisplayService
         _notificationManager = manager;
         Current = this;
 
-        // Pre-generate flash envelopes for configured sounds so the first flash reacts — but only
-        // when the flash is actually enabled (otherwise it's wasted decode/disk work).
+        // Pre-generate flash envelopes for configured sounds so the first flash reacts
         if (AppSettings.Instance.ScreenFlashEnabled)
             foreach (var alert in AppSettings.Instance.Alerts)
                 FlashSequenceLibrary.Instance.EnsureGenerated(alert.Sound);
+
+        // handle resolution/scaling changes
+        if (_screens == null &&
+            Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop &&
+            desktop.MainWindow != null)
+        {
+            _screens = desktop.MainWindow.Screens;
+            _screens.Changed += OnScreensChanged;
+        }
+    }
+
+    private void OnScreensChanged(object? sender, EventArgs e)
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(() => OnScreensChanged(sender, e));
+            return;
+        }
+
+        Logger.Information("Display configuration changed — refreshing notification/flash geometry");
+
+        lock (_cardsLock)
+        {
+            if (_activeCards.Count > 0)
+                PositionCards();
+        }
+        
+        if (_screens != null)
+        {
+            lock (_overlaysLock)
+            {
+                RefreshFlashPoolGeometry(_screens);
+            }
+        }
     }
 
     /// <summary>
@@ -204,8 +237,7 @@ public sealed class NotificationDisplayService
     private void EnsureFlashPool(Screens screens)
     {
         var all = screens.All;
-        var signature = string.Join("|", all.Select(s =>
-            $"{s.Bounds.X},{s.Bounds.Y},{s.Bounds.Width},{s.Bounds.Height},{s.Scaling}"));
+        var signature = BuildScreenSignature(all);
 
         if (signature == _flashScreenSignature && _flashOverlays.Count == all.Count)
             return;
@@ -216,18 +248,55 @@ public sealed class NotificationDisplayService
 
         foreach (var screen in all)
         {
-            var overlay = new ScreenFlashOverlay
-            {
-                Width = screen.Bounds.Width / screen.Scaling,
-                Height = screen.Bounds.Height / screen.Scaling,
-                Position = screen.Bounds.Position
-            };
+            var overlay = new ScreenFlashOverlay();
+            ApplyScreenGeometry(overlay, screen);
             _flashOverlays.Add(overlay);
-            Logger.Information("Flash overlay created: {Width}x{Height} pos {Pos} scaling {Scaling}",
-                overlay.Width, overlay.Height, overlay.Position, screen.Scaling);
+            Logger.Information("Flash overlay created: {Width}x{Height} pos {Pos}",
+                overlay.Width, overlay.Height, overlay.Position);
         }
 
         _flashScreenSignature = signature;
+    }
+
+    private void RefreshFlashPoolGeometry(Screens screens)
+    {
+        if (_flashOverlays.Count == 0)
+            return;
+
+        var all = screens.All;
+
+        if (_flashOverlays.Count != all.Count)
+        {
+            foreach (var stale in _flashOverlays)
+                stale.Close();
+            _flashOverlays.Clear();
+            _flashScreenSignature = null;
+            _flashPoolTeardown?.Dispose();
+            _flashPoolTeardown = null;
+            return;
+        }
+
+        for (int i = 0; i < all.Count; i++)
+            ApplyScreenGeometry(_flashOverlays[i], all[i]);
+
+        _flashScreenSignature = BuildScreenSignature(all);
+    }
+
+    private static void ApplyScreenGeometry(ScreenFlashOverlay overlay, Screen screen)
+    {
+        var scaling = SafeScaling(screen);
+        overlay.Width = screen.Bounds.Width / scaling;
+        overlay.Height = screen.Bounds.Height / scaling;
+        overlay.Position = screen.Bounds.Position;
+    }
+
+    private static string BuildScreenSignature(IReadOnlyList<Screen> screens) =>
+        string.Join("|", screens.Select(s => $"{s.Bounds.X},{s.Bounds.Y},{s.Bounds.Width},{s.Bounds.Height},{s.Scaling}"));
+
+    private static double SafeScaling(Screen screen)
+    {
+        var scaling = screen.Scaling;
+        return double.IsFinite(scaling) && scaling > 0 ? scaling : 1.0;
     }
 
     private void ShowCard(string title, string message, int level, string accentColor,
@@ -235,7 +304,6 @@ public sealed class NotificationDisplayService
     {
         try
         {
-            // Dismiss existing card before showing a new one (single instance)
             DismissAllCards();
 
             var card = new NotificationCard();
@@ -243,9 +311,7 @@ public sealed class NotificationDisplayService
                 title, message, level, accentColor,
                 onDismiss: userInitiated => DismissNotification(card, dismissalTag, userInitiated));
             card.DataContext = vm;
-
-            // Notify the caller whenever the card closes (timeout, user, or replaced) — used by the
-            // alert preview to reset its play/stop toggle.
+            
             if (onClosed != null)
                 card.Closed += (_, _) => onClosed();
 
@@ -376,47 +442,66 @@ public sealed class NotificationDisplayService
         var screen = desktop.MainWindow?.Screens.Primary;
         if (screen == null) return;
 
-        var workArea = screen.WorkingArea;
-        var scaling = screen.Scaling;
+        var area = screen.WorkingArea;
+        var scaling = SafeScaling(screen);
         var position = AppSettings.Instance.NotificationPosition;
-
-        var areaX = (int)(workArea.X / scaling);
-        var areaY = (int)(workArea.Y / scaling);
-        var areaW = (int)(workArea.Width / scaling);
-        var areaH = (int)(workArea.Height / scaling);
+        var margin = (int)Math.Round(CardMargin * scaling);
+        var spacing = (int)Math.Round(CardSpacing * scaling);
 
         lock (_cardsLock)
         {
-            var isBottom = position is NotificationPosition.BottomLeft
-                or NotificationPosition.BottomCenter
-                or NotificationPosition.BottomRight;
+            var stackOffset = margin;
 
-            // Stack direction: top positions stack downward, bottom positions stack upward
-            var offset = CardMargin;
-
-            for (int i = 0; i < _activeCards.Count; i++)
+            foreach (var card in _activeCards)
             {
-                var card = _activeCards[i];
-                var cardW = (int)card.Width;
-                var cardH = (int)card.Height;
-
-                var x = position switch
-                {
-                    NotificationPosition.TopLeft or NotificationPosition.BottomLeft
-                        => areaX + CardMargin,
-                    NotificationPosition.TopRight or NotificationPosition.BottomRight
-                        => areaX + areaW - cardW - CardMargin,
-                    _ // Center
-                        => areaX + (areaW - cardW) / 2,
-                };
-
-                var y = isBottom
-                    ? areaY + areaH - cardH - offset
-                    : areaY + offset;
-
-                card.Position = new PixelPoint(x, y);
-                offset += cardH + CardSpacing;
+                var cardSize = GetScaledCardSize(card, scaling);
+                card.Position = ComputeCardPosition(area, position, cardSize, margin, stackOffset);
+                stackOffset += cardSize.Height + spacing;
             }
         }
     }
+
+    private static PixelSize GetScaledCardSize(NotificationCard card, double scaling) => new(
+        (int)Math.Round(card.Width * scaling),
+        (int)Math.Round(card.Height * scaling));
+
+    private static PixelPoint ComputeCardPosition(PixelRect area, NotificationPosition position,
+        PixelSize cardSize, int margin, int stackOffset)
+    {
+        var (x, y) = ComputeUnclampedPosition(area, position, cardSize, margin, stackOffset);
+
+        // A mismatched scaling report should never push the card off-screen.
+        x = ClampToRange(x, area.X, area.Width, cardSize.Width);
+        y = ClampToRange(y, area.Y, area.Height, cardSize.Height);
+
+        return new PixelPoint(x, y);
+    }
+
+    private static (int X, int Y) ComputeUnclampedPosition(PixelRect area, NotificationPosition position,
+        PixelSize cardSize, int margin, int stackOffset)
+    {
+        var x = position switch
+        {
+            NotificationPosition.TopLeft or NotificationPosition.BottomLeft
+                => area.X + margin,
+            NotificationPosition.TopRight or NotificationPosition.BottomRight
+                => area.X + area.Width - cardSize.Width - margin,
+            _ // Center
+                => area.X + (area.Width - cardSize.Width) / 2,
+        };
+
+        var y = IsBottomPosition(position)
+            ? area.Y + area.Height - cardSize.Height - stackOffset
+            : area.Y + stackOffset;
+
+        return (x, y);
+    }
+
+    private static bool IsBottomPosition(NotificationPosition position) =>
+        position is NotificationPosition.BottomLeft
+            or NotificationPosition.BottomCenter
+            or NotificationPosition.BottomRight;
+
+    private static int ClampToRange(int value, int areaStart, int areaLength, int itemLength) =>
+        Math.Clamp(value, areaStart, Math.Max(areaStart, areaStart + areaLength - itemLength));
 }
