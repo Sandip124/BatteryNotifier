@@ -54,11 +54,11 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     /// <summary>Flash color palette for battery alerts.</summary>
     public static IReadOnlyList<FlashColorOption> FlashColorOptions { get; } =
     [
-        new("Red", AlertAccent.RedHex),
-        new("Amber", AlertAccent.AmberHex),
         new("Green", AlertAccent.GreenHex),
+        new("Amber", AlertAccent.AmberHex),
         new("Blue", AlertAccent.BlueHex),
         new("Purple", AlertAccent.PurpleHex),
+        new("Red", AlertAccent.RedHex),
     ];
 
     public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; } = new();
