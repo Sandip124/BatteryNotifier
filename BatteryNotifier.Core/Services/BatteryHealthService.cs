@@ -1,4 +1,7 @@
 using System.Globalization;
+#if WINDOWS
+using System.Runtime.InteropServices;
+#endif
 using System.Text.RegularExpressions;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Models;
@@ -21,7 +24,6 @@ public sealed class BatteryHealthService : IDisposable
     private bool _disposed;
     private bool _activePolling;
 
-    /// <summary>Background poll every 15 min. Active poll every 30s when dashboard is open.</summary>
     private static readonly TimeSpan BackgroundInterval = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan ActiveInterval = TimeSpan.FromSeconds(30);
 
@@ -122,27 +124,19 @@ public sealed class BatteryHealthService : IDisposable
             info.CycleCount = ParseInt(output, "\"CycleCount\"\\s*=\\s*(\\d+)");
             info.DesignCycleCount = ParseInt(output, "\"DesignCycleCount9C\"\\s*=\\s*(\\d+)");
 
-            // Temperature is in decikelvin (e.g. 3026 = 302.6K = 29.45°C)
             var tempRaw = ParseDouble(output, "\"Temperature\"\\s*=\\s*(\\d+)");
             if (tempRaw.HasValue)
                 info.TemperatureCelsius = Math.Round(tempRaw.Value / 10.0 - 273.15, 1);
 
-            // Voltage is in millivolts
             info.VoltageVolts = ParseDouble(output, "\"Voltage\"\\s*=\\s*(\\d+)") / 1000.0;
 
-            // TimeRemaining is in minutes; 65535 = N/A sentinel
             var timeMin = ParseInt(output, "\"TimeRemaining\"\\s*=\\s*(\\d+)");
             if (timeMin.HasValue && timeMin.Value != 65535)
                 info.TimeRemainingSeconds = timeMin.Value * 60;
-
-            // Amperage is unsigned 64-bit; negative values (discharge) wrap around.
-            // Parse as ulong then cast to signed long to get actual mA.
+            
             var amperageRaw = ParseULong(output, "\"Amperage\"\\s*=\\s*(\\d+)");
             double? amperageMa = amperageRaw.HasValue ? (double)unchecked((long)amperageRaw.Value) : null;
 
-            // Actual mAh capacity. Older macOS exposes it as top-level "AppleRawMaxCapacity";
-            // newer macOS (Sonoma+) nests it inside the "BatteryData" dict as "FullChargeCapacity"
-            // (top-level "MaxCapacity" is always the 100% placeholder on Apple Silicon).
             var rawMaxCap = ParseDouble(output, "\"AppleRawMaxCapacity\"\\s*=\\s*(\\d+)")
                          ?? ParseDouble(output, "\"FullChargeCapacity\"\\s*=\\s*(\\d+)");
             var designCap = ParseDouble(output, "\"DesignCapacity\"\\s*=\\s*(\\d+)");
@@ -152,7 +146,6 @@ public sealed class BatteryHealthService : IDisposable
                 info.HealthPercent = Math.Round(rawMaxCap.Value / designCap.Value * 100, 1);
             }
 
-            // Convert amperage mA to watts: W = |mA| × V / 1000
             if (amperageMa.HasValue && info.VoltageVolts.HasValue)
             {
                 info.PowerRateWatts = Math.Round(
@@ -172,7 +165,6 @@ public sealed class BatteryHealthService : IDisposable
     }
 
 #if WINDOWS
-    // ── Windows: IOCTL_BATTERY via DeviceIoControl (no elevation required) ──
 
     private static readonly Guid GUID_DEVINTERFACE_BATTERY =
         new("72631e54-78a4-11d0-bcf7-00aa00b7b32a");
@@ -200,8 +192,8 @@ public sealed class BatteryHealthService : IDisposable
         public byte[] Reserved;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
         public byte[] Chemistry;
-        public uint DesignedCapacity;      // mWh
-        public uint FullChargedCapacity;   // mWh
+        public uint DesignedCapacity;      
+        public uint FullChargedCapacity;   
         public uint DefaultAlert1;
         public uint DefaultAlert2;
         public uint CriticalBias;
@@ -230,9 +222,9 @@ public sealed class BatteryHealthService : IDisposable
     private struct BATTERY_STATUS
     {
         public uint PowerState;
-        public uint Capacity;     // mWh
-        public uint Voltage;      // mV
-        public int Rate;          // mW (negative = discharging)
+        public uint Capacity;     
+        public uint Voltage;      
+        public int Rate;          
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -341,7 +333,6 @@ public sealed class BatteryHealthService : IDisposable
                 cbSize = (uint)Marshal.SizeOf<SP_DEVICE_INTERFACE_DATA>()
             };
 
-            // Get the first battery device
             if (!SetupDiEnumDeviceInterfaces(hDevInfo, IntPtr.Zero, ref guid, 0, ref diData))
                 throw new InvalidOperationException("No battery device found");
 
@@ -349,7 +340,6 @@ public sealed class BatteryHealthService : IDisposable
             if (devicePath == null)
                 throw new InvalidOperationException("Failed to get battery device path");
 
-            // Open battery device handle
             const uint GENERIC_READ = 0x80000000;
             const uint GENERIC_WRITE = 0x40000000;
             const uint FILE_SHARE_READ_WRITE = 0x03;
@@ -363,7 +353,6 @@ public sealed class BatteryHealthService : IDisposable
 
             try
             {
-                // Step 1: Get battery tag
                 uint waitTimeout = 0;
                 if (!DeviceIoControl(hBattery, IOCTL_BATTERY_QUERY_TAG,
                         ref waitTimeout, sizeof(uint),
@@ -371,13 +360,10 @@ public sealed class BatteryHealthService : IDisposable
                         out _, IntPtr.Zero) || batteryTag == 0)
                     throw new InvalidOperationException("Failed to get battery tag");
 
-                // Step 2: Get BATTERY_INFORMATION (design capacity, full charge, cycle count)
                 QueryBatteryInformation(hBattery, batteryTag, info);
 
-                // Step 3: Get BATTERY_STATUS (voltage, rate)
                 QueryBatteryStatus(hBattery, batteryTag, info);
 
-                // Step 4: Try to get temperature (not all drivers support this)
                 QueryBatteryTemperature(hBattery, batteryTag, info);
             }
             finally
@@ -443,7 +429,6 @@ public sealed class BatteryHealthService : IDisposable
             InformationLevel = BATTERY_QUERY_INFORMATION_LEVEL.BatteryTemperature
         };
 
-        // Many drivers don't support temperature — silently ignore failure
         if (DeviceIoControl(hBattery, IOCTL_BATTERY_QUERY_INFORMATION,
                 ref query, (uint)Marshal.SizeOf(query),
                 out uint tempDecikelvin, sizeof(uint),
@@ -455,7 +440,6 @@ public sealed class BatteryHealthService : IDisposable
 
     private static string? GetDevicePath(IntPtr hDevInfo, ref SP_DEVICE_INTERFACE_DATA diData)
     {
-        // First call to get required size
         SetupDiGetDeviceInterfaceDetail(hDevInfo, ref diData, IntPtr.Zero, 0,
             out uint requiredSize, IntPtr.Zero);
 
@@ -464,15 +448,12 @@ public sealed class BatteryHealthService : IDisposable
         var detailDataPtr = Marshal.AllocHGlobal((int)requiredSize);
         try
         {
-            // cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA) which is
-            // sizeof(DWORD) + sizeof(TCHAR) = 5 on x86, 8 on x64 (struct packing)
             Marshal.WriteInt32(detailDataPtr, IntPtr.Size == 8 ? 8 : 5);
 
             if (!SetupDiGetDeviceInterfaceDetail(hDevInfo, ref diData, detailDataPtr,
                     requiredSize, out _, IntPtr.Zero))
                 return null;
 
-            // DevicePath starts at offset 4 (after cbSize DWORD)
             return Marshal.PtrToStringAuto(detailDataPtr + 4);
         }
         finally
@@ -522,48 +503,27 @@ public sealed class BatteryHealthService : IDisposable
 
         try
         {
-            // Linux exposes battery info via /sys/class/power_supply/BAT*
             var batDir = FindLinuxBatteryDirectory();
             if (batDir == null) return info;
 
-            var energyFull = ReadSysfsLong(Path.Combine(batDir, "energy_full"))
-                          ?? ReadSysfsLong(Path.Combine(batDir, "charge_full"));
-            var energyDesign = ReadSysfsLong(Path.Combine(batDir, "energy_full_design"))
-                            ?? ReadSysfsLong(Path.Combine(batDir, "charge_full_design"));
-
-            if (energyFull.HasValue && energyDesign.HasValue && energyDesign.Value > 0)
+            var energyFull = ReadSysfsLong(batDir, "energy_full") ?? ReadSysfsLong(batDir, "charge_full");
+            var energyDesign = ReadSysfsLong(batDir, "energy_full_design") ?? ReadSysfsLong(batDir, "charge_full_design");
+            if (energyFull.HasValue && energyDesign is > 0)
                 info.HealthPercent = Math.Round((double)energyFull.Value / energyDesign.Value * 100, 1);
 
-            var cycleCount = ReadSysfsLong(Path.Combine(batDir, "cycle_count"));
-            if (cycleCount.HasValue && cycleCount.Value > 0)
+            var cycleCount = ReadSysfsLong(batDir, "cycle_count");
+            if (cycleCount is > 0)
                 info.CycleCount = (int)cycleCount.Value;
 
-            // Temperature: reported in tenths of degree Celsius
-            var temp = ReadSysfsLong(Path.Combine(batDir, "temp"));
+            var temp = ReadSysfsLong(batDir, "temp");
             if (temp.HasValue)
                 info.TemperatureCelsius = temp.Value / 10.0;
 
-            // Voltage: reported in microvolts
-            var voltageNow = ReadSysfsLong(Path.Combine(batDir, "voltage_now"));
+            var voltageNow = ReadSysfsLong(batDir, "voltage_now");
             if (voltageNow.HasValue)
                 info.VoltageVolts = voltageNow.Value / 1_000_000.0;
 
-            // Power: energy-based supplies report power_now in microwatts,
-            // charge-based supplies report current_now in microamps
-            var powerNow = ReadSysfsLong(Path.Combine(batDir, "power_now"));
-            if (powerNow.HasValue)
-            {
-                info.PowerRateWatts = Math.Round(Math.Abs(powerNow.Value) / 1_000_000.0, 2);
-            }
-            else
-            {
-                var currentNow = ReadSysfsLong(Path.Combine(batDir, "current_now"));
-                if (currentNow.HasValue && voltageNow.HasValue)
-                {
-                    info.PowerRateWatts = Math.Round(
-                        Math.Abs(currentNow.Value) * voltageNow.Value / 1e12, 2);
-                }
-            }
+            info.PowerRateWatts = ReadLinuxPowerRateWatts(batDir, voltageNow);
         }
         catch (Exception ex)
         {
@@ -573,37 +533,43 @@ public sealed class BatteryHealthService : IDisposable
         return info;
     }
 
+    /// <summary>power_now is already in watts; otherwise derive it from current_now × voltage_now.</summary>
+    private static double? ReadLinuxPowerRateWatts(string batDir, long? voltageNow)
+    {
+        var powerNow = ReadSysfsLong(batDir, "power_now");
+        if (powerNow.HasValue)
+            return Math.Round(Math.Abs(powerNow.Value) / 1_000_000.0, 2);
+
+        var currentNow = ReadSysfsLong(batDir, "current_now");
+        return currentNow.HasValue && voltageNow.HasValue
+            ? Math.Round(Math.Abs(currentNow.Value) * voltageNow.Value / 1e12, 2)
+            : null;
+    }
+
     private static string? FindLinuxBatteryDirectory()
     {
         const string basePath = "/sys/class/power_supply";
         if (!Directory.Exists(basePath)) return null;
 
-        // Look for BAT0, BAT1, etc.
-        foreach (var dir in Directory.GetDirectories(basePath))
-        {
-            var name = Path.GetFileName(dir);
-            if (name.StartsWith("BAT", StringComparison.OrdinalIgnoreCase))
-            {
-                var typePath = Path.Combine(dir, "type");
-                if (File.Exists(typePath))
-                {
-                    var type = File.ReadAllText(typePath).Trim();
-                    if (type.Equals("Battery", StringComparison.OrdinalIgnoreCase))
-                        return dir;
-                }
-            }
-        }
-
-        return null;
+        return Directory.GetDirectories(basePath).FirstOrDefault(IsBatteryDirectory);
     }
 
-    private static long? ReadSysfsLong(string path)
-    {
-        if (!File.Exists(path)) return null;
-        var text = File.ReadAllText(path).Trim();
-        return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var val)
-            ? val : null;
-    }
+    private static bool IsBatteryDirectory(string dir) =>
+        Path.GetFileName(dir).StartsWith("BAT", StringComparison.OrdinalIgnoreCase) &&
+        ReadSysfsText(Path.Combine(dir, "type")) is { } type &&
+        type.Equals("Battery", StringComparison.OrdinalIgnoreCase);
+
+    private static string? ReadSysfsText(string path) =>
+        File.Exists(path) ? File.ReadAllText(path).Trim() : null;
+
+    private static long? ReadSysfsLong(string batDir, string fileName) =>
+        ReadSysfsLong(Path.Combine(batDir, fileName));
+
+    private static long? ReadSysfsLong(string path) =>
+        ReadSysfsText(path) is { } text &&
+        long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var val)
+            ? val
+            : null;
 
     private static int? ParseInt(string text, string pattern)
     {
