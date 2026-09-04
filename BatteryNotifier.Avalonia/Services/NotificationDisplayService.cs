@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -122,13 +123,11 @@ public sealed class NotificationDisplayService
             ? AppSettings.Instance.Alerts.Find(a => a.Id == notification.Tag)
             : null;
 
-        // Start the sound first so its spawn latency overlaps the flash/card UI and they land together.
-        if (!suppression.ShouldSuppressSound || isCritical)
-            _ = _notificationManager?.EmitGlobalNotification(notification);
-        else
+        var willPlaySound = !suppression.ShouldSuppressSound || isCritical;
+        if (!willPlaySound)
             Logger.Information("Sound suppressed by DND");
 
-        ShowNotification(notification, alert, dismissalTag: notification.Tag);
+        ShowNotification(notification, alert, playSound: willPlaySound, dismissalTag: notification.Tag);
     }
 
     public void ShowNotification(NotificationMessageEventArgs notification, BatteryAlert? alert,
@@ -146,20 +145,45 @@ public sealed class NotificationDisplayService
 
         if (playSound && _notificationManager != null)
         {
-            _ = _notificationManager.EmitGlobalNotification(notification);
+            _ = PlaySoundWithSyncedFlashAsync(notification, alert, color);
         }
-
-        // Screen flash (if enabled) — drive the glow from the sound's loudness envelope when we
-        // have one; EnsureGenerated readies it for next time if this is the first use.
-        if (AppSettings.Instance.ScreenFlashEnabled)
+        else
         {
-            var sequence = FlashSequenceLibrary.Instance.Get(alert?.Sound);
+            TriggerFlash(color, FlashSequenceLibrary.Instance.Get(alert?.Sound));
             FlashSequenceLibrary.Instance.EnsureGenerated(alert?.Sound);
-            ShowScreenFlash(color, sequence);
         }
 
         // Notification card
         ShowCard(title, notification.Message, level, ColorToHex(color), dismissalTag, onClosed);
+    }
+
+    private static readonly TimeSpan FlashSequenceReadyTimeout = TimeSpan.FromSeconds(3);
+
+    private async Task PlaySoundWithSyncedFlashAsync(NotificationMessageEventArgs notification, BatteryAlert? alert, Color color)
+    {
+        FlashSequence? sequence = null;
+        if (AppSettings.Instance.ScreenFlashEnabled)
+        {
+            try
+            {
+                sequence = await FlashSequenceLibrary.Instance.GetOrGenerateAsync(alert?.Sound)
+                    .WaitAsync(FlashSequenceReadyTimeout).ConfigureAwait(false);
+            }
+            catch (TimeoutException)
+            {
+                Logger.Debug("Flash envelope generation for {Sound} took longer than {Timeout} — " +
+                    "using the default pulse for this play", alert?.Sound, FlashSequenceReadyTimeout);
+            }
+        }
+
+        await _notificationManager!.EmitGlobalNotification(notification,
+            onSoundStarted: () => Dispatcher.UIThread.Post(() => TriggerFlash(color, sequence))).ConfigureAwait(false);
+    }
+
+    private void TriggerFlash(Color color, FlashSequence? sequence)
+    {
+        if (!AppSettings.Instance.ScreenFlashEnabled) return;
+        ShowScreenFlash(color, sequence);
     }
 
     private static string DetermineTitle(string? tag) => tag switch
@@ -174,8 +198,7 @@ public sealed class NotificationDisplayService
         // Explicit user-configured flash color wins.
         if (alert?.FlashColor is { } hex && !string.IsNullOrEmpty(hex))
         {
-            try { return Color.Parse(hex); }
-            catch { /* fall through to auto */ }
+            return Color.Parse(hex);
         }
 
         // Auto: derive from the same tone that drives the message, so they always agree.
@@ -341,18 +364,14 @@ public sealed class NotificationDisplayService
         if (!string.IsNullOrEmpty(dismissalTag))
             AlertEvaluationService.Instance.RecordDismissal(dismissalTag, userInitiated);
 
-        // Remove and close the card
         lock (_cardsLock) { _activeCards.Remove(card); }
         card.Close();
         PositionCards();
 
-        // Stop sound
         _notificationManager?.StopSound();
 
-        // Clear all flash overlays
         ClearOverlays();
 
-        // Release efficiency mode hold
         EfficiencyModeService.Instance.ReleaseNormalMode();
     }
 
@@ -395,11 +414,9 @@ public sealed class NotificationDisplayService
         foreach (var card in cards)
         {
             card.Close();
-            // Release the normal-mode so efficiency mode can re-engage once no notifications are active.
             EfficiencyModeService.Instance.ReleaseNormalMode();
         }
 
-        // Stop sound + clear overlays
         _notificationManager?.StopSound();
         ClearOverlays();
     }
@@ -409,7 +426,6 @@ public sealed class NotificationDisplayService
         List<ScreenFlashOverlay> overlays;
         lock (_overlaysLock)
         {
-            // Snapshot only — the pool persists; StopFlash gracefully fades then hides each overlay.
             overlays = new List<ScreenFlashOverlay>(_flashOverlays);
         }
 
@@ -470,7 +486,6 @@ public sealed class NotificationDisplayService
     {
         var (x, y) = ComputeUnclampedPosition(area, position, cardSize, margin, stackOffset);
 
-        // A mismatched scaling report should never push the card off-screen.
         x = ClampToRange(x, area.X, area.Width, cardSize.Width);
         y = ClampToRange(y, area.Y, area.Height, cardSize.Height);
 
@@ -486,7 +501,7 @@ public sealed class NotificationDisplayService
                 => area.X + margin,
             NotificationPosition.TopRight or NotificationPosition.BottomRight
                 => area.X + area.Width - cardSize.Width - margin,
-            _ // Center
+            _
                 => area.X + (area.Width - cardSize.Width) / 2,
         };
 
