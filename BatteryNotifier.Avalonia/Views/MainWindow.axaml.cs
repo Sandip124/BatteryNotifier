@@ -137,6 +137,13 @@ public partial class MainWindow : Window
         }
     }
 
+    private void Logo_PointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        e.Handled = true; // don't also start a window drag via the title bar's handler
+        TrayIconService.OpenAbout();
+    }
+
     private void HealthBar_PointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (DataContext is MainWindowViewModel vm)

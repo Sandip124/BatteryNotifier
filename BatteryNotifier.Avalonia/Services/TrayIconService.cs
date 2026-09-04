@@ -6,6 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform;
+using BatteryNotifier.Avalonia.Models;
 using BatteryNotifier.Avalonia.Views;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
@@ -30,14 +31,7 @@ internal sealed class TrayIconService : IDisposable
     private const int MenuExit = 4;
     private const int MenuPauseBase = 10; // pause options use MenuPauseBase + index
 
-    /// <summary>Minimal set of pause durations (null = until manually resumed).</summary>
-    private static readonly (string Label, TimeSpan? Duration)[] PauseOptions =
-    [
-        ("30 minutes", TimeSpan.FromMinutes(30)),
-        ("1 hour", TimeSpan.FromHours(1)),
-        ("2 hours", TimeSpan.FromHours(2)),
-        ("Until I turn it back on", null),
-    ];
+    private static readonly IReadOnlyList<PauseOption> PauseOptions = NotificationPauseOptions.All;
 
     private NotificationManager? _notificationManager;
     private NotificationDisplayService? _displayService;
@@ -66,10 +60,10 @@ internal sealed class TrayIconService : IDisposable
             // No Show/Hide item — a single click on the tray icon already toggles the window.
             // "Pause notification for" opens a submenu of durations; toggles to "Resume" when paused.
             _pauseSubmenu = new NativeMenu();
-            foreach (var (label, duration) in PauseOptions)
+            foreach (var option in PauseOptions)
             {
-                var d = duration;
-                var optItem = new NativeMenuItem { Header = label };
+                var d = option.Duration;
+                var optItem = new NativeMenuItem { Header = option.Label };
                 optItem.Click += (_, _) => NotificationService.Instance.PauseNotifications(d);
                 _pauseSubmenu.Add(optItem);
             }
@@ -261,7 +255,7 @@ internal sealed class TrayIconService : IDisposable
             case MenuExit: OnExit(null, EventArgs.Empty); break;
             default:
                 var index = tag - MenuPauseBase;
-                if (index >= 0 && index < PauseOptions.Length)
+                if (index >= 0 && index < PauseOptions.Count)
                     NotificationService.Instance.PauseNotifications(PauseOptions[index].Duration);
                 break;
         }
@@ -297,7 +291,7 @@ internal sealed class TrayIconService : IDisposable
         EfficiencyModeService.Instance.EnableEfficiency();
     }
 
-    private static void ShowMainWindow()
+    internal static void ShowMainWindow()
     {
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;

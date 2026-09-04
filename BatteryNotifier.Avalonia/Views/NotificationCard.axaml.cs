@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
+using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Avalonia.ViewModels;
 using BatteryNotifier.Core.Services;
 
@@ -157,6 +158,10 @@ public partial class NotificationCard : Window
         if (_isDismissing) return;
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         if (_showTime != default && DateTime.UtcNow - _showTime < ClickSettleDelay) return;
+
+        // Clicking the card body opens the app; the dismiss (X) button, handled separately
+        // via DismissButton_Click, just closes the card without opening the window.
+        TrayIconService.ShowMainWindow();
         Dismiss(userInitiated: true);
     }
 

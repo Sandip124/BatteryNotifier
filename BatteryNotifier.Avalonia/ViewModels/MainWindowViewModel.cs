@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Threading;
@@ -7,6 +8,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using BatteryNotifier.Avalonia.Models;
 using BatteryNotifier.Core;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
@@ -27,15 +29,15 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     private const string FullBatteryAsset = "FullBattery.png";
     private const string SufficientAsset = "Sufficient.png";
     private const string LowBatteryAsset = "LowBattery.png";
-
-    private readonly AppSettings _settings = AppSettings.Instance;
-
+    
     private bool _disposed;
     private bool _isWindowVisible;
     private bool _pendingRefresh;
     private CancellationTokenSource? _phraseCts;
     private bool _accessibilityChecked;
     private CancellationTokenSource? _dndCts;
+    private CancellationTokenSource? _navigateCts;
+    private CancellationTokenSource? _updateCheckCts;
 
     public MainWindowViewModel()
     {
@@ -44,6 +46,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         CheckForUpdatesCommand = ReactiveCommand.CreateFromTask(CheckForUpdates);
         ExitCommand = ReactiveCommand.Create(ExitApplication);
         DismissInlineNotificationCommand = ReactiveCommand.Create(DismissInlineNotification);
+        OpenPauseSheetCommand = ReactiveCommand.Create(() => { IsPauseSheetOpen = true; });
 
         _inlineNotifications.StateChanged += OnInlineNotificationStateChanged;
 
@@ -131,9 +134,9 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 Dispatcher.UIThread.Post(RefreshTimeRemainingPhrase);
             }
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException ex)
         {
-            Logger.Verbose("Phrase cycle stopped.");
+            Logger.Verbose(ex, "Phrase cycle stopped.");
         }
     }
 
@@ -236,35 +239,19 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         set => this.RaiseAndSetIfChanged(ref field, value);
     } = string.Empty;
 
-    public bool FullBatteryAlertEnabled
+    /// <summary>Pause durations offered on the home screen (shared with the tray menu).</summary>
+    public static IReadOnlyList<PauseOption> PauseOptions => NotificationPauseOptions.All;
+
+    public ReactiveCommand<TimeSpan?, Unit> PauseNotificationsCommand { get; } =
+        ReactiveCommand.Create<TimeSpan?>(duration => NotificationService.Instance.PauseNotifications(duration));
+
+    public bool IsPauseSheetOpen
     {
-        get => _settings.Alerts.Find(a => a.Id == BatteryAlert.FullBatteryId)?.IsEnabled ?? true;
-        set
-        {
-            var alert = _settings.Alerts.Find(a => a.Id == BatteryAlert.FullBatteryId);
-            if (alert != null)
-            {
-                alert.IsEnabled = value;
-                _settings.Save();
-                this.RaisePropertyChanged();
-            }
-        }
+        get;
+        set => this.RaiseAndSetIfChanged(ref field, value);
     }
 
-    public bool LowBatteryAlertEnabled
-    {
-        get => _settings.Alerts.Find(a => a.Id == BatteryAlert.LowBatteryId)?.IsEnabled ?? true;
-        set
-        {
-            var alert = _settings.Alerts.Find(a => a.Id == BatteryAlert.LowBatteryId);
-            if (alert != null)
-            {
-                alert.IsEnabled = value;
-                _settings.Save();
-                this.RaisePropertyChanged();
-            }
-        }
-    }
+    public ReactiveCommand<Unit, Unit> OpenPauseSheetCommand { get; }
 
     // ── Health Dashboard ────────────────────────────────────────
 
@@ -349,7 +336,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     public bool ShowPausedBanner => IsNotificationsPaused && !IsDndActive;
 
     /// <summary>Banner text with a live countdown of the remaining pause time.</summary>
-    public string PausedBannerText
+    public static string PausedBannerText
     {
         get
         {
@@ -455,7 +442,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 // Fast path: Darwin notify fires instantly on pre-Tahoe macOS
                 if (SystemStateDetector.HasPendingFocusChange())
                 {
-                    RefreshDndStatus();
+                    RefreshDndStatus(ct);
                     tickCount = 0;
                     continue;
                 }
@@ -463,7 +450,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                 // Slow path: direct poll every 5s for Tahoe+ and non-macOS
                 if (tickCount >= 5)
                 {
-                    RefreshDndStatus();
+                    RefreshDndStatus(ct);
                     tickCount = 0;
                 }
             }
@@ -477,7 +464,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
     /// <summary>
     /// Recomputes DND/fullscreen suppression off the UI thread.
     /// </summary>
-    private void RefreshDndStatus()
+    private void RefreshDndStatus(CancellationToken ct = default)
     {
         Task.Run(() =>
         {
@@ -492,7 +479,7 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
             }
 
             Dispatcher.UIThread.Post(() => ApplyDndState(active));
-        });
+        }, ct);
     }
 
     private void ApplyDndState(bool active)
@@ -559,9 +546,14 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
     private async Task CheckForUpdates()
     {
+        _updateCheckCts?.Cancel();
+        _updateCheckCts?.Dispose();
+        _updateCheckCts = new CancellationTokenSource();
+        var ct = _updateCheckCts.Token;
+
         try
         {
-            var result = await UpdateService.Instance.CheckForUpdateManualAsync().ConfigureAwait(false);
+            var result = await UpdateService.Instance.CheckForUpdateManualAsync(ct).ConfigureAwait(false);
 
             Dispatcher.UIThread.Post(() =>
             {
@@ -584,6 +576,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
                         break;
                 }
             });
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.Verbose(ex, "Update check cancelled.");
         }
         catch (Exception)
         {
@@ -611,13 +607,25 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
 
         SettingsCloseRequested?.Invoke();
 
-        await Task.Delay(250).ConfigureAwait(false);
+        _navigateCts?.Cancel();
+        _navigateCts?.Dispose();
+        _navigateCts = new CancellationTokenSource();
+        var ct = _navigateCts.Token;
+
+        try
+        {
+            await Task.Delay(250, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException ex)
+        {
+            Logger.Verbose(ex, "Settings-close delay cancelled.");
+            return;
+        }
+
         Dispatcher.UIThread.Post(() =>
         {
             CurrentView = null;
             old.Dispose();
-            this.RaisePropertyChanged(nameof(FullBatteryAlertEnabled));
-            this.RaisePropertyChanged(nameof(LowBatteryAlertEnabled));
         });
     }
 
@@ -626,6 +634,10 @@ public sealed class MainWindowViewModel : ViewModelBase, IDisposable
         if (_disposed) return;
         StopDndMonitor();
         StopPhraseCycling();
+        _navigateCts?.Cancel();
+        _navigateCts?.Dispose();
+        _updateCheckCts?.Cancel();
+        _updateCheckCts?.Dispose();
         _pauseCountdown?.Dispose();
         CurrentView?.Dispose();
         HealthDashboard.Dispose();
