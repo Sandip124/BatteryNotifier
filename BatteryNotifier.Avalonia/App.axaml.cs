@@ -108,18 +108,10 @@ public class App : Application
             {
                 args.Cancel = true;
 
-                if (desktop.MainWindow.OwnedWindows.Count > 0)
-                    return;
-
-                if (desktop.MainWindow is MainWindow mainWindow)
-                {
+                // Skip while a dialog (About, Sound Picker) is open, so settings work is not
+                // hidden out from under the user.
+                if (mainWindow.OwnedWindows.Count == 0)
                     mainWindow.HideToTray();
-                    return;
-                }
-
-                desktop.MainWindow.Hide();
-                MacOSDockIconHelper.HideDockIcon();
-                EfficiencyModeService.Instance.EnableEfficiency();
             };
 
             desktop.Exit += (_, _) =>

@@ -12,8 +12,10 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Avalonia.ViewModels;
+using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Services;
 using BatteryNotifier.Core.Utils;
+using Serilog;
 
 namespace BatteryNotifier.Avalonia.Views;
 
@@ -30,6 +32,8 @@ public partial class MainWindow : Window
         new DoubleTransition { Property = OpacityProperty, Duration = SettingsOpacityDuration, Easing = easing }
     };
 
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext<MainWindow>();
+
     private readonly Debouncer _positionSaveDebouncer = new();
     private const int TrayMargin = 8;
     private INotifyPropertyChanged? _subscribedViewModel;
@@ -37,9 +41,11 @@ public partial class MainWindow : Window
     private bool _isSettingsAnimating;
 
     private const int AutoHideGraceMs = 150;
+    private const int TopmostBumpMs = 200;
     private static readonly TimeSpan ShowSettleTime = TimeSpan.FromMilliseconds(500);
     private DateTime _suppressAutoHideUntil;
     private bool _autoHidePending;
+    private bool _activatedSinceShown;
 
     public MainWindow()
     {
@@ -47,6 +53,7 @@ public partial class MainWindow : Window
 
         // Auto-hide like a taskbar/menu-bar flyout
         Deactivated += (_, _) => ScheduleAutoHideCheck();
+        Activated += (_, _) => _activatedSinceShown = true;
 
         // Linux WMs (GNOME, KDE) ignore ExtendClientAreaToDecorationsHint and draw
         // their own title bar with min/max/close buttons. Remove decorations entirely
@@ -63,9 +70,12 @@ public partial class MainWindow : Window
     {
         base.OnPropertyChanged(change);
 
-        if (change.Property == IsVisibleProperty && DataContext is MainWindowViewModel vm)
+        // WindowState counts as visibility here: on Linux we hide by minimizing, not unmapping,
+        // so IsVisible alone would keep reporting a window the user can no longer see.
+        if ((change.Property == IsVisibleProperty || change.Property == WindowStateProperty)
+            && DataContext is MainWindowViewModel vm)
         {
-            vm.OnWindowVisibilityChanged(IsVisible);
+            vm.OnWindowVisibilityChanged(IsOnScreen);
         }
     }
 
@@ -237,6 +247,34 @@ public partial class MainWindow : Window
     // ── Flyout-style auto-hide ─────────────────────────────────────
 
     /// <summary>
+    /// True when the window is actually on screen for the user. Not the same as
+    /// <see cref="Visual.IsVisible"/>: on Linux the window is minimized rather than unmapped —
+    /// both at startup (<c>App.axaml.cs</c>) and by <see cref="HideToTray"/> — so
+    /// <c>IsVisible</c> stays <c>true</c> the whole time it is off screen. Anything deciding
+    /// "shown or hidden?" must use this, or a hidden window can never be reopened.
+    /// </summary>
+    public bool IsOnScreen => IsVisible && WindowState != WindowState.Minimized;
+
+    /// <summary>
+    /// Raises the window above other windows and focuses it.
+    ///
+    /// <see cref="Window.Activate"/> alone is only a request: on X11 it becomes a
+    /// <c>_NET_ACTIVE_WINDOW</c> message that mutter routinely refuses under focus-stealing
+    /// prevention, because the click went to the shell's panel rather than to us — the window
+    /// then stays buried behind whatever was in front. A brief <see cref="Window.Topmost"/> bump
+    /// forces the raise, and is dropped again right away so the window does not stay pinned.
+    /// </summary>
+    public void BringToFront()
+    {
+        Activate();
+
+        if (!OperatingSystem.IsLinux()) return;
+
+        Topmost = true;
+        DispatcherTimer.RunOnce(() => Topmost = false, TimeSpan.FromMilliseconds(TopmostBumpMs));
+    }
+
+    /// <summary>
     /// Schedules a deferred re-check of whether the window should auto-hide.
     /// </summary>
     public void ScheduleAutoHideCheck()
@@ -262,18 +300,24 @@ public partial class MainWindow : Window
     {
         _autoHidePending = false;
 
-        if (!IsVisible || IsActive) return;                          
-        if (DateTime.UtcNow < _suppressAutoHideUntil)                
+        if (!IsVisible || IsActive) return;
+        if (DateTime.UtcNow < _suppressAutoHideUntil)
         {
             ScheduleAutoHideCheck();
             return;
         }
-        if (OwnedWindows.Count > 0) return;                          
+        if (OwnedWindows.Count > 0) return;
+
+        // Linux/Wayland compositors often show a window without giving it focus, so a window
+        // re-opened from the tray can get a stray Deactivated it never recovers from. Only
+        // auto-hide a window the user actually focused at least once since it was shown.
+        if (OperatingSystem.IsLinux() && !_activatedSinceShown) return;
 
         var appFocused = AppFocusTracker.IsApplicationFocused();
-        if (appFocused == true) return;                             
-        if (appFocused == null && AnyAppWindowActive()) return;    
+        if (appFocused == true) return;
+        if (appFocused == null && AnyAppWindowActive()) return;
 
+        Logger.Debug("Auto-hiding flyout: focus left the app (appFocused={AppFocused})", appFocused);
         HideToTray();
     }
 
@@ -292,7 +336,23 @@ public partial class MainWindow : Window
     /// </summary>
     public void HideToTray()
     {
-        Hide();
+        Logger.Debug("HideToTray: isVisible={IsVisible} state={State}", IsVisible, WindowState);
+        _activatedSinceShown = false;
+
+        // Linux has no tray we can count on: GNOME ships none by default, and the SNI host that
+        // draws it can be absent or restart at any time, taking the icon with it (see
+        // StatusNotifierWatcherMonitor). Unmapping the window there can strand it with no way
+        // back — so minimize instead. The window stays in the dock and Alt-Tab, where one click
+        // restores it, which is also how App.axaml.cs already starts up on Linux.
+        if (OperatingSystem.IsLinux())
+        {
+            WindowState = WindowState.Minimized;
+        }
+        else
+        {
+            Hide();
+        }
+
         MacOSDockIconHelper.HideDockIcon();
         EfficiencyModeService.Instance.EnableEfficiency();
     }

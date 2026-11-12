@@ -397,24 +397,49 @@ A per-alert `FlashColor` (if set) always overrides the auto color. When ranges *
 
 ## Tray / Flyout Window Model
 
-The window behaves like a taskbar/menu-bar **flyout** (JetBrains Toolbox style): a single click on the tray/menu-bar icon toggles it, and it auto-hides when focus leaves the app. The icon stays in the notification area / menu bar (`ShowInTaskbar = false`).
+The window behaves like a taskbar/menu-bar **flyout** (JetBrains Toolbox style): the tray/menu-bar icon opens it, and it auto-hides when focus leaves the app. It stays out of the taskbar (`ShowInTaskbar = false`) — except on Linux, where it is `true` so the window stays reachable from the dock (see the hide path below).
 
 | Platform | Left-click icon | Right-click icon |
 |---|---|---|
-| Windows/Linux | Toggle window (Avalonia `TrayIcon.Clicked`) | Native tray context menu |
+| Windows | Toggle window (Avalonia `TrayIcon.Clicked`) | Native tray context menu |
+| Linux | **Activate** window — show + raise + focus, never hide (see below) | Native tray context menu |
 | macOS | Toggle window (native `NSStatusItem`) | Native context menu (`NSStatusItem`) |
 
-The context menu (both native macOS and Avalonia Win/Linux) has **no Show/Hide item** — a single click already toggles the window. Menu items: Pause/Resume Notifications, Check for Updates, About, Exit.
+Menu items: Pause/Resume Notifications, Check for Updates, About, Exit. **Linux additionally gets an "Open BatteryNotifier" item at the top** — on GNOME the shell swallows a single left-click to open this menu and only forwards a *double*-click to us as `Activate`, so the menu is the one gesture that reliably brings the window back. Windows/macOS need no such item (their icon click reaches the app in-process). The item always shows and raises, never toggles: opening the panel menu has already deactivated the flyout, so the window is off screen by the time it fires.
+
+### Why Linux clicks are different
+
+A Linux tray icon is only a StatusNotifierItem D-Bus service: the icon widget and all its click handling live in the panel/shell process (`gnome-shell`, KDE Plasma, …), not ours, on X11 and Wayland alike — there is no in-process raw-click channel like macOS's `NSStatusItem`. On GNOME's `ubuntu-appindicators` (`indicatorStatusIcon.js`) a left-click with a menu attached is held ~400 ms for a possible second click and then opens the menu itself; only a genuine **double**-click reaches our `Activate` (what raises `TrayIcon.Clicked`). Dropping the menu does not help — with no menu an isolated single click reaches nothing at all, and right-click loses Pause/Updates/About/Exit. Hence the "Open BatteryNotifier" item: on GNOME it is the one gesture that reliably reaches the window. Panels that do call `Activate` on a plain left-click (KDE Plasma and friends) need no extra step.
+
+**Tray click handling** (`OnTrayIconClicked`): on Linux always `ShowMainWindow()`; elsewhere on screen → `HideMainWindow()`, off screen → `ShowMainWindow()`. "On screen" is `MainWindow.IsOnScreen` (`IsVisible && WindowState != Minimized`), **not** `IsVisible` — Linux hides by minimizing, so `IsVisible` stays `true` the whole time, and a plain `IsVisible` test made every click take the *hide* branch, leaving a hidden window impossible to reopen.
+
+Linux activates rather than toggles because the icon is a control-center indicator and the window can be on screen but buried behind others, where hiding it is never what the click meant. `MainWindow.BringToFront()` does the raising: `Activate()` alone is only a request, and on X11 it becomes a `_NET_ACTIVE_WINDOW` message that mutter routinely refuses under focus-stealing prevention (the click went to the shell's panel, not to us), leaving the window unfocused behind others. A brief `Topmost` bump (200 ms, then dropped so the window is never left pinned) forces the raise — verified by the window reaching `_NET_WM_STATE_FOCUSED`.
 
 **macOS uses a custom native `NSStatusItem`** (`Services/MacStatusItem.cs`, Objective-C interop) instead of Avalonia's `TrayIcon`. Avalonia's cross-platform `TrayIcon` forces "menu on click" on macOS and never fires `Clicked`, which makes single-click-to-open impossible. `MacStatusItem` wires the status-bar button's target/action directly: a runtime-created `BNStatusItemTarget` ObjC class receives clicks, distinguishes left vs right/control-click via `[NSApp currentEvent]`, toggles the window on left-click, and pops a native `NSMenu` (built from `TrayIconService.BuildMacMenu`, dispatched by tag via `HandleMacMenuSelection`) on right-click. The button image is sized to the status-bar thickness. `Install()` is best-effort and returns false on any failure, so `TrayIconService` falls back to the Avalonia `TrayIcon` (menu-driven). When the native item is used, the Avalonia `TrayIcon` is not created.
 
-**Tray toggle** (`OnTrayIconClicked`): simple visible → `HideMainWindow()` / hidden → `ShowMainWindow()`. The old "activate if behind" branch was removed — clicking away now auto-hides, so a visible window is always the focused one.
+### Linux tray survivability (`StatusNotifierWatcherMonitor`)
+
+A Linux tray icon is only a StatusNotifierItem D-Bus service; an SNI **host** (`org.kde.StatusNotifierWatcher`) has to adopt it. Avalonia asks the host to adopt the icon exactly once, when `TrayIcon` is constructed, and if no host owns that name at that instant it logs `Interface 'org.kde.StatusNotifierWatcher' is unavailable.` and gives up permanently — no icon for the rest of the process. On GNOME the host belongs to a *shell extension*, so it is routinely missing right after login (we launch at startup, before extensions load) and disappears again whenever the shell or extension reloads.
+
+`Services/StatusNotifierWatcherMonitor.cs` (Linux only) watches `NameOwnerChanged` for that name over `Tmds.DBus.Protocol` and raises `AvailabilityChanged`. On Linux `TrayIconService` therefore **defers constructing the `TrayIcon` until a host exists** instead of creating it at startup; every other platform still creates it immediately.
+
+**Create once — never destroy and rebuild a live `TrayIcon`.** Both instances claim the same `org.kde.StatusNotifierItem-{pid}-0` bus name, and the old icon's asynchronous teardown releases the name the new one just claimed. The host then rejects the registration (`org.gnome.gjs.JSError.ValueError: Impossible to register an indicator for parameters ...`), Avalonia rethrows that D-Bus error on the dispatcher, and **the process terminates**. Re-registration after a host restart is Avalonia's own job — it watches the name too.
+
+`InstallTrayDBusCrashGuard()` is the backstop for that whole class of failure: a `Dispatcher.UIThread.UnhandledException` handler that marks `DBusException`s thrown from Avalonia's `DBusTrayIconImpl` as handled, so a shell that rejects or races a registration can never take the app down. Every other exception keeps the normal crash path.
+
+Because a host may never appear at all (stock GNOME has no tray), **the window must never depend on the tray to be reachable** — hence Linux hides by minimizing (below).
 
 **Flyout auto-hide** (`MainWindow.axaml.cs`): on `Deactivated`, a deferred (150 ms grace) check hides to tray **only if** focus truly left the application. Guards, in order: window still visible & not re-focused → not within post-show settle (`NotifyShown()`, 500 ms) → no owned windows (Sound Picker / file dialog) → `AppFocusTracker.IsApplicationFocused()` is not true.
 - `AppFocusTracker` (`Services/AppFocusTracker.cs`) is **application**-level, not window-level, so opening our own child windows or (macOS) status menu does not trigger a hide: Windows = foreground window's PID == our PID; macOS = `NSApp.isActive`; Linux = `null` → fall back to "any of our windows active".
 - Re-checked when the About window or Sound Picker closes (via `ScheduleAutoHideCheck()`), catching "opened a child window, then switched apps".
+- **Linux extra guard**: a window is never auto-hidden until it has been `Activated` at least once since it was shown (`_activatedSinceShown`, reset in `HideToTray()`). GNOME/Wayland often maps a programmatically shown window without giving it focus, and the stray `Deactivated` that follows would otherwise hide the window the user just reopened from the tray.
 
-**Shared hide path**: `MainWindow.HideToTray()` (Hide + hide Dock icon + enter efficiency mode) is reused by the auto-hide, the tray toggle (`HideMainWindow`), and the close (X) button (`App.axaml.cs` `Closing`).
+**Shared hide path**: `MainWindow.HideToTray()` (hide + hide Dock icon + enter efficiency mode) is the single place that hides the window — used by the auto-hide, the tray click (`HideMainWindow`), and the close (X) button (`App.axaml.cs` `Closing`).
+
+- **Windows/macOS** hide by unmapping (`Hide()`).
+- **Linux** hides by **minimizing** (`WindowState = Minimized`), matching how `App.axaml.cs` already starts up there. `ShowInTaskbar` is `true` on Linux, so a minimized window stays in the dock and Alt-Tab and one click on the dock icon restores it — the window stays reachable even when no SNI host exists and there is no tray icon at all.
+- **Restoring on Linux needs an unmap/map cycle**: mutter ignores a plain `Minimized → Normal` flip on a still-mapped window and leaves it stuck with `_NET_WM_STATE_HIDDEN`, so `ShowMainWindow()` calls `Hide()` before setting `Normal` and `Show()`.
+- **That remap is not conditioned on `WindowState` on Linux** (`needsRemap = !IsActive && OwnedWindows.Count == 0`). The WM iconifies windows behind Avalonia's back — minimizing from the dock, or a WM shortcut — leaving `WindowState` reporting `Normal` for a window that is not on screen, where `Show()`/`Activate()` alone do nothing at all. Remapping whenever the window is not already focused covers every case; it is skipped while a dialog is open, since unmapping a parent would take its modal child with it.
 
 **Main window close button**: cancels close and hides to tray. Skips hide if child dialogs (About, Sound Picker) are open (`OwnedWindows.Count > 0`) to prevent accidental hide during settings.
 
@@ -500,5 +525,5 @@ Main branch: `master`
 - macOS Tahoe DND detection requires Accessibility permission (app prompts on first launch). Without it, DND state is not detected.
 - macOS tray icon: uses a custom native `NSStatusItem` (`MacStatusItem.cs`) so single-click toggles the window and right-click shows a native menu. Avalonia's `TrayIcon` can't do this on macOS. Falls back to the Avalonia tray icon if native install fails.
 - macOS external display detection suppresses notifications when charger must stay connected.
-- Linux GNOME: no system tray by default (needs AppIndicator extension). Left-click behavior depends on SNI implementation.
+- Linux GNOME: no system tray by default (needs AppIndicator extension). Left-click behavior depends on the SNI host — on `ubuntu-appindicators` a plain single click opens the menu instead of toggling the window; only a double-click reaches `Clicked` (see Tray/Flyout Window Model above). Other panels (KDE Plasma, etc.) may call `Activate` on a plain click. Because no tray icon can be guaranteed, the dock (minimize-to-dock) is the dependable way back to the window on Linux.
 - Linux CI builds are currently disabled in the GitHub Actions workflow.

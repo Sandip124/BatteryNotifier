@@ -13,6 +13,7 @@ using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Services;
 using Serilog;
+using Tmds.DBus.Protocol;
 using Velopack;
 using Velopack.Sources;
 
@@ -20,8 +21,11 @@ namespace BatteryNotifier.Avalonia.Services;
 
 internal sealed class TrayIconService : IDisposable
 {
-    private readonly ILogger _logger;
+    // Static: the show/hide/click helpers below are static and log to the same context.
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext<TrayIconService>();
     private TrayIcon? _trayIcon;
+    private NativeMenu? _trayMenu;
+    private StatusNotifierWatcherMonitor? _watcherMonitor;
     private bool _usingNativeMacStatusItem;
 
     // Tags for the native macOS status-item context menu.
@@ -40,14 +44,10 @@ internal sealed class TrayIconService : IDisposable
     // Store menu items for clean unsubscription in Dispose
     private NativeMenuItem? _pauseNotificationsMenuItem;
     private NativeMenu? _pauseSubmenu;
+    private NativeMenuItem? _showWindowMenuItem;
     private NativeMenuItem? _aboutMenuItem;
     private NativeMenuItem? _updateMenuItem;
     private NativeMenuItem? _exitMenuItem;
-
-    public TrayIconService()
-    {
-        _logger = BatteryNotifierAppLogger.ForContext<TrayIconService>();
-    }
 
     public void Initialize()
     {
@@ -57,7 +57,20 @@ internal sealed class TrayIconService : IDisposable
             // and as the macOS fallback if the native status item can't be installed.
             var trayMenu = new NativeMenu();
 
-            // No Show/Hide item — a single click on the tray icon already toggles the window.
+            // Linux needs an explicit "Open" entry; Windows/macOS do not (the icon click itself
+            // reaches the app there). On GNOME the shell swallows a single left-click to open
+            // this menu and only forwards a *double*-click to us as Activate, so the menu is the
+            // one gesture a user can rely on to get the window back.
+            if (OperatingSystem.IsLinux())
+            {
+                _showWindowMenuItem = new NativeMenuItem { Header = "Open BatteryNotifier" };
+                _showWindowMenuItem.Click += OnShowWindowMenuItem;
+                trayMenu.Add(_showWindowMenuItem);
+                trayMenu.Add(new NativeMenuItemSeparator());
+            }
+
+            // No Show/Hide toggle item — the entry above always shows, and clicking the icon
+            // itself handles the rest; the menu is otherwise Pause/Updates/About/Exit.
             // "Pause notification for" opens a submenu of durations; toggles to "Resume" when paused.
             _pauseSubmenu = new NativeMenu();
             foreach (var option in PauseOptions)
@@ -95,24 +108,24 @@ internal sealed class TrayIconService : IDisposable
 
             if (!_usingNativeMacStatusItem)
             {
-                _trayIcon = new TrayIcon { ToolTipText = "BatteryNotifier" };
+                _trayMenu = trayMenu;
 
-                try
+                // Linux only: Avalonia asks the SNI host to adopt the icon once, when the TrayIcon
+                // is constructed, and gives up for good if no host owns the name right then —
+                // routine on GNOME, where the host is a shell extension that loads after us at
+                // login. So on Linux we defer construction until a host actually exists; every
+                // other platform creates it immediately.
+                if (OperatingSystem.IsLinux())
                 {
-                    var assetLoader = AssetLoader.Open(AssetUris.LogoIco);
-                    _trayIcon.Icon = new WindowIcon(assetLoader);
+                    InstallTrayDBusCrashGuard();
+                    _watcherMonitor = new StatusNotifierWatcherMonitor();
+                    _watcherMonitor.AvailabilityChanged += OnSniHostAvailabilityChanged;
+                    _watcherMonitor.Start();
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.Warning(ex, "Failed to load tray icon from assets");
+                    CreateTrayIcon();
                 }
-
-                _trayIcon.Menu = trayMenu;
-
-                // Left-click toggles the window on Windows/Linux. On macOS the OS shows the menu
-                // on click instead (NSStatusItem always shows its menu), so Clicked never fires.
-                if (!OperatingSystem.IsMacOS())
-                    _trayIcon.Clicked += OnTrayIconClicked;
             }
 
             // Keep the pause menu label in sync from any source (tray toggle, Resume, auto-resume)
@@ -131,7 +144,7 @@ internal sealed class TrayIconService : IDisposable
             }
             catch (Exception serviceEx)
             {
-                _logger.Warning(serviceEx, "Some battery services could not be initialized on this platform");
+                Logger.Warning(serviceEx, "Some battery services could not be initialized on this platform");
             }
 
             // Start background update checks (if enabled)
@@ -143,19 +156,107 @@ internal sealed class TrayIconService : IDisposable
             }
             catch (Exception updateEx)
             {
-                _logger.Warning(updateEx, "Update service could not be initialized");
+                Logger.Warning(updateEx, "Update service could not be initialized");
             }
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Failed to initialize TrayIcon");
+            Logger.Error(ex, "Failed to initialize TrayIcon");
         }
     }
 
 
 
+    // ── Tray icon lifecycle ──
+
+    /// <summary>
+    /// Keeps a tray-icon D-Bus failure from killing the app. Avalonia registers the icon on an
+    /// async continuation and rethrows any failure onto the dispatcher, where nothing handles it
+    /// and the process terminates — observed as
+    /// <c>org.gnome.gjs.JSError.ValueError: Impossible to register an indicator...</c> when a host
+    /// rejects the registration. A flaky desktop shell must not be able to take the app down, so
+    /// swallow exactly that case (D-Bus errors raised from Avalonia's tray implementation) and
+    /// leave every other exception to the normal crash path.
+    /// </summary>
+    private static void InstallTrayDBusCrashGuard()
+    {
+        global::Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (_, e) =>
+        {
+            if (e.Exception is not DBusException) return;
+            if (e.Exception.StackTrace?.Contains("DBusTrayIconImpl", StringComparison.Ordinal) != true) return;
+
+            Logger.Warning(e.Exception,
+                "Tray icon registration was rejected by the SNI host; continuing without a tray icon");
+            e.Handled = true;
+        };
+    }
+
+    private void CreateTrayIcon()
+    {
+        if (_trayMenu == null) return;
+
+        _trayIcon = new TrayIcon { ToolTipText = "BatteryNotifier" };
+
+        try
+        {
+            using var assetLoader = AssetLoader.Open(AssetUris.LogoIco);
+            _trayIcon.Icon = new WindowIcon(assetLoader);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Failed to load tray icon from assets");
+        }
+
+        _trayIcon.Menu = _trayMenu;
+
+        // Left-click toggles the window on Windows/Linux. On macOS the OS shows the menu
+        // on click instead (NSStatusItem always shows its menu), so Clicked never fires.
+        if (!OperatingSystem.IsMacOS())
+            _trayIcon.Clicked += OnTrayIconClicked;
+    }
+
+    private void DestroyTrayIcon()
+    {
+        if (_trayIcon == null) return;
+
+        _trayIcon.Clicked -= OnTrayIconClicked;
+        _trayIcon.Menu = null;
+        _trayIcon.Dispose();
+        _trayIcon = null;
+    }
+
+    /// <summary>
+    /// Creates the tray icon the first time an SNI host shows up; see
+    /// <see cref="StatusNotifierWatcherMonitor"/>.
+    ///
+    /// Deliberately create-once and never replace. Disposing a live <see cref="TrayIcon"/> to build
+    /// a fresh one races on the shared <c>org.kde.StatusNotifierItem-{pid}-0</c> bus name: the old
+    /// icon's asynchronous teardown releases the name the new one just claimed, the host then
+    /// rejects the registration ("Impossible to register an indicator..."), and Avalonia rethrows
+    /// that D-Bus error on the dispatcher, which **terminates the process**. Once an icon exists,
+    /// re-registration after a host restart is Avalonia's own business (it watches the name too).
+    /// </summary>
+    private void OnSniHostAvailabilityChanged(bool available)
+    {
+        if (!available) return;
+
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (_disposed || _trayIcon != null) return;
+
+            Logger.Information("SNI host appeared — creating tray icon");
+            CreateTrayIcon();
+        });
+    }
+
     private static void OnResumeNotifications(object? sender, EventArgs e)
         => NotificationService.Instance.ResumeNotifications();
+
+    /// <summary>
+    /// Linux tray-menu entry. Always shows and raises — never toggles: opening the panel menu has
+    /// already deactivated the flyout, so the window is off screen by the time this fires.
+    /// </summary>
+    private static void OnShowWindowMenuItem(object? sender, EventArgs e) => ShowMainWindow();
 
     /// <summary>Paused → single "Resume Notifications"; otherwise → "Pause notification for" submenu.</summary>
     private void UpdatePauseMenuItem(bool paused)
@@ -205,7 +306,7 @@ internal sealed class TrayIconService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Warning(ex, "Native macOS status item install threw; using Avalonia tray instead");
+            Logger.Warning(ex, "Native macOS status item install threw; using Avalonia tray instead");
             return false;
         }
     }
@@ -222,7 +323,7 @@ internal sealed class TrayIconService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Warning(ex, "Failed to load macOS menu-bar icon asset");
+            Logger.Warning(ex, "Failed to load macOS menu-bar icon asset");
             return Array.Empty<byte>();
         }
     }
@@ -266,10 +367,19 @@ internal sealed class TrayIconService : IDisposable
         if (Application.Current?.ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime desktop)
             return;
 
-        // Simple toggle: visible → hide, hidden → show. Clicking outside the window is
-        // now handled by the window's own flyout-style auto-hide, so the tray click no
-        // longer needs an "activate if behind" branch (a visible window is a focused one).
-        if (desktop.MainWindow is { IsVisible: true })
+        if (desktop.MainWindow is not MainWindow mainWindow)
+            return;
+
+        Logger.Debug("Tray icon clicked: onScreen={OnScreen} isVisible={IsVisible} state={State}",
+            mainWindow.IsOnScreen, mainWindow.IsVisible, mainWindow.WindowState);
+
+        // Linux: the icon is a control-center indicator, so a click *activates* the app — show,
+        // raise and focus — never toggles it away. The window there can be on screen but buried
+        // behind other windows, where hiding it is never what the click meant. Windows/macOS keep
+        // the flyout toggle: the click arrives in-process and a visible window is the focused one.
+        //
+        // IsOnScreen rather than IsVisible, because a minimized window still reports IsVisible.
+        if (mainWindow.IsOnScreen && !OperatingSystem.IsLinux())
             HideMainWindow();
         else
             ShowMainWindow();
@@ -281,14 +391,7 @@ internal sealed class TrayIconService : IDisposable
             return;
 
         if (desktop.MainWindow is MainWindow mainWindow)
-        {
             mainWindow.HideToTray();
-            return;
-        }
-
-        desktop.MainWindow?.Hide();
-        MacOSDockIconHelper.HideDockIcon();
-        EfficiencyModeService.Instance.EnableEfficiency();
     }
 
     internal static void ShowMainWindow()
@@ -301,13 +404,35 @@ internal sealed class TrayIconService : IDisposable
 
         EfficiencyModeService.Instance.DisableEfficiency();
 
-        mainWindow.Show();
-        mainWindow.Activate();
-        // Guard against the activation settle immediately re-hiding the window.
+        // Guard against the activation settle immediately re-hiding the window. Set *before*
+        // Show(), because on X11 the map can raise Deactivated before this call would return.
         mainWindow.NotifyShown();
 
-        if (mainWindow.WindowState == WindowState.Minimized)
+        // Restore before showing, via a real unmap/map cycle: X11 window managers (mutter) ignore
+        // a plain Minimized → Normal flip on a still-mapped window and leave it stuck with
+        // _NET_WM_STATE_HIDDEN.
+        //
+        // On Linux this must not be conditioned on WindowState. The WM iconifies windows behind
+        // Avalonia's back — minimizing from the dock, or a WM shortcut — leaving WindowState
+        // reporting Normal for a window that is not on screen, where Show()/Activate() alone do
+        // nothing at all. Remapping whenever the window is not already focused covers every case.
+        // Never done while a dialog is open: unmapping a parent out from under its modal child
+        // would take the dialog with it.
+        var needsRemap = OperatingSystem.IsLinux()
+            ? !mainWindow.IsActive && mainWindow.OwnedWindows.Count == 0
+            : mainWindow.WindowState == WindowState.Minimized;
+
+        if (needsRemap)
+        {
+            mainWindow.Hide();
             mainWindow.WindowState = WindowState.Normal;
+        }
+
+        mainWindow.Show();
+        mainWindow.BringToFront();
+
+        Logger.Debug("Show main window: isVisible={IsVisible} state={State} isActive={IsActive}",
+            mainWindow.IsVisible, mainWindow.WindowState, mainWindow.IsActive);
     }
 
     private static AboutWindow? _openAboutWindow;
@@ -391,7 +516,7 @@ internal sealed class TrayIconService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Update check/download failed");
+            Logger.Error(ex, "Update check/download failed");
             InlineNotificationManager.Instance.Show(
                 "Update check failed. Check your internet connection.",
                 InlineNotificationLevel.Error);
@@ -431,6 +556,12 @@ internal sealed class TrayIconService : IDisposable
                 _pauseNotificationsMenuItem = null;
             }
 
+            if (_showWindowMenuItem != null)
+            {
+                _showWindowMenuItem.Click -= OnShowWindowMenuItem;
+                _showWindowMenuItem = null;
+            }
+
             if (_aboutMenuItem != null)
             {
                 _aboutMenuItem.Click -= OnOpenAbout;
@@ -449,12 +580,15 @@ internal sealed class TrayIconService : IDisposable
                 _exitMenuItem = null;
             }
             
-            if (_trayIcon != null)
+            if (_watcherMonitor != null)
             {
-                _trayIcon.Clicked -= OnTrayIconClicked;
-                _trayIcon.Dispose();
-                _trayIcon = null;
+                _watcherMonitor.AvailabilityChanged -= OnSniHostAvailabilityChanged;
+                _watcherMonitor.Dispose();
+                _watcherMonitor = null;
             }
+
+            DestroyTrayIcon();
+            _trayMenu = null;
 
             if (_usingNativeMacStatusItem)
             {
@@ -464,7 +598,7 @@ internal sealed class TrayIconService : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.Error(ex, "Error disposing TrayIconService");
+            Logger.Error(ex, "Error disposing TrayIconService");
         }
 
         _disposed = true;
