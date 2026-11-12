@@ -22,12 +22,11 @@ BatteryNotifier/
 │   ├── Providers/
 │   │   └── BatteryInfoProvider.cs   # WMI Win32_Battery query
 │   ├── Services/
+│   │   ├── AlertEvaluationService.cs # "When to (re)notify" brain: entry / rapid drop / severity-capped backoff / engagement
 │   │   ├── AppSettings.cs           # Encrypted settings singleton (DPAPI / AES-GCM)
 │   │   ├── BatteryMonitorService.cs # 1s polling + WMI/Darwin events
-│   │   ├── NotificationService.cs   # Priority queue, escalating backoff, throttling
+│   │   ├── NotificationService.cs   # Delivery pipe: pause, 2s dedup, priority queue
 │   │   ├── NotificationTemplates.cs # Level-aware + escalation-aware message templates
-│   │   ├── PowerUsageService.cs     # Top CPU consumers → battery drain detection
-│   │   ├── ProcessTips.cs           # Known app tips + system process exclusion list
 │   │   ├── SettingsEncryption.cs    # AES-GCM encrypt/decrypt for settings at rest
 │   │   ├── StartupManager.cs        # Cross-platform launch at startup
 │   │   └── SystemStateDetector.cs   # DND / fullscreen detection (all platforms)
@@ -50,9 +49,7 @@ BatteryNotifier/
 │   ├── ViewModels/
 │   │   ├── ViewModelBase.cs
 │   │   ├── MainWindowViewModel.cs   # Hosts CurrentView, battery data, navigation, DND monitor
-│   │   ├── HealthDashboardViewModel.cs  # Battery health + drainers for bottom sheet
-│   │   ├── ProcessDisplayItem.cs    # Display model: battery impact, watts, tips per process
-│   │   ├── CpuBarConverters.cs      # IValueConverters for drain bar width + color
+│   │   ├── HealthDashboardViewModel.cs  # Battery health for bottom sheet
 │   │   ├── SettingsViewModel.cs     # All settings with auto-save + SoundOption model
 │   │   ├── SoundPickerViewModel.cs  # Sound picker with built-in, bundled, and custom groups
 │   │   └── BatteryNotificationSectionViewModel.cs  # Reusable notification config section
@@ -73,9 +70,7 @@ BatteryNotifier/
     ├── DebouncerTests.cs
     ├── NotificationMessageTests.cs
     ├── NotificationServiceTests.cs
-    ├── NotificationTemplatesTests.cs
-    ├── PowerUsageServiceTests.cs    # ps output parsing tests
-    └── ProcessTipsTests.cs          # Known app tip resolution tests
+    └── NotificationTemplatesTests.cs
 ```
 
 ---
@@ -136,62 +131,51 @@ BatteryMonitorService
   ↓ BatteryStatusChanged / PowerLineStatusChanged events
   ├── BatteryManagerStore  (shared in-memory state)
   ├── MainWindowViewModel  (updates UI on Dispatcher.UIThread)
-  └── NotificationService.PublishNotification()
-        ↓ (escalating backoff + throttle + pause check + critical bypass)
+  └── PublishAlertNotifications()
+        ↓ AlertEvaluationService.EvaluateAlerts()   ← the "when to (re)notify" brain
+        │    (entry / rapid drop / severity-capped backoff / engagement)
+        ↓ NotificationService.PublishNotification()  ← delivery pipe
+        │    (pause drop + 2s rapid-fire dedup + priority emit)
       NotificationService.NotificationReceived event
         ↓
       NotificationDisplayService.DeliverNotification()
         ↓ SystemStateDetector.GetSuppressionState()
         ├── [DND/Fullscreen?] → suppress toast + sound (Critical overrides)
         ├── Screen flash + notification card (Avalonia-native)
+        │     └── on dismiss → AlertEvaluationService.RecordDismissal(tag, userInitiated)
         └── NotificationManager → SoundManager (audio playback)
 ```
 
-### Power-Hungry App Detection (Battery Drainers)
-
-```
-PowerUsageService (15s active / 2min background polling)
-  ├── macOS/Linux: ps -eo pid,%cpu,comm → ParsePsOutput() → TryParsePsLine()
-  └── Windows: Process.GetProcesses() → two-snapshot CPU delta
-      ↓ FilterAndSort(): exclude self, system noise, <1% CPU → top 5
-  ProcessesUpdated event
-      ↓
-  HealthDashboardViewModel.OnProcessesUpdated()
-      ↓ Dispatcher.UIThread.Post()
-  BuildDrainersDisplay():
-      ↓ FormatBatteryImpact(): time cost > watts > hidden
-      ↓ ProcessTips.GetTip(): actionable tip for known apps
-      ↓ ComputeDrainersSummary(): battery-centric summary
-  TopProcesses → AXAML ItemsControl in HealthBottomSheet
-  (visible only when: on battery + has data + has battery metrics)
-```
-
-**Display priority** — the card only shows when real battery data exists (power draw or time remaining). Raw CPU% is never shown to users.
-
-| Data Available | Per-Process Display | Summary |
-|---|---|---|
-| Time remaining + power | `~25min` | "Chrome is costing you ~25min of battery life." |
-| Power only | `~6.3W` | "Chrome is draining ~6.3W from your battery." |
-| Neither | Card hidden | — |
-
-**Known app tips** (`ProcessTips`): data-driven lookup (exact match dictionary + substring match array) for browsers, communication apps, media, dev tools, and system processes. Tips are actionable: "Close unused tabs", "Quit when not in a call", "Spotlight indexing — will finish soon".
-
-**System process filtering** (`ProcessTips.SystemProcesses`): `FrozenSet<string>` of low-level OS processes (kernel_task, svchost, systemd, etc.) excluded from the drainer list.
+**Two clear responsibilities:** `AlertEvaluationService` decides *whether/when* an alert should fire (battery-aware, per alert). `NotificationService` is a generic *delivery pipe* — it no longer owns any escalation state.
 
 ### Notification Trigger Rules
 
-- **Full battery**: level >= threshold AND charger plugged in (`PowerLineStatus == Online`)
-- **Low battery**: level <= threshold AND not charging
-- Unplugging while above full threshold does NOT trigger a notification
-- Power state changes reset all notification trackers for eager re-notification
+An alert only fires when the level is inside its range **and** the charger state matches its
+`AlertTone` (see `AlertEvaluationService.IsInsideAlertRange`) — the tone is the single classifier:
 
-### Notification Escalation (Duolingo-inspired)
+- **Full** tone alert → only while **plugged in** (`PowerLineStatus == Online`) — an "unplug now" reminder.
+- **Low** tone alert → only while **unplugged** — a "plug in" reminder (gated on plugged/unplugged, not "actively charging", so a plugged-but-not-charging battery won't nag).
+- **Neutral** tone (custom / mid-range) → **generic**, fires regardless of the charger.
+- Power state changes reset all alert state (`ResetAll`) for eager re-notification.
 
-Per-tag escalating backoff replaces flat deduplication:
-- **Backoff**: immediate → 2 min → 5 min → 10 min → 15 min → 30 min → 45 min → silenced
-- **Auto-recovery**: after 2 hours of silence, the tracker resets ("recovering arm")
-- **Message templates** (`NotificationTemplates`): vary by battery level tier AND escalation count
-- **Power state change**: resets all trackers so notifications fire eagerly again
+### Notification Re-notify Logic (AlertEvaluationService — the brain)
+
+Alerts are **not** just edge-triggered; while the battery stays inside an alert's range,
+`AlertEvaluationService` decides when to re-notify from four inputs (fire if any apply):
+
+1. **Entry** — fires once when the battery crosses into the range (resets the cycle).
+2. **Rapid drop** — a ≥5% fall since the last alert (fast-draining / degraded battery).
+3. **Severity-capped backoff** — `interval = min(escalating[2→5→10→15→30→45 min], severityCap)`
+   where `severityCap` = 2 min (≤10%), 5 min (≤20%), 15 min (else). The cap means it never
+   goes silent for hours, and it can't grow past the cap.
+4. **Engagement** (`RecordDismissal`) — a **user dismissal** keeps the escalation growing (nag
+   less); an **ignored/timed-out** alert resets the cycle so reminders stay eager. Previews
+   pass no tag, so they never affect escalation.
+
+- **Message templates** (`NotificationTemplates`): vary by battery level tier AND `GetEscalationCount`.
+- **Power state change**: `ResetAll()` clears all per-alert state so alerts fire eagerly again.
+- **Overlapping alerts**: when several trigger at once, only the **narrowest** range fires
+  (`BatteryMonitorService.SelectNarrowestAlert`).
 
 ### Settings Flow
 
@@ -242,7 +226,7 @@ DND monitoring: Darwin `notify_check` every 1s (zero-cost memory read) for insta
 
 macOS Tahoe detection: reads `description of every menu bar item` from ControlCenter process. When Focus is active, macOS shows a "Focus" item. No clicking, no dropdown, no flicker. Requires Accessibility permission — app prompts on first launch via `AXIsProcessTrusted()` check and opens System Settings directly.
 
-Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority (battery ≤10% while discharging) bypasses everything including backoff, silencing, throttle, and pause.
+Suppression rules: DND suppresses toast + sound. Fullscreen suppresses toast only. Critical priority (battery ≤10% while discharging) bypasses everything including the re-notify interval, throttle, pause, and DND.
 
 ---
 
@@ -261,6 +245,10 @@ Encrypted at rest. Windows uses DPAPI (OS-managed, tied to user account). macOS/
 | `FullBatteryNotificationMusic` | `builtin:Harp` | Sound (`builtin:Name`, `bundled:File`, `custom:File`, or absolute path) |
 | `LowBatteryNotificationMusic` | `builtin:Klaxon` | Sound (`builtin:Name`, `bundled:File`, `custom:File`, or absolute path) |
 | `StartMinimized` | `true` | Hide to tray on launch |
+| `AlertVolume` | `100` | Alert sound volume 0–100 (0 = muted, no sound played) |
+| `AcAlerts` | `true` | Re-fire alerts on charger plug/unplug (global) |
+| `NotificationPosition` | `TopCenter` | On-screen notification card position |
+| `ScreenFlashEnabled` | `true` | Screen-edge glow flash on notification |
 | `ThemeMode` | `System` | `System` / `Light` / `Dark` |
 | `LaunchAtStartup` | `true` | Register in OS startup mechanism |
 | `AppId` | `Guid` | Unique app identity |
@@ -353,16 +341,27 @@ Dispatcher.UIThread.Post(RefreshBatteryStatus);
 
 ---
 
-## NotificationService — Escalating Backoff & Throttling
+## Two-layer notification design
 
-- **Escalating backoff**: per-tag tracker with intervals [0, 2min, 5min, 10min, 15min, 30min, 45min] → silenced after 7 notifications
-- **Auto-recovery**: silenced tags auto-reset after 2 hours
-- **Throttle interval**: 2 s — rapid notifications held in `_pendingNotifications`, flushed by one-shot timer
-- **Power state change**: resets all trackers via `ResetAllTrackers()`
-- **Alert range change**: resets trackers + forces immediate re-check so new thresholds trigger instantly
-- **Overlapping alerts**: when multiple alerts trigger simultaneously, only the narrowest range fires
-- **Critical priority** (battery ≤10% discharging): bypasses backoff, silencing, throttle, and pause
-- **Pause/Resume**: user can pause all non-critical notifications for 2 hours (auto-resumes via `AutoResumeIfExpired()`). Toggled from tray menu or main window banner. `PausedChanged` event syncs UI instantly
+The "when" and the "how" are deliberately separate. Keep new logic on the correct side.
+
+### AlertEvaluationService — the "when to (re)notify" brain (battery-aware, per alert)
+
+- **Re-notify triggers** (fire if any): entry into range, ≥5% rapid drop, or severity-capped
+  escalating interval — see [Notification Re-notify Logic](#notification-re-notify-logic-alertevaluationservice--the-brain).
+- **Per-alert state**: `WasInside`, `FireCount`, `LastFireLevel`, `LastFireTime` (2% debounce on exit).
+- **`GetEscalationCount(id)`**: prior-notifications count for message-template selection.
+- **`RecordDismissal(id, userInitiated)`**: engagement feedback — user-dismiss keeps escalating, ignored resets.
+- **`ResetAll()`**: clears all per-alert state (called on power-line change / alert-range change).
+- **Test seam**: internal `Clock` for deterministic interval tests.
+
+### NotificationService — the delivery pipe (generic, no escalation state)
+
+- **Pause/Resume**: drops non-critical notifications while paused (2 h default, auto-resumes via `AutoResumeIfExpired()`). Toggled from tray menu or main-window banner; `PausedChanged` syncs UI instantly.
+- **Throttle interval**: 2 s — rapid-fire bursts coalesced per tag in `_pendingNotifications`, flushed by a one-shot timer (keeps the latest).
+- **Priority queue**: emits highest-priority first via `NotificationReceived`.
+- **`ResetAllTrackers()`**: now just discards queued/pending notifications (stale-toast guard); the escalation reset lives in `AlertEvaluationService.ResetAll()`.
+- **Critical priority** (battery ≤10% discharging): bypasses throttle, pause, and DND.
 
 ---
 
@@ -384,34 +383,65 @@ Messages vary by **battery level tier** and **escalation count**:
 
 Each tier has multiple escalation stages with randomized variants per stage.
 
+### Alert tone (message + color + charger gating consistency)
+
+`BatteryAlert.Tone` (`AlertTone.Low` / `Full` / `Neutral`) is the **single** classifier for the message wording (`NotificationTemplates.GetAlertMessage`), the accent/flash color (`NotificationDisplayService.DetermineColor`), **and** the charger gate (`AlertEvaluationService.IsInsideAlertRange`), so they never disagree — including for wide, custom, or overlapping ranges:
+
+- **Low** — reaches empty (`LowerBound ≤ 5`) or sits in the low half (`UpperBound ≤ 50`) → low wording, amber/red (red ≤ 10%), fires only while **unplugged**.
+- **Full** — reaches full (`UpperBound ≥ 95`) or sits in the high half (`LowerBound ≥ 50`) → full wording, green, fires only while **plugged in**.
+- **Neutral** — spans both extremes (e.g. `0–100`) or neither (mid, e.g. `20–80`) → neutral wording, level-based color, **generic** (fires regardless of charger).
+
+A per-alert `FlashColor` (if set) always overrides the auto color. When ranges **overlap**, only the **narrowest** triggered alert fires (`BatteryMonitorService.PublishAlertNotifications` → `MinBy(UpperBound − LowerBound)`); e.g. full `80–100` (width 20) wins over low `0–85` (width 85) in their 80–85% overlap.
+
 ---
 
-## Tray Icon Behavior
+## Tray / Flyout Window Model
 
-```
-Tray Menu:
-  Show Window / Hide Window    (label syncs with window visibility + focus state)
-  Pause Notifications (2h)     (toggles to "Resume Notifications" when paused)
-  ─────────────
-  Check for Updates...
-  About
-  ─────────────
-  Exit
-```
+The window behaves like a taskbar/menu-bar **flyout** (JetBrains Toolbox style): the tray/menu-bar icon opens it, and it auto-hides when focus leaves the app. It stays out of the taskbar (`ShowInTaskbar = false`) — except on Linux, where it is `true` so the window stays reachable from the dock (see the hide path below).
 
-| Platform | Left-click tray | Right-click tray |
+| Platform | Left-click icon | Right-click icon |
 |---|---|---|
-| Windows/Linux | Show/hide/activate via `Clicked` handler | Context menu |
-| macOS | Context menu (OS enforced — NSStatusItem always shows menu) | Context menu |
+| Windows | Toggle window (Avalonia `TrayIcon.Clicked`) | Native tray context menu |
+| Linux | **Activate** window — show + raise + focus, never hide (see below) | Native tray context menu |
+| macOS | Toggle window (native `NSStatusItem`) | Native context menu (`NSStatusItem`) |
 
-**Window show/hide logic** (`OnTrayIconClicked`):
-- Hidden → `ShowMainWindow()` (show + activate)
-- Visible but behind other apps (`IsActive: false`) → `Activate()` only (no dock icon change)
-- Visible and focused (`IsActive: true`) → `HideMainWindow()`
+Menu items: Pause/Resume Notifications, Check for Updates, About, Exit. **Linux additionally gets an "Open BatteryNotifier" item at the top** — on GNOME the shell swallows a single left-click to open this menu and only forwards a *double*-click to us as `Activate`, so the menu is the one gesture that reliably brings the window back. Windows/macOS need no such item (their icon click reaches the app in-process). The item always shows and raises, never toggles: opening the panel menu has already deactivated the flyout, so the window is off screen by the time it fires.
 
-**macOS menu workaround**: opening the tray menu deactivates the window, making `IsActive` unreliable at menu-click time. `_wasVisibleBeforeMenu` captures `IsVisible` state when the label updates (on `IsActive` change), so `OnShowHideWindow` reads the snapshot.
+### Why Linux clicks are different
 
-**Main window close button**: cancels close and hides to tray. Skips hide if child dialogs (About, Sound Picker) are open to prevent accidental hide during settings.
+A Linux tray icon is only a StatusNotifierItem D-Bus service: the icon widget and all its click handling live in the panel/shell process (`gnome-shell`, KDE Plasma, …), not ours, on X11 and Wayland alike — there is no in-process raw-click channel like macOS's `NSStatusItem`. On GNOME's `ubuntu-appindicators` (`indicatorStatusIcon.js`) a left-click with a menu attached is held ~400 ms for a possible second click and then opens the menu itself; only a genuine **double**-click reaches our `Activate` (what raises `TrayIcon.Clicked`). Dropping the menu does not help — with no menu an isolated single click reaches nothing at all, and right-click loses Pause/Updates/About/Exit. Hence the "Open BatteryNotifier" item: on GNOME it is the one gesture that reliably reaches the window. Panels that do call `Activate` on a plain left-click (KDE Plasma and friends) need no extra step.
+
+**Tray click handling** (`OnTrayIconClicked`): on Linux always `ShowMainWindow()`; elsewhere on screen → `HideMainWindow()`, off screen → `ShowMainWindow()`. "On screen" is `MainWindow.IsOnScreen` (`IsVisible && WindowState != Minimized`), **not** `IsVisible` — Linux hides by minimizing, so `IsVisible` stays `true` the whole time, and a plain `IsVisible` test made every click take the *hide* branch, leaving a hidden window impossible to reopen.
+
+Linux activates rather than toggles because the icon is a control-center indicator and the window can be on screen but buried behind others, where hiding it is never what the click meant. `MainWindow.BringToFront()` does the raising: `Activate()` alone is only a request, and on X11 it becomes a `_NET_ACTIVE_WINDOW` message that mutter routinely refuses under focus-stealing prevention (the click went to the shell's panel, not to us), leaving the window unfocused behind others. A brief `Topmost` bump (200 ms, then dropped so the window is never left pinned) forces the raise — verified by the window reaching `_NET_WM_STATE_FOCUSED`.
+
+**macOS uses a custom native `NSStatusItem`** (`Services/MacStatusItem.cs`, Objective-C interop) instead of Avalonia's `TrayIcon`. Avalonia's cross-platform `TrayIcon` forces "menu on click" on macOS and never fires `Clicked`, which makes single-click-to-open impossible. `MacStatusItem` wires the status-bar button's target/action directly: a runtime-created `BNStatusItemTarget` ObjC class receives clicks, distinguishes left vs right/control-click via `[NSApp currentEvent]`, toggles the window on left-click, and pops a native `NSMenu` (built from `TrayIconService.BuildMacMenu`, dispatched by tag via `HandleMacMenuSelection`) on right-click. The button image is sized to the status-bar thickness. `Install()` is best-effort and returns false on any failure, so `TrayIconService` falls back to the Avalonia `TrayIcon` (menu-driven). When the native item is used, the Avalonia `TrayIcon` is not created.
+
+### Linux tray survivability (`StatusNotifierWatcherMonitor`)
+
+A Linux tray icon is only a StatusNotifierItem D-Bus service; an SNI **host** (`org.kde.StatusNotifierWatcher`) has to adopt it. Avalonia asks the host to adopt the icon exactly once, when `TrayIcon` is constructed, and if no host owns that name at that instant it logs `Interface 'org.kde.StatusNotifierWatcher' is unavailable.` and gives up permanently — no icon for the rest of the process. On GNOME the host belongs to a *shell extension*, so it is routinely missing right after login (we launch at startup, before extensions load) and disappears again whenever the shell or extension reloads.
+
+`Services/StatusNotifierWatcherMonitor.cs` (Linux only) watches `NameOwnerChanged` for that name over `Tmds.DBus.Protocol` and raises `AvailabilityChanged`. On Linux `TrayIconService` therefore **defers constructing the `TrayIcon` until a host exists** instead of creating it at startup; every other platform still creates it immediately.
+
+**Create once — never destroy and rebuild a live `TrayIcon`.** Both instances claim the same `org.kde.StatusNotifierItem-{pid}-0` bus name, and the old icon's asynchronous teardown releases the name the new one just claimed. The host then rejects the registration (`org.gnome.gjs.JSError.ValueError: Impossible to register an indicator for parameters ...`), Avalonia rethrows that D-Bus error on the dispatcher, and **the process terminates**. Re-registration after a host restart is Avalonia's own job — it watches the name too.
+
+`InstallTrayDBusCrashGuard()` is the backstop for that whole class of failure: a `Dispatcher.UIThread.UnhandledException` handler that marks `DBusException`s thrown from Avalonia's `DBusTrayIconImpl` as handled, so a shell that rejects or races a registration can never take the app down. Every other exception keeps the normal crash path.
+
+Because a host may never appear at all (stock GNOME has no tray), **the window must never depend on the tray to be reachable** — hence Linux hides by minimizing (below).
+
+**Flyout auto-hide** (`MainWindow.axaml.cs`): on `Deactivated`, a deferred (150 ms grace) check hides to tray **only if** focus truly left the application. Guards, in order: window still visible & not re-focused → not within post-show settle (`NotifyShown()`, 500 ms) → no owned windows (Sound Picker / file dialog) → `AppFocusTracker.IsApplicationFocused()` is not true.
+- `AppFocusTracker` (`Services/AppFocusTracker.cs`) is **application**-level, not window-level, so opening our own child windows or (macOS) status menu does not trigger a hide: Windows = foreground window's PID == our PID; macOS = `NSApp.isActive`; Linux = `null` → fall back to "any of our windows active".
+- Re-checked when the About window or Sound Picker closes (via `ScheduleAutoHideCheck()`), catching "opened a child window, then switched apps".
+- **Linux extra guard**: a window is never auto-hidden until it has been `Activated` at least once since it was shown (`_activatedSinceShown`, reset in `HideToTray()`). GNOME/Wayland often maps a programmatically shown window without giving it focus, and the stray `Deactivated` that follows would otherwise hide the window the user just reopened from the tray.
+
+**Shared hide path**: `MainWindow.HideToTray()` (hide + hide Dock icon + enter efficiency mode) is the single place that hides the window — used by the auto-hide, the tray click (`HideMainWindow`), and the close (X) button (`App.axaml.cs` `Closing`).
+
+- **Windows/macOS** hide by unmapping (`Hide()`).
+- **Linux** hides by **minimizing** (`WindowState = Minimized`), matching how `App.axaml.cs` already starts up there. `ShowInTaskbar` is `true` on Linux, so a minimized window stays in the dock and Alt-Tab and one click on the dock icon restores it — the window stays reachable even when no SNI host exists and there is no tray icon at all.
+- **Restoring on Linux needs an unmap/map cycle**: mutter ignores a plain `Minimized → Normal` flip on a still-mapped window and leaves it stuck with `_NET_WM_STATE_HIDDEN`, so `ShowMainWindow()` calls `Hide()` before setting `Normal` and `Show()`.
+- **That remap is not conditioned on `WindowState` on Linux** (`needsRemap = !IsActive && OwnedWindows.Count == 0`). The WM iconifies windows behind Avalonia's back — minimizing from the dock, or a WM shortcut — leaving `WindowState` reporting `Normal` for a window that is not on screen, where `Show()`/`Activate()` alone do nothing at all. Remapping whenever the window is not already focused covers every case; it is skipped while a dialog is open, since unmapping a parent would take its modal child with it.
+
+**Main window close button**: cancels close and hides to tray. Skips hide if child dialogs (About, Sound Picker) are open (`OwnedWindows.Count > 0`) to prevent accidental hide during settings.
 
 ---
 
@@ -453,6 +483,8 @@ Auto-checks for updates on open (Chrome-style): shows "Checking for updates..." 
 
 Built-in synthesized tones loop until duration timeout or `StopSound()`. Custom and bundled sounds play once in full.
 
+**Volume** (`AppSettings.AlertVolume`, 0–100) is applied per backend in `SoundManager.PlaySoundAsync(volumePercent)`: `afplay -v` (macOS), `AudioFileReader.Volume` (Windows), and `--volume`/`-volume` for `paplay`/`pw-play`/`mpv`/`ffplay` (Linux). **0 = muted** — playback is skipped entirely (universal, incl. `aplay` which has no volume flag). The sound-picker audition always plays at full volume so sounds can be previewed even when alerts are muted.
+
 ---
 
 ## Battery State → UI Image Mapping
@@ -491,7 +523,7 @@ Main branch: `master`
 
 - `BatteryInfoProvider` uses WMI — **Windows only**. macOS/Linux battery info needs a cross-platform provider.
 - macOS Tahoe DND detection requires Accessibility permission (app prompts on first launch). Without it, DND state is not detected.
-- macOS tray icon: left-click always opens context menu (OS limitation). "Show Window" is the first menu item as a workaround.
+- macOS tray icon: uses a custom native `NSStatusItem` (`MacStatusItem.cs`) so single-click toggles the window and right-click shows a native menu. Avalonia's `TrayIcon` can't do this on macOS. Falls back to the Avalonia tray icon if native install fails.
 - macOS external display detection suppresses notifications when charger must stay connected.
-- Linux GNOME: no system tray by default (needs AppIndicator extension). Left-click behavior depends on SNI implementation.
+- Linux GNOME: no system tray by default (needs AppIndicator extension). Left-click behavior depends on the SNI host — on `ubuntu-appindicators` a plain single click opens the menu instead of toggling the window; only a double-click reaches `Clicked` (see Tray/Flyout Window Model above). Other panels (KDE Plasma, etc.) may call `Activate` on a plain click. Because no tray icon can be guaranteed, the dock (minimize-to-dock) is the dependable way back to the window on Linux.
 - Linux CI builds are currently disabled in the GitHub Actions workflow.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Preserve reflection-heavy Windows-only assemblies from full trimming.
+
+  System.Management (WMI) creates types dynamically (e.g. WbemDefPath) via reflection,
+  so full trim removes their parameterless constructors and the power-event watcher
+  throws MissingMethodException at runtime (falls back to slow polling).
+
+  NAudio resolves codecs/devices reflectively; full trim can strip members it needs,
+  silently breaking sound playback.
+
+  <TrimmerRootAssembly> only keeps statically-reachable members, which is not enough
+  here — preserve="all" keeps every member so reflection never hits a trimmed target.
+-->
+<linker>
+  <assembly fullname="System.Management" preserve="all" />
+  <assembly fullname="NAudio" preserve="all" />
+  <assembly fullname="NAudio.Core" preserve="all" />
+  <assembly fullname="NAudio.Wasapi" preserve="all" />
+  <assembly fullname="NAudio.WinMM" preserve="all" />
+</linker>

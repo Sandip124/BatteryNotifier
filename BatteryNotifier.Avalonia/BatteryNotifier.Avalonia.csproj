@@ -79,11 +79,14 @@
         <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
         <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
         <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
-        <!-- Removed Avalonia.Fonts.Inter (~8 MB) — uses system fonts instead -->
         <!--Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration.-->
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.3.12" />
         <PackageReference Include="Avalonia.ReactiveUI" Version="11.3.8" />
         <PackageReference Include="Velopack" Version="0.0.1298" />
+        <!-- Override the vulnerable transitive Tmds.DBus.Protocol 0.21.2 (GHSA-xrw6-gwf8-vvr9,
+             high severity) pulled in by Avalonia's Linux backend. 0.21.3 is the backported fix on
+             the same 0.21.x line Avalonia targets. -->
+        <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3" />
     </ItemGroup>
 
 

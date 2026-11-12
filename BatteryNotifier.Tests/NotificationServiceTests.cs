@@ -39,29 +39,6 @@ public class NotificationServiceTests
     }
 
     [Fact]
-    public void PublishNotification_SameTagWithinBackoff_IsBlocked()
-    {
-        var svc = CreateService();
-        int receivedCount = 0;
-        EventHandler<NotificationMessageEventArgs> handler = (_, _) => receivedCount++;
-        svc.NotificationReceived += handler;
-
-        try
-        {
-            // First notification goes through immediately (backoff[0] = 0)
-            svc.PublishNotification("Low battery at 20%", NotificationType.Global, tag: "LowBattery");
-            // Second notification for same tag — needs 5min backoff, so should be blocked
-            svc.PublishNotification("Low battery at 19%", NotificationType.Global, tag: "LowBattery");
-
-            Assert.Equal(1, receivedCount);
-        }
-        finally
-        {
-            svc.NotificationReceived -= handler;
-        }
-    }
-
-    [Fact]
     public void PublishNotification_DifferentTags_BothEmitted()
     {
         var svc = CreateService();
@@ -143,30 +120,17 @@ public class NotificationServiceTests
     }
 
     [Fact]
-    public void ResetAllTrackers_AllowsNotificationAfterReset()
+    public void ResetAllTrackers_DiscardsQueuedNotifications()
     {
+        // On a state change (charger plug/unplug) any queued/pending notifications must be
+        // discarded so a stale toast isn't delivered after the state it referred to changed.
         var svc = CreateService();
-        int receivedCount = 0;
-        EventHandler<NotificationMessageEventArgs> handler = (_, _) => receivedCount++;
-        svc.NotificationReceived += handler;
+        svc.PublishNotification("Battery low", NotificationType.Global, tag: "LowBattery");
+        Assert.True(svc.PendingCount > 0);
 
-        try
-        {
-            svc.PublishNotification("Battery low", NotificationType.Global, tag: "LowBattery");
-            // Blocked by backoff
-            svc.PublishNotification("Battery low again", NotificationType.Global, tag: "LowBattery");
-            Assert.Equal(1, receivedCount);
+        svc.ResetAllTrackers();
 
-            // Reset trackers (simulates charger plug/unplug)
-            svc.ResetAllTrackers();
-            svc.PublishNotification("Battery low after reset", NotificationType.Global, tag: "LowBattery");
-
-            Assert.Equal(2, receivedCount);
-        }
-        finally
-        {
-            svc.NotificationReceived -= handler;
-        }
+        Assert.Equal(0, svc.PendingCount);
     }
 
     [Fact]

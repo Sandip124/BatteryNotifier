@@ -11,6 +11,7 @@ using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Core.Logger;
 using BatteryNotifier.Core.Managers;
 using BatteryNotifier.Core.Models;
+using BatteryNotifier.Core.Services;
 using ReactiveUI;
 using Serilog;
 
@@ -31,17 +32,33 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
     private string? _flashColor;
 
     public string Id => _alert.Id;
-    public bool IsDefault => _alert.Id is "fullbatt" or "lowbatt_";
+    public bool IsDefault => _alert.Id is BatteryAlert.FullBatteryId or BatteryAlert.LowBatteryId;
     public bool CanDelete => !IsDefault;
 
-    /// <summary>Flash color options relevant to battery alert levels.</summary>
+    private bool _isEditingLabel;
+
+    public bool IsEditingLabel
+    {
+        get => _isEditingLabel;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _isEditingLabel, value);
+            this.RaisePropertyChanged(nameof(ShowLabelDisplay));
+            this.RaisePropertyChanged(nameof(ShowLabelEditor));
+        }
+    }
+
+    public bool ShowLabelDisplay => CanDelete && !_isEditingLabel;
+    public bool ShowLabelEditor => CanDelete && _isEditingLabel;
+
+    /// <summary>Flash color palette for battery alerts.</summary>
     public static IReadOnlyList<FlashColorOption> FlashColorOptions { get; } =
     [
-        new("Auto", null),
-        new("Red", "#D32F2F"),
-        new("Amber", "#F57A00"),
-        new("Green", "#388E3C"),
-        new("Blue", "#0288D1"),
+        new("Green", AlertAccent.GreenHex),
+        new("Amber", AlertAccent.AmberHex),
+        new("Blue", AlertAccent.BlueHex),
+        new("Purple", AlertAccent.PurpleHex),
+        new("Red", AlertAccent.RedHex),
     ];
 
     public Interaction<(string? SettingsValue, string Title), SoundPickerItem?> OpenSoundPickerInteraction { get; } = new();
@@ -67,15 +84,16 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             if (result != null)
             {
                 _alert.Sound = result.SettingsValue;
+                if (AppSettings.Instance.ScreenFlashEnabled)
+                    FlashSequenceLibrary.Instance.EnsureGenerated(result.SettingsValue);
                 UpdateSoundDisplayName();
                 _onChanged(false);
             }
         });
 
-        PreviewCommand = ReactiveCommand.Create(PreviewAlert);
+        PreviewCommand = ReactiveCommand.Create(TogglePreview);
         DeleteCommand = ReactiveCommand.Create(() => onDelete(this));
 
-        // Auto-save on property changes (throttled for sliders)
         this.WhenAnyValue(x => x.IsEnabled)
             .Skip(1)
             .Subscribe(_ => SyncAndSave())
@@ -112,8 +130,11 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         _alert.FlashColor = _flashColor;
 
         if (rangeChanged)
+        {
             Logger.Information("Alert '{Label}' ({Id}) range changed to {Lower}%–{Upper}%",
                 _label, _alert.Id, _lowerBound, _upperBound);
+            RaiseAccentChanged(); 
+        }
 
         _onChanged(rangeChanged);
     }
@@ -150,10 +171,34 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             if (this.RaiseAndSetIfChanged(ref _flashColor, value) != value) return;
             this.RaisePropertyChanged(nameof(HasFlashColor));
             this.RaisePropertyChanged(nameof(SelectedFlashColorOption));
+            RaiseAccentChanged();
         }
     }
 
     public bool HasFlashColor => !string.IsNullOrEmpty(_flashColor);
+    
+    public Color AccentColorValue
+    {
+        get
+        {
+            if (!string.IsNullOrEmpty(_flashColor))
+            {
+                return Color.Parse(_flashColor);
+            }
+
+            return _alert.Tone switch
+            {
+                AlertTone.Full => AlertAccent.Green,
+                AlertTone.Low => AlertAccent.Red,
+                _ => Color.Parse("#8A8A8A"),
+            };
+        }
+    }
+    
+    private void RaiseAccentChanged()
+    {
+        this.RaisePropertyChanged(nameof(AccentColorValue));
+    }
 
     public FlashColorOption SelectedFlashColorOption
     {
@@ -163,7 +208,6 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
         set => FlashColor = value.Hex;
     }
 
-    public string RangeDescription => $"{LowerBound}% – {UpperBound}%";
 
     public string SoundDisplayName
     {
@@ -192,21 +236,40 @@ public sealed class AlertRowViewModel : ViewModelBase, IDisposable
             SoundDisplayName = Path.GetFileName(sound) ?? "Custom file";
     }
 
-    private void PreviewAlert()
+    /// <summary>True while this alert's preview is showing — drives the play/stop toggle button.</summary>
+    public bool IsPreviewing
+    {
+        get;
+        private set
+        {
+            this.RaiseAndSetIfChanged(ref field, value);
+            this.RaisePropertyChanged(nameof(PreviewButtonText));
+        }
+    }
+
+    public string PreviewButtonText => IsPreviewing ? "Stop" : "Preview";
+
+    private void TogglePreview()
     {
         var displayService = NotificationDisplayService.Current;
         if (displayService == null) return;
 
-        var notification = new Core.Services.NotificationMessageEventArgs
+        if (IsPreviewing)
+        {
+            displayService.DismissAll();
+            return;
+        }
+
+        var notification = new NotificationMessageEventArgs
         {
             Message = $"Preview — {_label} ({_lowerBound}%–{_upperBound}%)",
             Tag = _alert.Id
         };
 
-        displayService.ShowNotification(notification, _alert, playSound: true);
+        IsPreviewing = true;
+        displayService.ShowNotification(notification, _alert, playSound: true,
+            onClosed: () => IsPreviewing = false);
     }
-
-    public BatteryAlert GetAlert() => _alert;
 
     public void Dispose()
     {
@@ -226,23 +289,9 @@ public sealed class FlashColorOption
     {
         Name = name;
         Hex = hex;
-        PreviewBrush = hex != null
-            ? new SolidColorBrush(Color.Parse(hex))
-            : new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops =
-                {
-                    new GradientStop(Colors.Red, 0),
-                    new GradientStop(Colors.Orange, 0.33),
-                    new GradientStop(Colors.Green, 0.66),
-                    new GradientStop(Colors.Blue, 1),
-                }
-            };
+        PreviewBrush = new SolidColorBrush(hex != null ? Color.Parse(hex) : Colors.Transparent);
     }
 
-    // Equality by Hex so ComboBox SelectedItem matching works
     public override bool Equals(object? obj) => obj is FlashColorOption o &&
         string.Equals(Hex, o.Hex, StringComparison.OrdinalIgnoreCase);
     public override int GetHashCode() => (Hex?.ToUpperInvariant() ?? "").GetHashCode();

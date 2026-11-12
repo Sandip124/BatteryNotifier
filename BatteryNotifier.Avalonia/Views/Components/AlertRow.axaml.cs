@@ -1,19 +1,81 @@
 using System;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
+using BatteryNotifier.Avalonia.Services;
 using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views.Components;
 
 public partial class AlertRow : UserControl
 {
+    private static readonly TimeSpan BackdropFadeDuration = TimeSpan.FromMilliseconds(140);
+
     private IDisposable? _interactionHandler;
 
     public AlertRow()
     {
         InitializeComponent();
+    }
+
+    // Confirm before removing — the ✕ is small and deletion is irreversible.
+    private async void OnDeleteAlertClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not AlertRowViewModel vm) return;
+        if (TopLevel.GetTopLevel(this) is not Window owner) return;
+
+        var confirmed = await ConfirmDialog.ShowAsync(owner,
+            "Remove alert?",
+            string.IsNullOrWhiteSpace(vm.Label)
+                ? "This alert will be removed."
+                : $"“{vm.Label}” will be removed.",
+            "Remove");
+
+        // A modal dialog deactivates the flyout window; re-check auto-hide after it closes.
+        (owner as MainWindow)?.ScheduleAutoHideCheck();
+
+        if (confirmed)
+            vm.DeleteCommand.Execute().Subscribe();
+    }
+
+    // Reveal the inline editor and focus it with the text selected.
+    private void OnEditLabelClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not AlertRowViewModel vm) return;
+
+        vm.IsEditingLabel = true;
+        var box = this.FindControl<TextBox>("LabelEditBox");
+        Dispatcher.UIThread.Post(() =>
+        {
+            box?.Focus();
+            box?.SelectAll();
+        }, DispatcherPriority.Input);
+    }
+
+    private void OnLabelEditLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is AlertRowViewModel vm)
+            vm.IsEditingLabel = false;
+    }
+
+    private void OnConfirmLabelClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is AlertRowViewModel vm)
+            vm.IsEditingLabel = false;
+    }
+
+    private void OnLabelEditKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Escape && DataContext is AlertRowViewModel vm)
+        {
+            vm.IsEditingLabel = false;
+            e.Handled = true;
+        }
     }
 
     protected override void OnDataContextChanged(EventArgs e)
@@ -38,6 +100,7 @@ public partial class AlertRow : UserControl
                 // which would reset the ScrollViewer position
                 var rootPanel = FindRootPanel(ownerWindow);
                 Border? backdrop = null;
+                var backdropDismissed = false;
 
                 if (rootPanel != null)
                 {
@@ -51,6 +114,26 @@ public partial class AlertRow : UserControl
                     rootPanel.Children.Add(backdrop);
                 }
 
+                void DismissBackdrop()
+                {
+                    if (backdropDismissed || rootPanel == null || backdrop == null) return;
+                    backdropDismissed = true;
+
+                    var fading = backdrop;
+                    var host = rootPanel;
+                    fading.Transitions =
+                    [
+                        new DoubleTransition
+                        {
+                            Property = OpacityProperty,
+                            Duration = BackdropFadeDuration,
+                            Easing = new CubicEaseOut()
+                        }
+                    ];
+                    fading.Opacity = 0;
+                    DispatcherTimer.RunOnce(() => host.Children.Remove(fading), BackdropFadeDuration);
+                }
+
                 try
                 {
                     var (settingsValue, title) = ctx.Input;
@@ -60,17 +143,29 @@ public partial class AlertRow : UserControl
                         DataContext = pickerVm
                     };
 
+                    if (ownerWindow is MainWindow mainBeforeShow)
+                        mainBeforeShow.NotifyShown();
+
+                    pickerWindow.Closing += (_, _) => DismissBackdrop();
+
                     var result = await pickerWindow.ShowLightDismiss(ownerWindow);
                     ctx.SetOutput(result);
                 }
                 finally
                 {
-                    if (rootPanel != null && backdrop != null)
+                    DismissBackdrop();
+
+                    if (ownerWindow is MainWindow main)
                     {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        main.NotifyShown();
+
+                        DispatcherTimer.RunOnce(() =>
                         {
-                            rootPanel.Children.Remove(backdrop);
-                        });
+                            if (!main.IsActive && AppFocusTracker.IsApplicationFocused() == true)
+                                main.Activate();
+
+                            main.ScheduleAutoHideCheck();
+                        }, TimeSpan.FromMilliseconds(50));
                     }
                 }
             });

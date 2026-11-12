@@ -8,8 +8,9 @@ using Avalonia.Styling;
 namespace BatteryNotifier.Avalonia.Controls;
 
 /// <summary>
-/// Dual-handle range slider for battery alert ranges.
-/// Material-inspired with tick dots and enlarged thumb hit areas.
+/// Slider with tick dots and enlarged thumb hit areas (Material-inspired).
+/// Dual-handle range by default (battery alert ranges); set <see cref="IsRange"/> = false for a
+/// single-thumb slider driven by <see cref="Value"/> (e.g. alert volume).
 /// </summary>
 public class RangeSlider : Control
 {
@@ -34,10 +35,27 @@ public class RangeSlider : Control
     public static readonly StyledProperty<double> MinimumGapProperty =
         AvaloniaProperty.Register<RangeSlider, double>(nameof(MinimumGap), 5);
 
+    /// <summary>When false, renders a single-thumb slider driven by <see cref="Value"/>.</summary>
+    public static readonly StyledProperty<bool> IsRangeProperty =
+        AvaloniaProperty.Register<RangeSlider, bool>(nameof(IsRange), true);
+
+    /// <summary>Single-thumb value (used when <see cref="IsRange"/> is false).</summary>
+    public static readonly StyledProperty<double> ValueProperty =
+        AvaloniaProperty.Register<RangeSlider, double>(nameof(Value), 0,
+            defaultBindingMode: global::Avalonia.Data.BindingMode.TwoWay,
+            coerce: CoerceValue);
+
     static RangeSlider()
     {
-        AffectsRender<RangeSlider>(MinimumProperty, MaximumProperty, LowerValueProperty, UpperValueProperty, MinimumGapProperty);
+        AffectsRender<RangeSlider>(MinimumProperty, MaximumProperty, LowerValueProperty, UpperValueProperty,
+            MinimumGapProperty, IsRangeProperty, ValueProperty);
         FocusableProperty.OverrideDefaultValue<RangeSlider>(true);
+    }
+
+    private static double CoerceValue(AvaloniaObject obj, double value)
+    {
+        var slider = (RangeSlider)obj;
+        return Math.Clamp(value, slider.Minimum, slider.Maximum);
     }
 
     private static double CoerceLowerValue(AvaloniaObject obj, double value)
@@ -59,6 +77,8 @@ public class RangeSlider : Control
     public double LowerValue { get => GetValue(LowerValueProperty); set => SetValue(LowerValueProperty, value); }
     public double UpperValue { get => GetValue(UpperValueProperty); set => SetValue(UpperValueProperty, value); }
     public double MinimumGap { get => GetValue(MinimumGapProperty); set => SetValue(MinimumGapProperty, value); }
+    public bool IsRange { get => GetValue(IsRangeProperty); set => SetValue(IsRangeProperty, value); }
+    public double Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
 
     // ── Dimensions ──────────────────────────────────────────────
 
@@ -67,7 +87,9 @@ public class RangeSlider : Control
     private const double ThumbWidth = 5;
     private const double ThumbHeight = 22;
     private const double ThumbCornerRadius = 2.5;
+    private const double ThumbPressShrink = 4; // height reduction while a thumb is held
     private const double ThumbGap = 5;
+    private const double ThumbEdgeGap = ThumbWidth / 2 + ThumbGap; // clearance between a thumb and adjacent track
     private const double InsideCornerRadius = 2;
     private const double ControlHeight = 32;
     private const double EdgeInset = 4;
@@ -149,18 +171,20 @@ public class RangeSlider : Control
 
     // ── Input handling ──────────────────────────────────────────
 
-    private enum DragTarget { None, Lower, Upper }
+    private enum DragTarget { None, Lower, Upper, Single }
     private DragTarget _dragTarget;
+    private static readonly Cursor HandCursor = new(StandardCursorType.Hand);
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
         var pos = e.GetPosition(this);
-        _dragTarget = GetNearestThumb(pos.X, pos.Y);
+        _dragTarget = IsRange ? GetNearestThumb(pos.X, pos.Y) : DragTarget.Single;
         if (_dragTarget != DragTarget.None)
         {
             e.Pointer.Capture(this);
             UpdateFromPointer(pos.X);
+            InvalidateVisual(); // show the "held" thumb cue
             e.Handled = true;
         }
     }
@@ -168,11 +192,16 @@ public class RangeSlider : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
+        var pos = e.GetPosition(this);
+
         if (_dragTarget != DragTarget.None)
         {
-            UpdateFromPointer(e.GetPosition(this).X);
+            UpdateFromPointer(pos.X);
             e.Handled = true;
+            return;
         }
+
+        Cursor = GetHoveredThumb(pos.X, pos.Y) != DragTarget.None ? HandCursor : null;
     }
 
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
@@ -182,29 +211,62 @@ public class RangeSlider : Control
         {
             _dragTarget = DragTarget.None;
             e.Pointer.Capture(null);
+            InvalidateVisual(); // restore full-height thumb
             e.Handled = true;
         }
+    }
+
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);
+        Cursor = null;
+    }
+
+    /// <summary>Nearest thumb within the hit radius of the pointer, else None (for the hover cursor).</summary>
+    private DragTarget GetHoveredThumb(double x, double y)
+    {
+        GetThumbRange(out var left, out var right);
+        var range = Maximum - Minimum;
+        if (range <= 0) return DragTarget.None;
+
+        var centerY = Bounds.Height / 2;
+        double Dist(double val)
+        {
+            var tx = Lerp((val - Minimum) / range, left, right);
+            return Math.Sqrt((x - tx) * (x - tx) + (y - centerY) * (y - centerY));
+        }
+
+        if (!IsRange)
+            return Dist(Value) <= ThumbHitRadius ? DragTarget.Single : DragTarget.None;
+
+        var dl = Dist(LowerValue);
+        var du = Dist(UpperValue);
+        if (Math.Min(dl, du) > ThumbHitRadius) return DragTarget.None;
+        return dl <= du ? DragTarget.Lower : DragTarget.Upper;
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        var target = _dragTarget != DragTarget.None ? _dragTarget : DragTarget.Lower;
-        switch (e.Key)
+
+        var step = e.Key is Key.Left or Key.Down ? -1
+            : e.Key is Key.Right or Key.Up ? 1
+            : 0;
+        if (step == 0) return;
+
+        if (!IsRange)
         {
-            case Key.Left:
-            case Key.Down:
-                if (target == DragTarget.Lower) LowerValue = Math.Max(Minimum, LowerValue - 1);
-                else UpperValue = Math.Max(LowerValue + MinimumGap, UpperValue - 1);
-                e.Handled = true;
-                break;
-            case Key.Right:
-            case Key.Up:
-                if (target == DragTarget.Lower) LowerValue = Math.Min(UpperValue - MinimumGap, LowerValue + 1);
-                else UpperValue = Math.Min(Maximum, UpperValue + 1);
-                e.Handled = true;
-                break;
+            Value = Math.Clamp(Value + step, Minimum, Maximum);
+            e.Handled = true;
+            return;
         }
+
+        var target = _dragTarget != DragTarget.None ? _dragTarget : DragTarget.Lower;
+        if (target == DragTarget.Lower)
+            LowerValue = Math.Clamp(LowerValue + step, Minimum, UpperValue - MinimumGap);
+        else
+            UpperValue = Math.Clamp(UpperValue + step, LowerValue + MinimumGap, Maximum);
+        e.Handled = true;
     }
 
     private DragTarget GetNearestThumb(double x, double y)
@@ -214,8 +276,8 @@ public class RangeSlider : Control
         if (range <= 0) return DragTarget.None;
 
         var centerY = Bounds.Height / 2;
-        var lowerX = left + ((LowerValue - Minimum) / range) * (right - left);
-        var upperX = left + ((UpperValue - Minimum) / range) * (right - left);
+        var lowerX = Lerp((LowerValue - Minimum) / range, left, right);
+        var upperX = Lerp((UpperValue - Minimum) / range, left, right);
 
         // Distance from pointer to each thumb center (2D)
         var distLower = Math.Sqrt((x - lowerX) * (x - lowerX) + (y - centerY) * (y - centerY));
@@ -242,7 +304,9 @@ public class RangeSlider : Control
         var rawValue = Minimum + fraction * (Maximum - Minimum);
         rawValue = Math.Round(rawValue);
 
-        if (_dragTarget == DragTarget.Lower)
+        if (_dragTarget == DragTarget.Single)
+            Value = Math.Clamp(rawValue, Minimum, Maximum);
+        else if (_dragTarget == DragTarget.Lower)
             LowerValue = Math.Clamp(rawValue, Minimum, UpperValue - MinimumGap);
         else if (_dragTarget == DragTarget.Upper)
             UpperValue = Math.Clamp(rawValue, LowerValue + MinimumGap, Maximum);
@@ -264,86 +328,99 @@ public class RangeSlider : Control
         var h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
 
+        // Paint the full bounds transparent so the whole control is hit-testable — otherwise only
+        // the drawn pixels (track / thumbs / dots) receive clicks, leaving dead gaps between them.
+        context.FillRectangle(Brushes.Transparent, new Rect(0, 0, w, h));
+
         var range = Maximum - Minimum;
         if (range <= 0) return;
 
-        var lowerFrac = (LowerValue - Minimum) / range;
-        var upperFrac = (UpperValue - Minimum) / range;
         var centerY = h / 2;
-
         var trackLeft = ThumbWidth / 2 + ThumbGap;
         var trackRight = w - ThumbWidth / 2 - ThumbGap;
         var trackTop = centerY - TrackHeight / 2;
 
-        GetThumbRange(out var thumbRangeLeft, out var thumbRangeRight);
-        var lowerX = thumbRangeLeft + lowerFrac * (thumbRangeRight - thumbRangeLeft);
-        var upperX = thumbRangeLeft + upperFrac * (thumbRangeRight - thumbRangeLeft);
+        GetThumbRange(out var rangeLeft, out var rangeRight);
 
-        // Left inactive segment
-        var lowerGapLeft = lowerX - ThumbWidth / 2 - ThumbGap;
-        if (lowerGapLeft > trackLeft)
-        {
-            var geo = CreateTrackSegment(trackLeft, trackTop, lowerGapLeft - trackLeft, TrackHeight,
-                TrackCornerRadius, InsideCornerRadius);
-            context.DrawGeometry(new SolidColorBrush(_palette.InactiveTrack), null, geo);
-        }
+        // Unified model: the active band spans [loFrac, hiFrac]. Range mode has a lower thumb;
+        // single mode fills from the track start (loFrac = 0) with no lower thumb.
+        var hasLowerThumb = IsRange;
+        var loFrac = hasLowerThumb ? (LowerValue - Minimum) / range : 0.0;
+        var hiFrac = ((hasLowerThumb ? UpperValue : Value) - Minimum) / range;
 
-        // Active middle segment
-        var activeLeft = lowerX + ThumbWidth / 2 + ThumbGap;
-        var activeRight = upperX - ThumbWidth / 2 - ThumbGap;
-        if (activeRight > activeLeft)
-        {
-            var geo = CreateTrackSegment(activeLeft, trackTop, activeRight - activeLeft, TrackHeight,
-                InsideCornerRadius, InsideCornerRadius);
-            context.DrawGeometry(new SolidColorBrush(_palette.ActiveTrack), null, geo);
-        }
+        var loX = Lerp(loFrac, rangeLeft, rangeRight);
+        var hiX = Lerp(hiFrac, rangeLeft, rangeRight);
+
+        // Left inactive segment (only when a lower thumb splits it from the active band)
+        if (hasLowerThumb)
+            DrawSegment(context, trackLeft, loX - ThumbEdgeGap, trackTop,
+                TrackCornerRadius, InsideCornerRadius, _palette.InactiveTrack);
+
+        // Active segment: lower thumb (or track start in single mode) → upper thumb
+        var activeLeft = hasLowerThumb ? loX + ThumbEdgeGap : trackLeft;
+        var activeLeftRadius = hasLowerThumb ? InsideCornerRadius : TrackCornerRadius;
+        DrawSegment(context, activeLeft, hiX - ThumbEdgeGap, trackTop,
+            activeLeftRadius, InsideCornerRadius, _palette.ActiveTrack);
 
         // Right inactive segment
-        var upperGapRight = upperX + ThumbWidth / 2 + ThumbGap;
-        if (upperGapRight < trackRight)
-        {
-            var geo = CreateTrackSegment(upperGapRight, trackTop, trackRight - upperGapRight, TrackHeight,
-                InsideCornerRadius, TrackCornerRadius);
-            context.DrawGeometry(new SolidColorBrush(_palette.InactiveTrack), null, geo);
-        }
+        DrawSegment(context, hiX + ThumbEdgeGap, trackRight, trackTop,
+            InsideCornerRadius, TrackCornerRadius, _palette.InactiveTrack);
 
-        // Tick dots
-        DrawTickDots(context, thumbRangeLeft, thumbRangeRight, centerY, lowerFrac, upperFrac);
+        DrawTickDots(context, rangeLeft, rangeRight, centerY, loFrac, hiFrac);
 
-        // Thumbs
-        DrawThumb(context, lowerX, centerY);
-        DrawThumb(context, upperX, centerY);
+        if (hasLowerThumb)
+            DrawThumb(context, loX, centerY, pressed: _dragTarget == DragTarget.Lower);
+
+        var hiTarget = hasLowerThumb ? DragTarget.Upper : DragTarget.Single;
+        DrawThumb(context, hiX, centerY, pressed: _dragTarget == hiTarget);
     }
 
+    private static double Lerp(double frac, double left, double right) => left + frac * (right - left);
+
+    private void DrawSegment(DrawingContext context, double leftX, double rightX, double trackTop,
+        double leftRadius, double rightRadius, Color color)
+    {
+        if (rightX <= leftX) return;
+        var geo = CreateTrackSegment(leftX, trackTop, rightX - leftX, TrackHeight, leftRadius, rightRadius);
+        context.DrawGeometry(new SolidColorBrush(color), null, geo);
+    }
+
+    /// <summary>
+    /// Draws the tick dots. A dot is active when its fraction is within the active band
+    /// [loFrac, hiFrac]; dots overlapping either thumb position are skipped. (Single mode passes
+    /// loFrac = 0, so the "lower thumb" sits at the track edge where no dot is drawn.)
+    /// </summary>
     private void DrawTickDots(DrawingContext context, double rangeLeft, double rangeRight,
-        double centerY, double lowerFrac, double upperFrac)
+        double centerY, double loFrac, double hiFrac)
     {
         var range = Maximum - Minimum;
         if (range <= 0) return;
 
         var inactiveBrush = new SolidColorBrush(_palette.TickDot);
         var activeBrush = new SolidColorBrush(_palette.TickDotActive);
+        var loX = Lerp(loFrac, rangeLeft, rangeRight);
+        var hiX = Lerp(hiFrac, rangeLeft, rangeRight);
 
         for (var val = Minimum + TickInterval; val < Maximum; val += TickInterval)
         {
             var frac = (val - Minimum) / range;
-            var x = rangeLeft + frac * (rangeRight - rangeLeft);
+            var x = Lerp(frac, rangeLeft, rangeRight);
 
-            // Skip dots that overlap with thumbs
-            var lowerX = rangeLeft + lowerFrac * (rangeRight - rangeLeft);
-            var upperX = rangeLeft + upperFrac * (rangeRight - rangeLeft);
-            if (Math.Abs(x - lowerX) < ThumbWidth + ThumbGap) continue;
-            if (Math.Abs(x - upperX) < ThumbWidth + ThumbGap) continue;
+            if (Math.Abs(x - loX) < ThumbWidth + ThumbGap) continue;
+            if (Math.Abs(x - hiX) < ThumbWidth + ThumbGap) continue;
 
-            var isActive = frac >= lowerFrac && frac <= upperFrac;
+            var isActive = frac >= loFrac && frac <= hiFrac;
             context.DrawEllipse(isActive ? activeBrush : inactiveBrush, null,
                 new Point(x, centerY), TickDotRadius, TickDotRadius);
         }
     }
 
-    private void DrawThumb(DrawingContext context, double x, double centerY)
+    private void DrawThumb(DrawingContext context, double x, double centerY, bool pressed = false)
     {
-        var rect = new Rect(x - ThumbWidth / 2, centerY - ThumbHeight / 2, ThumbWidth, ThumbHeight);
+        // Slightly shorter thumb while held — a subtle "pressed" cue. The clickable area is the
+        // virtual ThumbHitRadius, so shrinking the visual doesn't affect grabbing it.
+        var height = pressed ? ThumbHeight - ThumbPressShrink : ThumbHeight;
+        var rect = new Rect(x - ThumbWidth / 2, centerY - height / 2, ThumbWidth, height);
         context.DrawRectangle(new SolidColorBrush(_palette.Thumb), null, rect, ThumbCornerRadius, ThumbCornerRadius);
     }
 

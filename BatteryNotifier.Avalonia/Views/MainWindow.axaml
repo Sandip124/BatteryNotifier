@@ -31,14 +31,17 @@
         <Grid RowDefinitions="Auto,*">
 
             <!-- Header (drag handle) — ZIndex keeps it above the ambient glow -->
-            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="8"
+            <Border Grid.Row="0" Padding="12,10" Name="TitleBar"  CornerRadius="12"
                     ZIndex="1"
                     Background="{DynamicResource AppHeaderBackground}"
                     PointerPressed="TitleBar_PointerPressed">
                 <Grid ColumnDefinitions="32,*,Auto" VerticalAlignment="Center">
                     <Image Grid.Column="0" Margin="0,0,10,0" Width="28" Height="28"
                            Source="/Assets/BatteryNotifierLogo.png"
-                           RenderOptions.BitmapInterpolationMode="MediumQuality" />
+                           RenderOptions.BitmapInterpolationMode="MediumQuality"
+                           Cursor="Hand"
+                           ToolTip.Tip="About BatteryNotifier"
+                           PointerPressed="Logo_PointerPressed" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
                         <TextBlock FontSize="14" FontWeight="SemiBold"
                                    Foreground="{DynamicResource AppForeground}">BatteryNotifier</TextBlock>
@@ -146,74 +149,75 @@
                         <Border Grid.Row="1"
                                 IsVisible="{Binding ShowPausedBanner}"
                                 CornerRadius="8" Padding="10,7"
-                                Margin="0,0,0,6"
-                                Background="#2EFF9800">
+                                Margin="0,40,0,0"
+                                Background="{DynamicResource AppWarningBackground}">
                             <Grid ColumnDefinitions="Auto,8,*,8,Auto">
                                 <PathIcon Grid.Column="0"
                                           Data="{StaticResource Icon.BellSlash}"
                                           Width="14" Height="14"
-                                          Foreground="#FF9800"
+                                          Foreground="{DynamicResource AppWarningForeground}"
                                           VerticalAlignment="Center" />
                                 <TextBlock Grid.Column="2"
-                                           Text="Notifications paused · auto-resumes in 2h"
+                                           Text="{Binding PausedBannerText}"
                                            FontSize="11.5"
-                                           Foreground="#FF9800"
+                                           Foreground="{DynamicResource AppWarningForeground}"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="4"
                                         Command="{Binding ResumeNotificationsCommand}"
                                         Theme="{StaticResource PrimaryButton}"
-                                        Padding="8,3" FontSize="10"
+                                        Padding="12,6" CornerRadius="6" FontSize="11"
                                         VerticalAlignment="Center"
                                         ToolTip.Tip="Resume notifications">
-                                    <TextBlock Text="Resume" Foreground="#FF9800" FontWeight="SemiBold" />
+                                    <TextBlock Text="Resume" Foreground="{DynamicResource AppWarningForeground}" FontWeight="SemiBold" />
                                 </Button>
                             </Grid>
                         </Border>
 
-                        <!-- Quick Settings -->
-                        <Border Grid.Row="2" CornerRadius="12" BorderThickness="1" ClipToBounds="True"
-                                Margin="0,6,0,0"
-                                BorderBrush="{DynamicResource AppCardBorder}"
-                                Background="{DynamicResource AppCardBackground}">
-                            <StackPanel>
-                                <TextBlock Padding="12,10,12,4" FontSize="12" FontWeight="Normal"
-                                           Foreground="{DynamicResource AppSubtleText}">QUICK SETTINGS</TextBlock>
+                        <!-- Pause Notifications (hidden while paused — the banner above already covers that state) -->
+                        <StackPanel Grid.Row="2" Margin="0,6,0,0" Spacing="6"
+                                    IsVisible="{Binding !IsNotificationsPaused}">
+                            <TextBlock Margin="4,0,0,0" FontSize="12" FontWeight="Normal"
+                                       Foreground="{DynamicResource AppSubtleText}">PAUSE NOTIFICATION FOR</TextBlock>
 
-                                <!-- Full Battery notification -->
-                                <Border Padding="12,4">
-                                    <Grid ColumnDefinitions="Auto,*,42">
+                            <Border CornerRadius="12" BorderThickness="0" ClipToBounds="True"
+                                    BorderBrush="{DynamicResource AppCardBorder}"
+                                    Background="{DynamicResource AppCardBackground}">
+                            <StackPanel Margin="12,10">
+                                <Button Command="{Binding OpenPauseSheetCommand}"
+                                        HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Stretch"
+                                        Padding="8,6" MinHeight="32"
+                                        CornerRadius="8"
+                                        BorderThickness="0"
+                                        Background="{DynamicResource AppSelectBoxBg}"
+                                        BorderBrush="{DynamicResource AppCardBorder}"
+                                        Cursor="Hand">
+                                    <Button.Styles>
+                                        <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                            <Setter Property="Background" Value="{DynamicResource AppSelectBoxHoverBg}" />
+                                        </Style>
+                                    </Button.Styles>
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
                                         <PathIcon Grid.Column="0"
-                                                  Data="{StaticResource Icon.BatteryFullFill}"
-                                                  Foreground="#388E3C"
-                                                  Width="20" Height="20"
-                                                  Margin="0,0,8,0"
+                                                  Data="{StaticResource Icon.BellSlash}"
+                                                  Width="12" Height="12"
+                                                  Foreground="{DynamicResource AppSubtleText}"
+                                                  Margin="0,0,6,0"
                                                   VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Full Battery Notification</TextBlock>
-                                        <ToggleSwitch Grid.Column="2"
-                                                      IsChecked="{Binding FullBatteryAlertEnabled}"
-                                                      OnContent="" OffContent=""
-                                                      Margin="0" Padding="0" />
-                                    </Grid>
-                                </Border>
-
-                                <!-- Low Battery notification -->
-                                <Border Padding="12,4,12,8">
-                                    <Grid ColumnDefinitions="Auto,*,42">
-                                        <PathIcon Grid.Column="0"
-                                                  Data="{StaticResource Icon.BatteryLowFill}"
-                                                  Foreground="#F57A00"
-                                                  Width="20" Height="20"
-                                                  Margin="0,0,8,0"
+                                        <TextBlock Grid.Column="1"
+                                                   Text="Choose duration"
+                                                   FontSize="11.5"
+                                                   VerticalAlignment="Center" />
+                                        <PathIcon Grid.Column="2"
+                                                  Data="{StaticResource Icon.CaretUpDown}"
+                                                  Width="11" Height="11"
+                                                  Foreground="{DynamicResource AppSubtleText}"
                                                   VerticalAlignment="Center" />
-                                        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13">Low Battery Notification</TextBlock>
-                                        <ToggleSwitch Grid.Column="2"
-                                                      IsChecked="{Binding LowBatteryAlertEnabled}"
-                                                      OnContent="" OffContent=""
-                                                      Margin="0" Padding="0" />
                                     </Grid>
-                                </Border>
+                                </Button>
                             </StackPanel>
-                        </Border>
+                            </Border>
+                        </StackPanel>
                     </Grid>
                 </Border>
             </Grid>
@@ -276,6 +280,12 @@
       <!-- Health bottom sheet — outside padding, fills full clip area -->
       <components:HealthBottomSheet
           x:Name="HealthSheet"
+          IsVisible="False"
+          ZIndex="5" />
+
+      <!-- Pause-duration bottom sheet — outside padding, fills full clip area -->
+      <components:PauseDurationSheet
+          x:Name="PauseSheet"
           IsVisible="False"
           ZIndex="5" />
       </Panel>

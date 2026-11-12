@@ -14,6 +14,8 @@ internal static class AssetUris
     public static readonly Uri Logo128 = new($"{Base}/battery-notifier-logo-128.png");
     public static readonly Uri LogoIco = new($"{Base}/battery-notifier-logo.ico");
 
+    public static readonly Uri MenuBarIconMono = new($"{Base}/battery-notifier-menubar.png");
+
     public static Uri ForAsset(string fileName) => new($"{Base}/{fileName}");
     public static Uri ForSound(string fileName) => new($"{Base}/Sounds/{fileName}");
 }

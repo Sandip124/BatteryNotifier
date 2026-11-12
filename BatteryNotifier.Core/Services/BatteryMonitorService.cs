@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using BatteryNotifier.Core.Logger;
+using BatteryNotifier.Core.Models;
 using BatteryNotifier.Core.Providers;
 using BatteryNotifier.Core.Store;
 using BatteryNotifier.Core.Utils;
@@ -7,6 +8,13 @@ using Serilog;
 
 namespace BatteryNotifier.Core.Services;
 
+/// <summary>
+/// Watches the battery (platform power events + a polling safety net) and orchestrates the
+/// notification pipeline: on each change it updates <see cref="BatteryManagerStore"/>, raises UI
+/// events, then asks <see cref="AlertEvaluationService"/> which alerts should fire and hands them to
+/// <see cref="NotificationService"/> for delivery. The decision logic itself lives in those two
+/// services — this class wires them to the OS and the battery poll.
+/// </summary>
 public sealed class BatteryMonitorService : IDisposable
 {
     private static readonly Lazy<BatteryMonitorService> _instance =
@@ -175,7 +183,10 @@ public sealed class BatteryMonitorService : IDisposable
         var currentStatus = BatteryInfoProvider.GetBatteryInfo();
 
         if (currentStatus.BatteryChargeStatus is BatteryChargeStatus.NoSystemBattery or BatteryChargeStatus.Unknown)
+        {
+            UpdateBatteryManagerStore(currentStatus, Percent(currentStatus));
             return;
+        }
 
         BatteryChangeResult change;
         lock (_statusLock)
@@ -229,6 +240,13 @@ public sealed class BatteryMonitorService : IDisposable
 
     private void ResetNotificationTrackers()
     {
+        // AC Alerts (global): when disabled, charger plug/unplug must not re-notify.
+        if (!AppSettings.Instance.AcAlerts)
+        {
+            _logger.Information("AC Alerts disabled — not resetting notification trackers on power line change");
+            return;
+        }
+
         _logger.Information("Resetting notification trackers due to power line change");
         NotificationService.Instance.ResetAllTrackers();
         AlertEvaluationService.Instance.ResetAll();
@@ -238,32 +256,22 @@ public sealed class BatteryMonitorService : IDisposable
     {
         if (ShouldSuppressNotifications(currentStatus))
         {
-            _logger.Information("Notification suppressed: external display detected (charger must stay connected)");
+            _logger.Information("Notification suppressed: macOS clamshell mode (lid closed) — charger must stay connected");
             return;
         }
 
-        var alerts = AppSettings.Instance.Alerts;
+
         var triggered = AlertEvaluationService.Instance.EvaluateAlerts(
-            alerts, currentLevel, currentStatus.BatteryChargeStatus, currentStatus.PowerLineStatus);
+            AppSettings.Instance.Alerts, currentLevel, currentStatus.PowerLineStatus);
 
         if (triggered.Count == 0) return;
 
-        // When multiple overlapping alerts trigger, only publish the narrowest one
-        // to avoid spamming the user with duplicate notifications for the same event.
-        var alert = triggered.Count == 1
-            ? triggered[0]
-            : triggered.MinBy(a => a.UpperBound - a.LowerBound)!;
-
-        var escalation = NotificationService.Instance.GetEscalationCount(alert.Id);
+        var alert = SelectNarrowestAlert(triggered);
+        var escalation = AlertEvaluationService.Instance.GetEscalationCount(alert.Id);
         var message = NotificationTemplates.GetAlertMessage(alert, currentLevel, escalation);
+
         _logger.Information("Publishing alert '{Label}' ({Id}) at {Level}%: {Message}",
             alert.Label, alert.Id, currentLevel, message);
-
-        // Critical priority for battery ≤10% while discharging — bypasses backoff and silencing
-        var priority = currentLevel <= 10
-            && currentStatus.BatteryChargeStatus != BatteryChargeStatus.Charging
-            ? NotificationPriority.Critical
-            : NotificationPriority.Normal;
 
         NotificationService.Instance.PublishNotification(new NotificationMessageEventArgs
         {
@@ -271,28 +279,49 @@ public sealed class BatteryMonitorService : IDisposable
             Type = NotificationType.Global,
             Duration = Constants.DefaultNotificationTimeout,
             Tag = alert.Id,
-            Priority = priority
+            Priority = DeterminePriority(currentLevel, currentStatus.BatteryChargeStatus)
         });
     }
 
+    /// <summary>
+    /// When several overlapping alerts trigger at once, fire only the narrowest range — it's the
+    /// most specific match, and firing all of them would spam duplicates for one event.
+    /// </summary>
+    private static BatteryAlert SelectNarrowestAlert(List<BatteryAlert> triggered) =>
+        triggered.Count == 1
+            ? triggered[0]
+            : triggered.MinBy(a => a.UpperBound - a.LowerBound)!;
+
+    /// <summary>
+    /// Battery ≤10% while discharging is Critical — it bypasses user pause and DND so the alert
+    /// is always shown. Everything else is Normal.
+    /// </summary>
+    private static NotificationPriority DeterminePriority(int currentLevel, BatteryChargeStatus chargeStatus) =>
+        currentLevel <= 10 && chargeStatus != BatteryChargeStatus.Charging
+            ? NotificationPriority.Critical
+            : NotificationPriority.Normal;
+
+    /// <summary>Battery charge as an integer percent (0–100).</summary>
+    private static int Percent(BatteryInfo status) => (int)(status.BatteryLifePercent * 100);
+
     private static void UpdateBatteryManagerStore(BatteryInfo currentStatus, int currentLevel)
     {
+        var chargeStatus = currentStatus.BatteryChargeStatus;
         bool isPluggedIn = currentStatus.PowerLineStatus == BatteryPowerLineStatus.Online &&
-                           currentStatus.BatteryChargeStatus != BatteryChargeStatus.NoSystemBattery;
-        bool isActivelyCharging = currentStatus.BatteryChargeStatus == BatteryChargeStatus.Charging;
-        BatteryManagerStore.Instance.SetChargingState(isActivelyCharging, isPluggedIn);
-        BatteryManagerStore.Instance.SetBatteryState(currentLevel);
-        BatteryManagerStore.Instance.SetBatteryLife(currentStatus.BatteryLifeRemaining);
-        BatteryManagerStore.Instance.SetBatteryLifePercentage(Math.Round(currentStatus.BatteryLifePercent * 100, 0));
-        BatteryManagerStore.Instance.SetHasNoBattery(
-            currentStatus.BatteryChargeStatus == BatteryChargeStatus.NoSystemBattery);
-        BatteryManagerStore.Instance.SetIsUnknown(
-            currentStatus.BatteryChargeStatus == BatteryChargeStatus.Unknown);
+                           chargeStatus != BatteryChargeStatus.NoSystemBattery;
+
+        var store = BatteryManagerStore.Instance;
+        store.SetChargingState(chargeStatus == BatteryChargeStatus.Charging, isPluggedIn);
+        store.SetBatteryState(currentLevel);
+        store.SetBatteryLife(currentStatus.BatteryLifeRemaining);
+        store.SetBatteryLifePercentage(Math.Round(currentStatus.BatteryLifePercent * 100, 0));
+        store.SetHasNoBattery(chargeStatus == BatteryChargeStatus.NoSystemBattery);
+        store.SetIsUnknown(chargeStatus == BatteryChargeStatus.Unknown);
     }
 
     private static BatteryStatusEventArgs CreateBatteryEventArgs(BatteryInfo status)
     {
-        var level = (int)(status.BatteryLifePercent * 100);
+        var level = Percent(status);
         var settings = AppSettings.Instance;
         return new BatteryStatusEventArgs
         {
@@ -311,10 +340,28 @@ public sealed class BatteryMonitorService : IDisposable
         if (!OperatingSystem.IsMacOS()) return false;
         if (status.PowerLineStatus != BatteryPowerLineStatus.Online) return false;
 
-        return HasExternalDisplay();
+        // Only suppress in clamshell mode (lid closed)
+        return IsClamshellMode();
     }
 
-    private static bool HasExternalDisplay()
+    /// <summary>macOS clamshell (lid-closed) detection via ioreg AppleClamshellState.</summary>
+    internal static bool IsClamshellMode()
+    {
+        if (!OperatingSystem.IsMacOS()) return false;
+        try
+        {
+            var output = ProcessRunner.Run("ioreg", "-r", "-k", "AppleClamshellState", "-d", "4");
+            return !string.IsNullOrEmpty(output)
+                && output.Contains("\"AppleClamshellState\" = Yes", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex)
+        {
+            Serilog.Log.Debug(ex, "Clamshell detection failed");
+            return false;
+        }
+    }
+
+    internal static bool HasExternalDisplay()
     {
         try
         {
@@ -351,8 +398,8 @@ public sealed class BatteryMonitorService : IDisposable
         BatteryInfo? lastStatus, BatteryInfo currentStatus,
         int lowThreshold, int fullThreshold, bool forceCheck)
     {
-        var currentLevel = (int)(currentStatus.BatteryLifePercent * 100);
-        var lastLevel = lastStatus != null ? (int)(lastStatus.BatteryLifePercent * 100) : 0;
+        var currentLevel = Percent(currentStatus);
+        var lastLevel = lastStatus != null ? Percent(lastStatus) : 0;
 
         bool powerLineChanged = lastStatus?.PowerLineStatus != currentStatus.PowerLineStatus;
         bool levelChanged = currentLevel != lastLevel;
@@ -398,7 +445,6 @@ public sealed class BatteryMonitorService : IDisposable
         _powerEventWatcher = null;
 
         // Clean up macOS Darwin notify resources.
-        // Closing the fd unblocks the read() call in MacPowerNotifyLoop.
         if (_macNotifyToken >= 0)
         {
             notify_cancel(_macNotifyToken);

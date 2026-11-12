@@ -3,10 +3,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.Threading;
-using Avalonia.VisualTree;
 using BatteryNotifier.Avalonia.ViewModels;
 
 namespace BatteryNotifier.Avalonia.Views;
@@ -16,11 +13,13 @@ public partial class SoundPickerWindow : Window
     private IDisposable? _selectSub;
     private IDisposable? _cancelSub;
     private IDisposable? _browseSub;
-    private Action? _filterChangedHandler;
-    private SoundPickerViewModel? _subscribedFilterVm;
 
-    private bool _closingFromBrowse;
+    private bool _suppressLightDismiss;
+    private bool _isClosing;
     private TaskCompletionSource<SoundPickerItem?>? _tcs;
+    
+    private static readonly TimeSpan ShowSettleTime = TimeSpan.FromMilliseconds(450);
+    private DateTime _suppressDismissUntil;
 
     public SoundPickerWindow()
     {
@@ -40,7 +39,7 @@ public partial class SoundPickerWindow : Window
     /// </summary>
     public Task<SoundPickerItem?> ShowLightDismiss(Window owner)
     {
-        _tcs = new TaskCompletionSource<SoundPickerItem?>();
+        _tcs = new TaskCompletionSource<SoundPickerItem?>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         // Position relative to owner center
         if (owner.Position.X > 0 || owner.Position.Y > 0)
@@ -51,12 +50,18 @@ public partial class SoundPickerWindow : Window
             Position = new global::Avalonia.PixelPoint(x, y);
         }
 
+        _suppressDismissUntil = DateTime.UtcNow + ShowSettleTime;
         Show(owner);
         return _tcs.Task;
     }
 
     private void CloseWithResult(SoundPickerItem? result)
     {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        Deactivated -= OnWindowDeactivated;
+
         if (_tcs != null && !_tcs.Task.IsCompleted)
             _tcs.TrySetResult(result);
         Close();
@@ -64,8 +69,25 @@ public partial class SoundPickerWindow : Window
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
-        if (_closingFromBrowse) return;
+        if (_suppressLightDismiss || _isClosing) return;
+
+        if (DateTime.UtcNow < _suppressDismissUntil)
+        {
+            global::Avalonia.Threading.DispatcherTimer.RunOnce(() =>
+            {
+                if (!_suppressLightDismiss && !_isClosing && !IsActive && _tcs is { Task.IsCompleted: false })
+                    CloseWithResult(null);
+            }, TimeSpan.FromMilliseconds(150));
+            return;
+        }
+
         CloseWithResult(null);
+    }
+
+    protected override void OnOpened(EventArgs e)
+    {
+        base.OnOpened(e);
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() => SearchBox?.Focus());
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
@@ -79,6 +101,19 @@ public partial class SoundPickerWindow : Window
         base.OnKeyDown(e);
     }
 
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        if (SearchBox is { IsFocused: false } box && !string.IsNullOrEmpty(e.Text))
+        {
+            box.Focus();
+            box.Text = (box.Text ?? string.Empty) + e.Text;
+            box.CaretIndex = box.Text.Length;
+            e.Handled = true;
+            return;
+        }
+        base.OnTextInput(e);
+    }
+
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
@@ -86,14 +121,6 @@ public partial class SoundPickerWindow : Window
         _selectSub?.Dispose();
         _cancelSub?.Dispose();
         _browseSub?.Dispose();
-
-        // Unsubscribe previous FilterChanged handler to prevent leak
-        if (_subscribedFilterVm != null && _filterChangedHandler != null)
-        {
-            _subscribedFilterVm.FilterChanged -= _filterChangedHandler;
-            _subscribedFilterVm = null;
-            _filterChangedHandler = null;
-        }
 
         if (DataContext is SoundPickerViewModel vm)
         {
@@ -109,7 +136,7 @@ public partial class SoundPickerWindow : Window
 
             _browseSub = vm.BrowseFileInteraction.RegisterHandler(async ctx =>
             {
-                _closingFromBrowse = true;
+                _suppressLightDismiss = true;
                 try
                 {
                     var path = await BrowseAudioFile().ConfigureAwait(false);
@@ -117,72 +144,57 @@ public partial class SoundPickerWindow : Window
                 }
                 finally
                 {
-                    _closingFromBrowse = false;
+                    _suppressLightDismiss = false;
                 }
             });
-
-            _filterChangedHandler = () =>
-                Dispatcher.UIThread.Post(() => UpdateCheckIcons(vm), DispatcherPriority.Render);
-            vm.FilterChanged += _filterChangedHandler;
-            _subscribedFilterVm = vm;
         }
     }
 
-    protected override void OnOpened(EventArgs e)
+    // Row click selects only — it never plays (auto-play on click is annoying).
+    // Selection is shown via the data-bound "Selected" badge (SoundPickerItem.IsSelected).
+    private void OnSoundItemClick(object? sender, RoutedEventArgs e)
     {
-        base.OnOpened(e);
-        if (DataContext is SoundPickerViewModel vm)
-            Dispatcher.UIThread.Post(() => UpdateCheckIcons(vm), DispatcherPriority.Render);
+        if (sender is Button { DataContext: SoundPickerItem item }
+            && DataContext is SoundPickerViewModel vm)
+            vm.SelectedItem = item;
     }
 
-    private async void OnSoundItemClick(object? sender, RoutedEventArgs e)
+    // Play/pause button auditions the sound and selects it, so hitting Select picks what you heard.
+    private void OnPreviewToggleClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is not Button button || button.DataContext is not SoundPickerItem item)
-            return;
+        e.Handled = true; // handle here; don't also fire the row's click
 
-        if (DataContext is not SoundPickerViewModel vm)
-            return;
-
-        vm.SelectedItem = item;
-        UpdateCheckIcons(vm);
-
-        await vm.PreviewItem(item).ConfigureAwait(false);
+        if (sender is Button { DataContext: SoundPickerItem item }
+            && DataContext is SoundPickerViewModel vm)
+        {
+            vm.SelectedItem = item;
+            vm.TogglePreview(item);
+        }
     }
 
-    private void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
+    private async void OnDeleteCustomClick(object? sender, RoutedEventArgs e)
     {
-        e.Handled = true; // Prevent the parent button's OnSoundItemClick from firing
+        e.Handled = true; 
 
-        if (sender is not Button button || button.DataContext is not SoundPickerItem item)
-            return;
+        if (sender is not Button { DataContext: SoundPickerItem item }) return;
+        if (DataContext is not SoundPickerViewModel vm) return;
 
-        if (DataContext is SoundPickerViewModel vm)
+        _suppressLightDismiss = true;
+        bool confirmed;
+        try
+        {
+            confirmed = await ConfirmDialog.ShowAsync(this,
+                "Remove sound?",
+                $"“{item.DisplayName}” will be removed from your library.",
+                "Remove");
+        }
+        finally
+        {
+            _suppressLightDismiss = false;
+        }
+
+        if (confirmed)
             vm.DeleteCustomCommand.Execute(item).Subscribe();
-    }
-
-    private void UpdateCheckIcons(SoundPickerViewModel vm)
-    {
-        var hoverBrush = this.TryFindResource("AppHoverBackground", ActualThemeVariant, out var res) && res is IBrush b
-            ? b : Brushes.Transparent;
-
-        foreach (var descendant in this.GetVisualDescendants())
-        {
-            if (descendant is not Button btn || btn.DataContext is not SoundPickerItem item)
-                continue;
-
-            var isSelected = vm.SelectedItem == item;
-            btn.Background = isSelected ? hoverBrush : Brushes.Transparent;
-            SetCheckIconVisibility(btn, isSelected);
-        }
-    }
-
-    private static void SetCheckIconVisibility(Button btn, bool visible)
-    {
-        foreach (var child in btn.GetVisualDescendants())
-        {
-            if (child is PathIcon { Name: "CheckIcon" } icon)
-                icon.IsVisible = visible;
-        }
     }
 
     private async Task<string?> BrowseAudioFile()
@@ -211,7 +223,6 @@ public partial class SoundPickerWindow : Window
     {
         base.OnClosed(e);
 
-        // Ensure TCS is resolved if window closed by other means
         _tcs?.TrySetResult(null);
 
         _selectSub?.Dispose();

@@ -16,13 +16,14 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // Velopack must run FIRST — handles install/uninstall/update hooks
-        // and exits the process early when invoked by the installer.
         VelopackApp.Build().Run();
 
-        // Initialize logging FIRST — before any other code can log
+        // Initialize logging
         BatteryNotifierLoggerConfig.InitializeLogger();
         BatteryNotifierAppLogger.LogStartup();
+
+        // Write Diaonostic report at startup
+        BatteryNotifier.Core.Diagnostics.SystemDiagnostics.WriteReport();
 
         using var mutex = new Mutex(true, "BatteryNotifier_SingleInstance_A7F2C3D4", out bool isNew);
 
@@ -32,7 +33,7 @@ sealed class Program
             return;
         }
 
-        // Global exception handlers — catch anything that escapes try/catch blocks
+        // Global exception handlers
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
             BatteryNotifierAppLogger.Fatal(
@@ -57,7 +58,7 @@ sealed class Program
             e.SetObserved(); // Prevent process termination
         };
 
-        // ReactiveUI exception handler — catches unhandled exceptions in reactive pipelines
+        // ReactiveUI exception handler
         RxApp.DefaultExceptionHandler = Observer.Create<Exception>(ex =>
         {
             BatteryNotifierAppLogger.Error(ex, "Unhandled exception in reactive pipeline");
@@ -80,7 +81,6 @@ sealed class Program
         }
     }
 
-    // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
     {
         // On Wayland, GNOME's Mutter adds server-side decorations to XWayland windows

@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:BatteryNotifier.Avalonia.ViewModels"
+             xmlns:models="clr-namespace:BatteryNotifier.Avalonia.Models"
+             mc:Ignorable="d"
+             x:Class="BatteryNotifier.Avalonia.Views.Components.PauseDurationSheet"
+             x:DataType="vm:MainWindowViewModel">
+
+    <Grid x:Name="RootGrid" Opacity="0">
+        <Grid.Transitions>
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2" Easing="CubicEaseOut" />
+            </Transitions>
+        </Grid.Transitions>
+
+        <!-- Dim backdrop -->
+        <Border Background="#80000000"
+                PointerPressed="Backdrop_PointerPressed" />
+
+        <!-- Sheet panel — pinned to the bottom, sized to its short content -->
+        <Border x:Name="SheetPanel"
+                VerticalAlignment="Bottom"
+                CornerRadius="16,16,0,0"
+                Background="{DynamicResource AppWindowBackground}"
+                RenderTransform="translateY(230px)">
+            <Border.Transitions>
+                <Transitions>
+                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.28" Easing="CubicEaseOut" />
+                </Transitions>
+            </Border.Transitions>
+
+            <StackPanel Margin="16,8,16,16" Spacing="10">
+                <!-- Handle bar -->
+                <Border HorizontalAlignment="Center"
+                        Width="40" Height="4"
+                        CornerRadius="2"
+                        Background="{DynamicResource AppSubtleText}"
+                        Opacity="0.4"
+                        Margin="0,4,0,4" />
+
+                <TextBlock FontSize="16" FontWeight="SemiBold">Pause Notification For</TextBlock>
+
+                <ItemsControl ItemsSource="{Binding PauseOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="4" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:PauseOption">
+                            <Button Content="{Binding Label}"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Left"
+                                    Padding="12,10" FontSize="13.5"
+                                    CornerRadius="8"
+                                    Background="{DynamicResource AppSheetItemBg}"
+                                    Tag="{Binding}"
+                                    Click="OnOptionClick">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+                                        <Setter Property="Background" Value="{DynamicResource AppSheetItemHoverBg}" />
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+    </Grid>
+
+</UserControl>

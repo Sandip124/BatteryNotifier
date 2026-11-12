@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using BatteryNotifier.Core.Logger;
+using Serilog;
 
 namespace BatteryNotifier.Core.Providers;
 
@@ -10,6 +12,8 @@ public sealed class BatteryInfoProvider
         new(() => new BatteryInfoProvider());
 
     public static BatteryInfoProvider Instance => _instance.Value;
+
+    private static readonly ILogger Logger = BatteryNotifierAppLogger.ForContext("BatteryInfoProvider");
 
     private BatteryInfoProvider()
     {
@@ -21,6 +25,8 @@ public sealed class BatteryInfoProvider
             return GetBatteryInfoWindows();
         if (OperatingSystem.IsMacOS())
             return GetBatteryInfoMacOs();
+        if (OperatingSystem.IsLinux())
+            return GetBatteryInfoLinux();
 
         return new BatteryInfo
         {
@@ -30,6 +36,149 @@ public sealed class BatteryInfoProvider
             BatteryLifeRemaining = -1
         };
     }
+
+    private static BatteryInfo GetBatteryInfoLinux()
+    {
+        var info = new BatteryInfo
+        {
+            BatteryChargeStatus = BatteryChargeStatus.Unknown,
+            PowerLineStatus = BatteryPowerLineStatus.Unknown,
+            BatteryLifePercent = 0,
+            BatteryLifeRemaining = -1
+        };
+
+        const string root = "/sys/class/power_supply";
+        try
+        {
+            if (!Directory.Exists(root))
+            {
+                Logger.Warning("Linux battery: {Root} not present", root);
+                return info;
+            }
+
+            var batteryDir = FindLinuxBattery(root);
+            if (batteryDir == null)
+            {
+                info.BatteryChargeStatus = BatteryChargeStatus.NoSystemBattery;
+                info.PowerLineStatus = BatteryPowerLineStatus.Online;
+                Logger.Information("Linux battery: no Battery-type supply under {Root} — treating as desktop", root);
+                return info;
+            }
+
+            var capacity = ReadIntSys(batteryDir, "capacity");
+            if (capacity is >= 0 and <= 100)
+            {
+                info.BatteryLifePercent = capacity.Value / 100f;
+            }
+            else
+            {
+                var nowCap = ReadLongSys(batteryDir, "energy_now") ?? ReadLongSys(batteryDir, "charge_now");
+                var fullCap = ReadLongSys(batteryDir, "energy_full") ?? ReadLongSys(batteryDir, "charge_full");
+                if (nowCap is >= 0 && fullCap is > 0)
+                    info.BatteryLifePercent = Math.Clamp((float)nowCap.Value / fullCap.Value, 0f, 1f);
+            }
+
+            var status = ReadSys(batteryDir, "status") ?? "Unknown";
+            var acOnline = ReadLinuxAcOnline(root);
+
+            info.PowerLineStatus = acOnline switch
+            {
+                true => BatteryPowerLineStatus.Online,
+                false => BatteryPowerLineStatus.Offline,
+                _ => status.Equals("Discharging", StringComparison.OrdinalIgnoreCase)
+                    ? BatteryPowerLineStatus.Offline
+                    : BatteryPowerLineStatus.Online
+            };
+
+            info.BatteryChargeStatus = status switch
+            {
+                "Charging" => BatteryChargeStatus.Charging,
+                "Full" => BatteryChargeStatus.High,
+                _ => DeriveChargeStatusFromPercent(info.BatteryLifePercent)
+            };
+
+            info.BatteryLifeRemaining = EstimateLinuxSecondsRemaining(batteryDir, status);
+
+            var full = ReadLongSys(batteryDir, "energy_full") ?? ReadLongSys(batteryDir, "charge_full");
+            var design = ReadLongSys(batteryDir, "energy_full_design") ?? ReadLongSys(batteryDir, "charge_full_design");
+            int? healthPct = full is > 0 && design is > 0
+                ? (int)Math.Round(100.0 * full.Value / design.Value)
+                : null;
+
+            LogBatteryDiag("Linux /sys/class/power_supply", info,
+                $"name={Path.GetFileName(batteryDir)} capacity={capacity} status={status} ac={acOnline} full={full} design={design} healthPct={healthPct}");
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning(ex, "Linux battery: failed to read {Root}", root);
+        }
+
+        return info;
+    }
+
+    // Logs the battery-fetch approach + values, but only when they change (polling runs every ~1s).
+    private static string _lastBatteryDiag = "";
+    private static void LogBatteryDiag(string approach, BatteryInfo info, string? extra = null)
+    {
+        var msg = $"{approach} → percent={info.BatteryLifePercent:P0} charge={info.BatteryChargeStatus} " +
+                  $"power={info.PowerLineStatus} secondsLeft={info.BatteryLifeRemaining}" +
+                  (extra != null ? " | " + extra : string.Empty);
+
+        if (msg == _lastBatteryDiag) return;
+        _lastBatteryDiag = msg;
+        Logger.Information("Battery {Diag}", msg);
+    }
+
+    private static string? FindLinuxBattery(string root)
+    {
+        foreach (var dir in Directory.EnumerateDirectories(root))
+        {
+            var type = ReadSys(dir, "type");
+            if (string.Equals(type, "Battery", StringComparison.OrdinalIgnoreCase))
+                return dir;
+        }
+        return null;
+    }
+
+    private static bool? ReadLinuxAcOnline(string root)
+    {
+        bool? result = null;
+        foreach (var dir in Directory.EnumerateDirectories(root))
+        {
+            var type = ReadSys(dir, "type");
+            if (!string.Equals(type, "Mains", StringComparison.OrdinalIgnoreCase)) continue;
+
+            var online = ReadIntSys(dir, "online");
+            if (online == 1) return true;
+            if (online == 0) result = false;
+        }
+        return result;
+    }
+
+    private static int EstimateLinuxSecondsRemaining(string dir, string status)
+    {
+        if (!status.Equals("Discharging", StringComparison.OrdinalIgnoreCase)) return -1;
+
+        var now = ReadLongSys(dir, "energy_now") ?? ReadLongSys(dir, "charge_now");
+        var rate = ReadLongSys(dir, "power_now") ?? ReadLongSys(dir, "current_now");
+        if (now is > 0 && rate is > 0)
+            return (int)(3600.0 * now.Value / rate.Value);
+
+        return -1;
+    }
+
+    private static string? ReadSys(string dir, string file)
+    {
+        var path = Path.Combine(dir, file);
+        try { return File.Exists(path) ? File.ReadAllText(path).Trim() : null; }
+        catch (Exception ex) { Logger.Debug(ex, "Linux battery: cannot read {Path}", path); return null; }
+    }
+
+    private static int? ReadIntSys(string dir, string file) =>
+        int.TryParse(ReadSys(dir, file), out var v) ? v : null;
+
+    private static long? ReadLongSys(string dir, string file) =>
+        long.TryParse(ReadSys(dir, file), out var v) ? v : null;
 
     // ── Windows: kernel32 GetSystemPowerStatus ──
     // More reliable than WMI Win32_Battery for real-time battery state.
@@ -120,6 +269,8 @@ public sealed class BatteryInfoProvider
             info.BatteryLifeRemaining = ps.BatteryLifeTime;
         }
 
+        LogBatteryDiag("Windows GetSystemPowerStatus", info,
+            $"acLine={ps.ACLineStatus} flag={ps.BatteryFlag} rawPct={ps.BatteryLifePercent}");
         return info;
     }
 
@@ -163,6 +314,7 @@ public sealed class BatteryInfoProvider
             info.PowerLineStatus = BatteryPowerLineStatus.Online;
         }
 
+        LogBatteryDiag("macOS pmset", info);
         return info;
     }
 
